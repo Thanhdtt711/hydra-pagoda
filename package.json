@@ -1,0 +1,35 @@
+{
+  "name": "hydra-pagoda",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0 --port 3012",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "wallet:reconcile": "node scripts/wallet/reconcile.mjs",
+    "wallet:test:auth": "node scripts/wallet/test-auth.mjs",
+    "wallet:test:deposit": "node scripts/wallet/test-deposit.mjs",
+    "wallet:test:spend": "node scripts/wallet/test-spend.mjs"
+  },
+  "dependencies": {
+    "@hydra-sdk/cardano-wasm": "1.0.0",
+    "@hydra-sdk/core": "1.4.1",
+    "@noble/curves": "1.8.1",
+    "@noble/hashes": "1.7.1",
+    "@pinia/nuxt": "^0.11.0",
+    "@scure/base": "1.2.4",
+    "cbor2": "1.9.0",
+    "nuxt": "^3.15.4",
+    "pinia": "^3.0.1",
+    "three": "^0.186.1",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^22.13.9",
+    "@types/three": "^0.186.0",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^5.7.3"
+  }
+}

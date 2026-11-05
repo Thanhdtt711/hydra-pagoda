@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; background: #1a1a24; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="info" style="position:absolute; top:10px; left:10px; color:#fff; font-family:sans-serif; font-size:16px;">
+    Đang tải Tôn Tượng Phật GLB...
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/node_modules/three/build/three.module.js",
+        "three/addons/": "/node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x161622);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    document.body.appendChild(renderer.domElement);
+
+    // Ánh sáng
+    const hemi = new THREE.HemisphereLight(0xffeedd, 0x334455, 1.2);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 2.0);
+    dir.position.set(5, 10, 7);
+    scene.add(dir);
+    const backLight = new THREE.DirectionalLight(0xffd700, 1.5);
+    backLight.position.set(-5, 5, -7);
+    scene.add(backLight);
+
+    const loader = new GLTFLoader();
+    loader.load('/models/the_buddha_statue_in_a_mountain.glb', (gltf) => {
+      const model = gltf.scene;
+      
+      // Tính toán bounding box
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      // Căn giữa model
+      model.position.x = -center.x;
+      model.position.y = -box.min.y;
+      model.position.z = -center.z;
+
+      scene.add(model);
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      camera.position.set(0, maxDim * 0.7, maxDim * 2.2);
+      camera.lookAt(0, maxDim * 0.5, 0);
+
+      document.getElementById('info').textContent = 
+        `Tôn Tượng Phật GLB: Size=(${size.x.toFixed(4)}, ${size.y.toFixed(4)}, ${size.z.toFixed(4)}) | Triangles=21,489`;
+      window.__MODEL_LOADED__ = true;
+
+      renderer.render(scene, camera);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+
