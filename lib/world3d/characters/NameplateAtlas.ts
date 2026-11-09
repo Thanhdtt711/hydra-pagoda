@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { fitText } from '../utils/FitText'
 
 interface SlotData {
   id: string
@@ -157,7 +158,7 @@ export class NameplateAtlas {
     if (!visible) {
       this.dummy.position.set(0, -500, 0)
     } else {
-      this.dummy.position.set(x, y + 1.70, z)
+      this.dummy.position.set(x, y + 2.05, z)
     }
     this.dummy.updateMatrix()
     this.mesh.setMatrixAt(slot.slotIndex, this.dummy.matrix)
@@ -195,19 +196,22 @@ export class NameplateAtlas {
     ctx.arc(px + 18, py + 16, 7, 0, Math.PI * 2)
     ctx.fill()
 
-    // Tên người chơi
-    ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 12px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    const cleanName = name.length > 14 ? name.substring(0, 12) + '..' : name
-    ctx.fillText(cleanName, px + 30, py + 16)
-
-    // Danh hiệu
-    ctx.fillStyle = '#f1c40f'
-    ctx.font = '10px sans-serif'
+    // Danh hiệu (vẽ trước để biết chiều rộng, chừa chỗ cho tên)
     ctx.textAlign = 'right'
-    ctx.fillText(title, px + this.slotWidth - 14, py + 16)
+    ctx.textBaseline = 'middle'
+    const titleText = fitText(ctx, title, { maxWidth: 76, maxPx: 10, minPx: 8, font: '{px}px sans-serif' })
+    ctx.fillStyle = '#f1c40f'
+    const titleRight = px + this.slotWidth - 14
+    ctx.fillText(titleText, titleRight, py + 16)
+    const titleW = ctx.measureText(titleText).width
+    
+    // Tên người chơi: tự co chữ vừa phần còn lại, không cắt cứng theo số ký tự (tên dài, có dấu tiếng Việt)
+    const nameLeft = px + 30
+    const nameMaxW = Math.max(40, titleRight - titleW - 8 - nameLeft)
+    ctx.textAlign = 'left'
+    const nameText = fitText(ctx, name, { maxWidth: nameMaxW, maxPx: 12, minPx: 9, font: 'bold {px}px sans-serif' })
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(nameText, nameLeft, py + 16)
 
     this.texture.needsUpdate = true
   }

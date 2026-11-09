@@ -1,6 +1,6 @@
 # BẢNG GHI NHẬN NGUỒN GỐC & BẢN QUYỀN (CREDITS & LICENSES)
 ## Dự án: Vạn Cảnh Thiền Tự (Hydra Pagoda)
-*Thế Giới 3D Tâm Linh & Game Web3 Chánh Niệm Chuẩn AAA*
+*Thế giới 3D tâm linh & game Web3 chánh niệm, phong cách low-poly tối giản*
 
 ---
 
@@ -8,111 +8,103 @@
 
 | Thành phần | Phiên bản | Tác giả / Tổ chức | Giấy phép | Mô tả sử dụng |
 | :--- | :--- | :--- | :--- | :--- |
-| **Three.js** | `^0.186.1` | Ricardo Cabello (Mr.doob) & cộng đồng | [MIT License](https://github.com/mrdoob/three.js/blob/dev/LICENSE) | Engine đồ họa 3D WebGL chính, quản lý Scene, Camera, PBR Shaders, Post-processing, Math & Raycasting. |
-| **Nuxt 3** | `^3.15.4` | Nuxt Team (Pooya Parsa et al.) | [MIT License](https://github.com/nuxt/nuxt/blob/main/LICENSE) | Full-stack Vue 3 framework, quản lý SPA routing, WebSocket Nitro server, SSR/CSR hydration. |
-| **Vue 3** | `^3.5.13` | Evan You & Vue Core Team | [MIT License](https://github.com/vuejs/core/blob/main/LICENSE) | Giao diện người dùng Reactive, Component architecture, Composables lifecycle. |
-| **Tailwind CSS** | `^4.3.4` | Tailwind Labs Inc. | [MIT License](https://github.com/tailwindlabs/tailwindcss/blob/next/LICENSE) | Hệ thống utility-first styling, bảng màu Binance Dark/Gold chuẩn Web3 (`DESIGN-binance.md`). |
-| **Pinia** | `^3.0.1` | Eduardo San Martin Morote (posva) | [MIT License](https://github.com/vuejs/pinia/blob/v2/LICENSE) | Quản lý state toàn cục (User, Wallet CIP-30, Economy, Audio Soundscape). |
-| **TypeScript** | `^5.7.3` | Microsoft Corporation | [Apache 2.0](https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt) | Type-safety, định kiểu dữ liệu 3D vector, collision proxies, và packet MMO 20Hz. |
+| **Three.js** | `^0.186.1` | Ricardo Cabello (Mr.doob) & cộng đồng | [MIT License](https://github.com/mrdoob/three.js/blob/dev/LICENSE) | Engine đồ họa 3D WebGL: Scene, Camera, vật liệu flat-color (`MeshLambertMaterial`), InstancedMesh, hậu kỳ Bloom/Vignette, Raycasting. |
+| **Nuxt 3** | `^3.15.4` | Nuxt Team (Pooya Parsa et al.) | [MIT License](https://github.com/nuxt/nuxt/blob/main/LICENSE) | Full-stack Vue 3 framework, SPA routing, WebSocket Nitro server. |
+| **Vue 3** | `^3.5.13` | Evan You & Vue Core Team | [MIT License](https://github.com/vuejs/core/blob/main/LICENSE) | Giao diện người dùng Reactive, Component architecture, Composables. |
+| **Tailwind CSS** | `^4.3.4` | Tailwind Labs Inc. | [MIT License](https://github.com/tailwindlabs/tailwindcss/blob/next/LICENSE) | Utility-first CSS theo chuẩn Binance Dark (`DESIGN-binance.md`). |
+| **Pinia** | `^2.x` | Eduardo San Martin Morote & Vue Team | [MIT License](https://github.com/vuejs/pinia/blob/v2/LICENSE) | Quản lý trạng thái (ví, kinh tế, thẻ bài, người dùng). |
+| **TypeScript** | `^5.x` | Microsoft | [Apache 2.0](https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt) | Type-safety cho toàn bộ client, server và giao thức mạng. |
+| **glTF-Transform** | `^4.x` (công cụ offline) | Don McCurdy | [MIT License](https://github.com/donmccurdy/glTF-Transform/blob/main/LICENSE.md) | Nén tượng Phật GLB bằng meshopt + quantization (xem mục 2.5). |
+| **meshoptimizer** | (decoder đi kèm Three.js) | Arseny Kapoulkine | [MIT License](https://github.com/zeux/meshoptimizer/blob/master/LICENSE.md) | Giải nén `EXT_meshopt_compression` khi tải GLB. |
 
 ---
 
-## 2. HỆ THỐNG ĐỒ HỌA 3D & SHADERS (GRAPHICS & PBR MATERIALS)
+## 2. ĐỒ HỌA LOW-POLY TỐI GIẢN (FLAT-COLOR GRAPHICS)
 
-### 2.1. Thư viện Vật liệu PBR Thủ tục (Procedural PBR Material Factory)
-Toàn bộ texture (BaseColor, NormalMap, RoughnessMap, AmbientOcclusionMap) được tổng hợp bằng thuật toán Canvas 2D thời gian thực với chất lượng $1024\text{px} - 2048\text{px}$, không phụ thuộc vào file ảnh tĩnh bên ngoài, tối ưu hóa $100\%$ bộ nhớ tải trang:
-* **Nguồn tham khảo chuẩn thẩm mỹ**: [ambientCG](https://ambientcg.com/) & [Poly Haven](https://polyhaven.com/) (Theo giấy phép **CC0 1.0 Universal - Public Domain Dedication**).
-* **Đá phiến sân chùa (`stonePavement`)**: Mô phỏng đá xẻ xanh rêu Thanh Hóa, chống trượt, rãnh vữa so le.
-* **Đá granite hoa cương (`graniteStep`)**: Bậc thềm tam cấp cổ mài vát góc vi mô, chịu lực.
-* **Gỗ Lim cột chùa (`ironwood`)**: Gỗ lim già Bắc Bộ xẻ dọc thớ mịn, bóng sáp tự nhiên.
-* **Ngói âm dương cổ tự (`yinYangRoof`)**: Sống ngói lượn sóng phủ rêu phong sương gió.
-* **Đồng cổ đúc (`antiqueBronze`)**: Đồng đỏ pha thiếc hun khói trầm với lớp gỉ đồng xanh (verdigris patina).
-* **Vàng lá thếp Tam Bảo (`sacredGoldLeaf`)**: Vàng quỳ Kiêu Kỵ dát mỏng phản quang kim loại tôn nghiêm.
-* **Đất cỏ rêu ẩm (`mossyEarth`)**: Đất mùn vườn thiền phủ rêu tự nhiên quanh hồ sen.
+Toàn bộ hình khối được sinh thủ tục bằng mã nguồn, **không dùng ảnh texture, PBR map, IBL, GTAO hay outline**. Màu sắc đến từ bảng màu phẳng theo thời điểm trong ngày. Phong cách tham chiếu thẩm mỹ: *Monument Valley*, *Journey* (chỉ lấy cảm hứng, không sử dụng tài sản của các tựa game này).
 
-### 2.2. Khí Quyển & Bầu Trời Vật Lý
-* **Mô hình Preetham Analytical Skydome**:
-  * Dựa trên công trình nghiên cứu: *A Practical Analytic Model for Daylight* (A. J. Preetham, Peter Shirley, Brian Smits).
-  * Mã nguồn tham khảo từ `three/addons/objects/Sky.js` (MIT License).
-  * Tính toán trực tiếp tán xạ Rayleigh (phân tử không khí) và Mie (bụi sương mù) theo góc nâng và phương vị mặt trời.
+### 2.1. Bảng màu & vật liệu phẳng (`lib/world3d/style/`)
+* **`Palette.ts`**: bảng màu theo slot (đá, tường, gỗ, mái, vàng, cỏ, lá...) cho 3 chế độ **ban ngày / hoàng hôn / ban đêm**, cùng thông số hậu kỳ `POST_STYLE`.
+* **`FlatMaterialFactory.ts`**: cache vật liệu `MeshLambertMaterial` flat-shading dùng chung, có gradient theo độ cao (qua `onBeforeCompile`) và đổi palette không cần tạo lại vật liệu.
+* **`LowPolyBuilder.ts`**: bộ dựng hình học low-poly (prism, pyramid, jitter, vertex color) và gộp nhiều phần có màu thành một `BufferGeometry`.
+* **`SlotBatch.ts`**: gom các phần theo slot màu thành ít draw call nhất có thể.
+* **`RoofBuilder.ts`**: sinh mái đao cong bốn mái bằng mặt phẳng tam giác (faceted), không dùng UV hay texture ngói.
+* Tác giả: Hydra Pagoda Core Architecture Team. Giấy phép: theo giấy phép của dự án.
 
-### 2.3. Shader Tùy Biến (Custom Shaders)
-* **Water Surface Ripple Shader (`LotusPond.ts`)**:
-  * Tác giả: Hydra Pagoda Core Graphics Team.
-  * Thuật toán: Dịch chuyển đỉnh 2 lớp sóng độc lập (`dual-frequency sin/cos wave displacement`) kết hợp phản xạ quang học Fresnel và lấp lánh ánh kim Specular.
-* **Instanced Wind Grass Shader (`WindGrass.ts`)**:
-  * Tác giả: Hydra Pagoda Core Graphics Team.
-  * Thuật toán: Uốn cong ngọn cỏ theo hàm sóng gió hữu cơ trong khi ghim chặt gốc cỏ, chỉ tiêu tốn **1 Draw Call** cho 2.200 cụm cỏ.
+### 2.2. Bầu trời, địa hình & khí quyển
+* **`SkyDome.ts`**: vòm trời gradient theo thời điểm trong ngày (thay thế bầu trời vật lý kiểu Preetham trước đây, không còn dùng `three/addons/objects/Sky.js`).
+* **`TerrainSystem.ts`** và **`DistantMountains.ts`**: địa hình thung lũng 400×400 m và các lớp núi xa faceted, phối hợp sương mù theo lớp.
+* **`AtmosphereManager.ts`**: một đèn định hướng duy nhất đổ bóng mềm theo người chơi; chất lượng bóng thấp/trung bình/cao (1024/2048).
+* **`PostProcessingManager.ts`**: MSAA → Bloom nhẹ (ngưỡng 1.0) → Vignette nhẹ → OutputPass; có mức chất lượng Low/Medium/High/Ultra.
 
-### 2.4. Thuật Toán Hình Học Thủ Tục & Động Cơ Vật Lý (Procedural Geometry & Physics)
-* **Curved Hip Pagoda Roof Geometry (`PagodaSanctuary.ts`, `BellTower.ts`, `TamQuanGate.ts`)**:
-  * Tác giả: Hydra Pagoda Core Architecture Team.
-  * Thuật toán: Sinh diện mái cong 4 đầu đao truyền thống Việt Nam bằng nội suy mặt cong nhị thức bậc 1.35 kết hợp uốn vểnh góc đao parabol $eaveLift$, tự động tính toán pháp tuyến chuẩn và tọa độ UV ngói âm dương.
-* **Hệ Sinh Thái 6 Loài Cây Cổ Tự (`TreeSpecies.ts`, `TreeSystem.ts`)**:
-  * 6 Loài cây đặc trưng: Bồ Đề Bát Nhã, Đa cổ thụ, Thông phong cách Zen, Trúc thiền tông, Phong đỏ/Anh đào và Hàng cau Nam Á.
-  * Tối ưu hóa GPU Instancing kết hợp gió chung `WindSystem`.
-* **Zero-Allocation Character Controller & Capsule Step-Up (`CharacterController.ts`, `Collider.ts`)**:
-  * Động cơ va chạm Capsule trượt tường (Wall-Sliding), bước lên bậc tam cấp tự động (Step-Up cho bậc $\le 0.18\text{m}$) và sàn địa hình tự nhiên giải tích không tiêu tốn bộ nhớ GC trong vòng lặp chuyển động.
+### 2.3. Thực vật & gió
+* **`TreeSpecies.ts`, `TreeSystem.ts`**: 6 loài cây low-poly (bồ đề, đa cổ thụ, thông, trúc, phong/anh đào, cau) dựng bằng InstancedMesh, lắc theo gió qua shader `onBeforeCompile`.
+* **`WindGrass.ts`**: cỏ và hoa dạng cụm lá phẳng, gió dùng chung.
+* **`WindSystem.ts`**: nguồn gió dùng chung cho cây, cỏ, cánh hoa.
+* **`PetalParticleSystem.ts`**: cánh hoa, đom đóm thiền và khói hương chạy trên GPU.
 
-### 2.5. Giao Thức Mạng Nhị Phân & AoI Spatial Grid (`NetProtocol.ts`, `server/routes/_ws.ts`)
-* Tác giả: Hydra Pagoda Multiplayer Network Team.
-* Giao thức nhị phân nén nhỏ gọn 35 bytes (gồm Action Code, Timestamp, Position, Yaw), nén phân vùng không gian Area-of-Interest (AoI Grid 40x40m) cho phép 500 đồng tu online đồng thời với băng thông $< 12\text{ kbps/client}$.
-* Bộ lọc xác thực an toàn server-side loại bỏ gói tin rác (NaN/Infinity) và chống hack tốc độ/teleport.
+### 2.4. Hình học kiến trúc & vật lý
+* Chánh điện, Tam Quan, Lầu Chuông, Hồ Sen (`PagodaSanctuary.ts`, `TamQuanGate.ts`, `BellTower.ts`, `LotusPond.ts`) được dựng hoàn toàn từ khối low-poly và gộp theo slot màu.
+* **Nhân vật hành giả** (`lib/world3d/characters/`): tỷ lệ khoảng 7 đầu, các bộ phận cứng ghép nối (rigid-part), 4 mức LOD (`AvatarCrowd.ts`), hiển thị đám đông bằng InstancedMesh theo từng quốc gia.
+* **Zero-Allocation Character Controller & Capsule Step-Up** (`CharacterController.ts`, `Collider.ts`): va chạm capsule trượt tường, tự bước lên bậc thềm.
+* **`SeededPRNG.ts`, `GeometryMerger.ts`**: số ngẫu nhiên có seed để bố cục xác định, và tiện ích gộp hình học.
+
+### 2.5. Tôn tượng Phật (tài sản bên thứ ba duy nhất)
+* **Tệp:** `public/models/the_buddha_statue_in_a_mountain.glb` (tải bởi `SacredBuddhaStatue.ts`).
+* **Nguồn gốc:** mô hình xuất từ Sketchfab (generator `Sketchfab-12.65.0`). Tệp GLB không lưu thông tin tác giả. **Cần bổ sung tên tác giả, đường dẫn trang Sketchfab và giấy phép (ví dụ CC-BY) vào đây trước khi phát hành công khai.**
+* **Xử lý trong dự án:** bản gốc 10.82 MB được nén offline xuống khoảng 0.10 MB: bỏ toàn bộ texture PBR, UV, tangent và vertex color, hàn đỉnh, lượng tử hóa vị trí/pháp tuyến (`KHR_mesh_quantization`) và nén meshopt (`EXT_meshopt_compression`). Còn 6 mesh, khoảng 11.6 nghìn đỉnh, 21.5 nghìn tam giác.
+* **Hiển thị:** toàn bộ vật liệu gốc được thay bằng vật liệu vàng phẳng của `FlatMaterialFactory`, chuẩn hóa chiều cao 4.2 m. Có phương án dự phòng thủ tục nếu tải GLB thất bại.
+
+### 2.6. Giao thức mạng nhị phân & AoI (`NetProtocol.ts`, `server/routes/_ws.ts`)
+* Gói di chuyển nhị phân `MSG_MOVE` kích thước **24 byte**, lượng tử hóa vị trí/góc quay, đồng bộ khoảng 20 Hz.
+* Lưới quan tâm không gian (AoI) với ô **40×40 m**; ngân sách thiết kế khoảng **200 người chơi đồng thời** (có thể bật bot giả lập bằng `?bots=200`).
+* Kiểm tra phía server: giới hạn tốc độ gói (~38 ms/gói), chống dịch chuyển tức thời (> 15 m), loại bỏ giá trị NaN/Infinity, đối chiếu id ngang hàng.
+* `InterpolationBuffer.ts` nội suy vị trí người chơi khác phía client để chuyển động mượt.
 
 ---
 
-## 3. KIẾN TRÚC CỔ TỰ & MÔ HÌNH THỦ TỤC 3D (PROCEDURAL ARCHITECTURE)
+## 3. KIẾN TRÚC CỔ TỰ THỦ TỤC (LOW-POLY PROCEDURAL ARCHITECTURE)
 
-Toàn bộ các công trình kiến trúc đều được thiết kế và dựng hình bằng thuật toán hình học thủ tục độ chi tiết cao (`ExtrudeGeometry`, `LatheGeometry`, `TubeGeometry`, `InstancedMesh`), kế thừa chuẩn mực kiến trúc Phật giáo Đại thừa và Thiền phái Trúc Lâm Yên Tử:
-1. **Chánh Điện Rỗng & Cửa Bức Bàn (`PagodaSanctuary.ts`)**:
-   * Hệ vách gỗ, cửa sổ song lăng chữ Vạn dán giấy xuyên sáng.
-   * Ngưỡng cửa / bậu cửa gỗ Lim cao $0.14\text{m}$.
-   * Cửa bức bàn 2 cánh tương tác đóng/mở tự động và thủ công bằng chuột phải.
-2. **Cổng Tam Quan Cổ Kính (`TamQuanGate.ts`)**:
-   * Cấu trúc 3 lối: Trung Quan, Giả Quan, Không Quan.
-   * Hoành phi đại tự sơn son thếp vàng "VẠN CẢNH THIỀN TỰ".
+Kiến trúc được dựng bằng khối prism/pyramid và mái đao faceted, lấy cảm hứng từ kiến trúc Phật giáo Đại thừa và Thiền phái Trúc Lâm Yên Tử:
+
+1. **Đại Hùng Bảo Điện (`PagodaSanctuary.ts`, `HallLayout.ts`)**:
+   * Chánh điện 28×22 m với khoảng 256 chỗ ngồi thiền, hệ cột gỗ, tường có khoảng hở cửa và cửa bức bàn hai cánh mở bằng chuột phải.
+   * Bố cục chỗ ngồi, hành lang và cửa lấy từ một nguồn dữ liệu duy nhất `HallLayout`.
+2. **Cổng Tam Quan (`TamQuanGate.ts`)**:
+   * Ba lối: Trung Quan, Giả Quan, Không Quan, hoành phi "VẠN CẢNH THIỀN TỰ".
 3. **Lầu Chuông & Đại Hồng Chung (`BellTower.ts`)**:
-   * Hệ 4 cột gỗ lim đặt trên chân tảng đá quả bồng, 2 tầng mái đao cong.
-   * Quả chuông đồng cổ tiện bằng `LatheGeometry` theo tỷ lệ Đại Hồng Chung Chùa Một Cột / Chùa Thiên Mụ.
-   * Chày kình gỗ gõ chuông đung đưa nhịp nhàng.
-4. **Hồ Sen & Cầu Đá Vòm Cong (`LotusPond.ts`)**:
-   * Cầu vòm đá cong parabol với 12 búp sen đá chạm khắc hai bên thành cầu.
-   * Đèn hoa đăng tứ giác giấy bồi thả trôi bập bềnh theo sóng nước.
-5. **Kim Thân Đức Phật Thích Ca Mâu Ni (`SacredBuddhaStatue.ts`)**:
-   * Tọa thiền kiết già (`Padmasana`), ấn Thiền Định (`Dhyana Mudra`), áo cà sa hở vai phải.
-   * Đỉnh đầu nhục kế (`Ushnisha`), đài sen 16 cánh và vầng quang minh Mandala luân chuyển.
+   * Bốn cột gỗ, hai tầng mái đao cong, quả chuông đồng và chày kình đung đưa.
+4. **Hồ Sen & Cầu Đá (`LotusPond.ts`)**:
+   * Mặt nước phẳng, lá sen, đèn hoa đăng nổi và cầu đá vòm có collider đi bộ được.
+5. **Tôn tượng Phật Thích Ca**:
+   * Mô hình GLB đã nén (mục 2.5) đặt trên đài sen thủ tục trong chánh điện. Chỉ có một tượng Phật duy nhất.
+6. **Bố cục bản đồ (`MapLayout.ts`)**:
+   * Nguồn dữ liệu duy nhất cho vị trí công trình, vùng cấm cây, điểm xuất hiện và kiểm tra chồng lấn.
 
 ---
 
 ## 4. HỆ THỐNG ÂM THANH KHÔNG GIAN PROCEDURAL (3D SPATIAL AUDIO)
 
-* **Engine Tổng hợp Web Audio (`ZenAudio.ts`)**:
-  * Chạy trực tiếp bằng thuật toán dao động toán học của trình duyệt (BiquadFilterNode, OscillatorNode, ConvolverNode, GainNode), không tải file mp3 nặng.
-  * **Chuông xoay Tây Tạng (Tibetan Singing Bowl)**: Tần số cộng hưởng kép $432\text{Hz}$ và $864\text{Hz}$.
-  * **Tiếng Mõ Gỗ Chùa (Wooden Fish)**: Bộ lọc dải thông xung hãm $680\text{Hz}$.
-  * **Mưa rào mái ngói & Suối thiền**: Lọc nhiễu trắng Pink/Brownian Noise thời gian thực.
-  * **Tiếng ve & dế đêm**: Dao động tần số cao điều tần $4.2\text{kHz} - 5.8\text{kHz}$.
-  * Tần số chuẩn: **$432\text{Hz}$** (Tần số chữa lành và chánh niệm tự nhiên).
+* **Tổng hợp âm thanh bằng Web Audio API (`ZenAudio.ts`)**: `BiquadFilterNode`, `OscillatorNode`, `ConvolverNode`, `GainNode`; chuông và bát hát Tây Tạng ở **432 Hz** và **864 Hz**.
+* **Tiếng mõ gỗ chùa (Wooden Fish)**: bộ lọc dải thông xung hãm khoảng 680 Hz.
+* **Mưa rào mái ngói & suối thiền**: nhiễu hồng/nâu lọc thời gian thực.
+* **Tiếng ve & dế đêm**: dao động cao tần điều tần 4.2 kHz - 5.8 kHz.
+* Tần số chuẩn **432 Hz** cho thiền định và chánh niệm.
 
 ---
 
 ## 5. TIÊU CHUẨN WEB3 CARDANO (BLOCKCHAIN STANDARDS)
 
-* **Cardano CIP-30 (Signer DApp-Wallet Web Bridge)**:
-  * Tích hợp các ví: Lace, Eternl, Nami, Flint, Vespr (Mobile).
-  * Chuẩn hóa giao tiếp Ed25519, chữ ký phân tán không gây phiền nhiễu cho người dùng.
-* **Cardano CIP-68 (Rich Non-Fungible Metadata Standard)**:
-  * Quy chuẩn phát hành Thẻ Bài Di Sản NFT mini và vật phẩm tâm linh.
-* **Hydra Head L2 State Channels**:
-  * Xử lý giao dịch quyên góp công đức và thỉnh kinh phí vi mô (Micropayments) với tốc độ tức thời và phí mạng bằng $0$.
+* **Cardano CIP-30 (cầu nối ví DApp)**: tích hợp các ví Lace, Eternl, Nami, Flint, Vespr (mobile). Chuẩn hóa giao tiếp Ed25519.
+* **Cardano CIP-8 (ký thông điệp)**: xác thực đăng nhập bằng chữ ký, cấp phiên JWT.
+* **Cardano CIP-68 (metadata NFT mở rộng)**: định hướng phát hành Thẻ Bài Di Sản và vật phẩm tâm linh.
+* **Hydra Head L2**: xử lý giao dịch quyên góp công đức và thỉnh vật phẩm vi mô, xác nhận tức thời, không phí gas.
 
 ---
 
 ## 6. LỜI CẢM ƠN (ACKNOWLEDGEMENTS)
 
-Dự án **Vạn Cảnh Thiền Tự** xin gửi lời tri ân sâu sắc tới:
-* **Cộng đồng nguồn mở Three.js**: Những người đã kiến tạo nên nền tảng đồ họa 3D vĩ đại cho trình duyệt web.
-* **Thiền phái Trúc Lâm Yên Tử & Làng Mai**: Nguồn cảm hứng tâm linh bất tận cho từng viên gạch, mái ngói, câu kệ chánh niệm và âm điệu chuông chùa trong toàn bộ thế giới ảo.
-* **Cộng đồng Lập trình viên Cardano**: Đã tiên phong phát triển các công nghệ phi tập trung vì cộng đồng.
-
-*Dự án phát triển vì mục đích bảo tồn di sản văn hóa, ứng dụng công nghệ Web3 nhân văn và lan tỏa năng lượng bình an cho cộng đồng đồng tu toàn cầu.*
+* **Cộng đồng Three.js**: nền tảng WebGL mã nguồn mở cho toàn bộ thế giới 3D.
+* **Cộng đồng Cardano & Hydra**: hạ tầng blockchain minh bạch cho công đức vi mô.
+* **Tác giả mô hình tôn tượng Phật trên Sketchfab**: xem mục 2.5 (thông tin cần bổ sung).
+* Cảm ơn các thiền sư, nghệ nhân và các cộng đồng di sản đã truyền cảm hứng cho dự án, nhằm gìn giữ và lan tỏa văn hóa chùa Việt đến cộng đồng tu tập toàn cầu.

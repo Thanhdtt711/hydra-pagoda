@@ -351,6 +351,247 @@ export class ZenAudioEngine {
   public playBambooShake() {
     this.playFortuneShaking()
   }
+
+  // ============================================================================
+  // HYBRID CHẦU VĂN AUDIO ENGINE (NHÀ HẦU ĐỒNG TỨ PHỦ & TRẦN TRIỀU)
+  // Hỗ trợ tự động phát file .mp3 trong /audio/hau-dong/<deityId>.mp3 nếu có,
+  // hoặc tự động tổng hợp nhạc Chầu Văn ngũ cung (Đàn Nguyệt + Trống Chầu + Phách + Thanh La).
+  // ============================================================================
+  private chauVanLoopTimer: ReturnType<typeof setInterval> | null = null
+  private chauVanCurrentDeity = ''
+  private chauVanCurrentStep = 0
+  private chauVanBeatIndex = 0
+  private chauVanAudioEl: HTMLAudioElement | null = null
+  private mp3AvailabilityCache: Record<string, boolean> = {}
+
+  /**
+   * Đồng bộ âm thanh Chầu Văn khi người chơi đứng gần/trong Nhà Hầu Đồng
+   */
+  public syncChauVanAudio(active: boolean, deityId: string, stepId: number) {
+    if (!active || this.isMuted) {
+      this.stopChauVanAudio()
+      return
+    }
+    this.initContext()
+
+    const deityChanged = this.chauVanCurrentDeity !== deityId
+    this.chauVanCurrentDeity = deityId
+    this.chauVanCurrentStep = stepId
+
+    if (deityChanged) {
+      this.tryPlayMp3OrFallback(deityId)
+    }
+
+    if (!this.chauVanLoopTimer) {
+      this.chauVanBeatIndex = 0
+      this.chauVanLoopTimer = setInterval(() => {
+        if (this.isMuted || !this.ctx || !this.masterGain) return
+        // Nếu đang phát được file MP3 thực tế thì không cần gảy đàn procedural đè lên
+        if (this.chauVanAudioEl && !this.chauVanAudioEl.paused) return
+        this.tickProceduralChauVan()
+      }, 240)
+    }
+  }
+
+  public stopChauVanAudio() {
+    if (this.chauVanLoopTimer) {
+      clearInterval(this.chauVanLoopTimer)
+      this.chauVanLoopTimer = null
+    }
+    if (this.chauVanAudioEl) {
+      this.chauVanAudioEl.pause()
+      this.chauVanAudioEl.currentTime = 0
+    }
+    this.chauVanCurrentDeity = ''
+    this.chauVanCurrentStep = 0
+  }
+
+  private async tryPlayMp3OrFallback(deityId: string) {
+    if (typeof window === 'undefined' || !deityId) return
+    const url = `/audio/hau-dong/${deityId}.mp3`
+
+    if (this.mp3AvailabilityCache[deityId] === false) {
+      return
+    }
+
+    try {
+      if (this.mp3AvailabilityCache[deityId] === undefined) {
+        const res = await fetch(url, { method: 'HEAD' })
+        const contentType = res.headers.get('content-type') || ''
+        this.mp3AvailabilityCache[deityId] = res.ok && contentType.includes('audio')
+      }
+
+      if (this.mp3AvailabilityCache[deityId]) {
+        if (!this.chauVanAudioEl) {
+          this.chauVanAudioEl = new Audio()
+          this.chauVanAudioEl.loop = true
+          this.chauVanAudioEl.volume = 0.55
+        }
+        this.chauVanAudioEl.src = url
+        await this.chauVanAudioEl.play()
+      }
+    } catch {
+      this.mp3AvailabilityCache[deityId] = false
+    }
+  }
+
+  /**
+   * Nhịp tổng hợp Đàn Nguyệt ngũ cung (Hò - Xự - Xang - Xê - Cống) + Trống Chầu + Phách + Thanh La
+   */
+  private tickProceduralChauVan() {
+    if (!this.ctx || !this.masterGain) return
+    const beat = this.chauVanBeatIndex++
+    const step = this.chauVanCurrentStep
+
+    // Thang âm ngũ cung Chầu Văn (D4, F4, G4, A4, C5, D5, F5, G5)
+    const pentatonic = [293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46, 783.99]
+
+    if (step === 1 || step === 2) {
+      // Nhịp Dọc / Thỉnh nhang khoan thai
+      if (beat % 4 === 0) this.playMoonLuteNote(pentatonic[(beat / 4) % 5])
+      if (beat % 8 === 0) this.playChauVanClapper(0.18)
+      if (beat % 16 === 0) this.playChauVanDrum(115, 0.25)
+    } else if (step === 3) {
+      // Lễ Thánh Giáng: Trống cái dồn + Thanh la khai quang
+      if (beat % 2 === 0) this.playChauVanDrum(98 + (beat % 4) * 8, 0.35)
+      if (beat % 6 === 0) this.playChauVanGong(0.28)
+      if (beat % 3 === 0) this.playMoonLuteNote(pentatonic[(beat * 2) % pentatonic.length])
+    } else if (step === 4) {
+      // Múa Đồng & Hát Chầu Văn (Nhịp Phú Bình / Xá Thượng rộn rã)
+      const melodyIdx = [0, 2, 3, 4, 5, 4, 2, 3, 5, 6, 5, 3, 2, 1, 2, 0][beat % 16]
+      this.playMoonLuteNote(pentatonic[melodyIdx])
+      if (beat % 2 === 0) this.playChauVanClapper(0.22)
+      if (beat % 4 === 0) this.playChauVanDrum(110, 0.3)
+      if (beat % 8 === 6) this.playChauVanGong(0.22)
+    } else if (step === 5) {
+      // Ban Lộc: Âm thanh khánh vàng + đàn nguyệt tươi sáng
+      if (beat % 2 === 0) {
+        const happyNotes = [523.25, 587.33, 698.46, 783.99, 880.0]
+        this.playMoonLuteNote(happyNotes[(beat / 2) % happyNotes.length])
+      }
+      if (beat % 4 === 0) this.playChauVanClapper(0.2)
+    } else if (step === 6) {
+      // Xe Giá Hồi Cung: Nhịp lưu thủy tiễn biệt + chuông ngân
+      if (beat % 3 === 0) this.playMoonLuteNote(pentatonic[4 - (beat % 5)])
+      if (beat % 12 === 0) this.playChauVanGong(0.25)
+    }
+  }
+
+  /**
+   * Tiếng Đàn Nguyệt (Moon Lute) gảy dây tơ
+   */
+  public playMoonLuteNote(freq: number) {
+    if (!this.ctx || !this.masterGain || this.isMuted) return
+    const t = this.ctx.currentTime
+    const osc = this.ctx.createOscillator()
+    const osc2 = this.ctx.createOscillator()
+    const filter = this.ctx.createBiquadFilter()
+    const g = this.ctx.createGain()
+
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(freq, t)
+    // Hiệu ứng nhấn nhá (pitch bend nhẹ đặc trưng của Đàn Nguyệt)
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.015, t + 0.06)
+    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.18)
+
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(freq * 2, t)
+
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(freq * 2.2, t)
+    filter.Q.setValueAtTime(2.4, t)
+
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(0.22, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36)
+
+    osc.connect(filter)
+    osc2.connect(filter)
+    filter.connect(g)
+    g.connect(this.masterGain)
+
+    osc.start(t)
+    osc2.start(t)
+    osc.stop(t + 0.38)
+    osc2.stop(t + 0.38)
+  }
+
+  /**
+   * Tiếng Trống Chầu (Praises Drum)
+   */
+  public playChauVanDrum(baseFreq = 110, volume = 0.3) {
+    if (!this.ctx || !this.masterGain || this.isMuted) return
+    const t = this.ctx.currentTime
+    const osc = this.ctx.createOscillator()
+    const g = this.ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(baseFreq * 1.6, t)
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.65, t + 0.12)
+
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(volume, t + 0.005)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+
+    osc.connect(g)
+    g.connect(this.masterGain)
+
+    osc.start(t)
+    osc.stop(t + 0.24)
+  }
+
+  /**
+   * Tiếng Phách Tre (Bamboo Clapper)
+   */
+  public playChauVanClapper(volume = 0.2) {
+    if (!this.ctx || !this.masterGain || this.isMuted) return
+    const t = this.ctx.currentTime
+    const osc = this.ctx.createOscillator()
+    const filter = this.ctx.createBiquadFilter()
+    const g = this.ctx.createGain()
+
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(920, t)
+    osc.frequency.exponentialRampToValueAtTime(540, t + 0.04)
+
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(780, t)
+    filter.Q.setValueAtTime(5.0, t)
+
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(volume, t + 0.003)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055)
+
+    osc.connect(filter)
+    filter.connect(g)
+    g.connect(this.masterGain)
+
+    osc.start(t)
+    osc.stop(t + 0.06)
+  }
+
+  /**
+   * Tiếng Thanh La / Não Bạt (Small Ritual Gong)
+   */
+  public playChauVanGong(volume = 0.25) {
+    if (!this.ctx || !this.masterGain || this.isMuted) return
+    const t = this.ctx.currentTime
+    const partials = [540, 815, 1180, 1620]
+    partials.forEach((f, idx) => {
+      if (!this.ctx || !this.masterGain) return
+      const osc = this.ctx.createOscillator()
+      const g = this.ctx.createGain()
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle'
+      osc.frequency.setValueAtTime(f, t)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime((volume / (idx + 1)) * 0.6, t + 0.008)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65)
+      osc.connect(g)
+      g.connect(this.masterGain)
+      osc.start(t)
+      osc.stop(t + 0.68)
+    })
+  }
 }
 
 export const zenAudio = new ZenAudioEngine()

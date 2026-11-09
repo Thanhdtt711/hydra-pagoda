@@ -1,0 +1,583 @@
+[
+  {
+    "id": "xx_tho_daicat_01",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Thẻ số 01 · Thượng Thượng · Khai Thiên Đắc Lộc",
+    "text": "Kim long đắc thủy vượt trùng khơi,\nVạn dặm mây lành chiếu sáng ngời,\nTích đức tu nhân từ thuở trước,\nHôm nay hoa nở rạng phương trời.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_tho_daicat_02",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Thẻ số 08 · Thượng Thượng · Xuân Phong Đắc Ý",
+    "text": "Đông qua tuyết tan nắng xuân hồng,\nCây khô nảy lộc đón gió đông,\nQuý nhân tương trợ đường hanh thông,\nGia môn phúc khánh vạn sự đồng.",
+    "tags": ["tong_quan", "gia_dao", "tinh_duyen", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_daicat_03",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Thẻ số 16 · Thượng Thượng · Minh Châu Xuất Thế",
+    "text": "Ngọc quý lâu ngày ẩn bụi mờ,\nNay gặp lương công sáng bất ngờ,\nCông danh tài lộc cùng hội tụ,\nTâm thành giữ đạo phúc vô bờ.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_tho_daicat_04",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Thẻ số 28 · Thượng Thượng · Phượng Hoàng Lai Nghi",
+    "text": "Phượng hoàng tung cánh đậu ngô đồng,\nNhạc thiều vang vọng khắp non sông,\nMưu sự bấy lâu nay kết quả,\nTâm an trí sáng phúc thêm nồng.",
+    "tags": ["tong_quan", "tinh_duyen", "gia_dao", "suc_khoe", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_tho_cat_01",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Thẻ số 12 · Thượng Cát · Thuận Buồm Xuôi Gió",
+    "text": "Thuyền nan xuôi mái giữa dòng trong,\nGió mát trăng thanh thỏa tấm lòng,\nChăm chỉ vun bồi nền thiện nghiệp,\nMùa thu gặt hái lúa đầy bông.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_cat_02",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Thẻ số 24 · Thượng Cát · Mai Khai Ngũ Phúc",
+    "text": "Sương lạnh tan dần nắng ấm lên,\nNhành mai hé nụ trước hiên đền,\nNgười đi xa xứ tin vui báo,\nTình nghĩa vuông tròn dạ vững bền.",
+    "tags": ["tong_quan", "tinh_duyen", "gia_dao", "suc_khoe"]
+  },
+  {
+    "id": "xx_tho_cat_03",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Thẻ số 36 · Thượng Cát · Thanh Vân Đắc Lộ",
+    "text": "Bước lên thang mây ánh nhật hồng,\nBao ngày đèn sách chẳng hoài công,\nNgười hiền gặp hội thêm tri kỷ,\nHòa khí sinh tài khắp Tây Đông.",
+    "tags": ["tong_quan", "thi_cu", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "xx_tho_cat_04",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Thẻ số 45 · Thượng Cát · Liên Hoa Tịnh Thủy",
+    "text": "Sen mọc đầm sâu chẳng nhiễm bùn,\nHương bay thanh khiết khắp ngàn trùng,\nThân tâm an lạc nhờ tri túc,\nCửa nhà êm ấm phúc ung dung.",
+    "tags": ["tong_quan", "gia_dao", "suc_khoe", "tinh_duyen", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_tho_binh_01",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Thẻ số 50 · Trung Bình · Thủ Thường Đợi Thời",
+    "text": "Trăng còn ẩn hiện dưới làn mây,\nChớ vội bôn ba lúc tháng ngày,\nGiữ vững cội nguồn chăm việc cũ,\nMây tan trăng sáng tự nhiên hay.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_tho_binh_02",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Thẻ số 58 · Trung Bình · Tĩnh Thủy Quan Tâm",
+    "text": "Nước hồ phẳng lặng gió hiu hiu,\nViệc đời đắc thất chớ lo nhiều,\nCứ theo bổn phận làm tròn đạo,\nBình yên hai chữ quý hơn điều.",
+    "tags": ["tong_quan", "gia_dao", "suc_khoe", "tinh_duyen"]
+  },
+  {
+    "id": "xx_tho_binh_03",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Thẻ số 64 · Trung Bình · Tiều Phu Gánh Củi",
+    "text": "Đường núi quanh co bước chậm đều,\nGánh nặng trên vai chớ vội siêu,\nChắc chắn từng phần rồi sẽ tới,\nTham cầu quá sức dễ xiêuêu.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_binh_04",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Thẻ số 71 · Trung Bình · Xuân Thu Luân Chuyển",
+    "text": "Hoa nở rồi tàn lẽ tự nhiên,\nHợp tan sướng khổ chớ ưu phiền,\nGiữ lòng ngay thẳng cùng năm tháng,\nQua hồi thử thách thấy bình yên.",
+    "tags": ["tong_quan", "tinh_duyen", "gia_dao", "thi_cu", "suc_khoe"]
+  },
+
+  {
+    "id": "xx_tho_hung_01",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Thẻ số 79 · Hạ Quẻ · Phong Vũ Trở Đò",
+    "text": "Con đò sắp tách bến sông sâu,\nChợt nổi mưa giông sóng bạc đầu,\nTạm buộc dây neo chờ gió lặng,\nNóng lòng vượt sóng ắt thêm sầu.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_hung_02",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Thẻ số 83 · Hạ Quẻ · Nhạn Lạc Hàn Giang",
+    "text": "Nhạn chiều mỏi cánh giữa trời sương,\nNgơ ngác tìm đàn mấy dặm trường,\nLời nói vô tình sinh hiểu lầm,\nLắng lòng nhường nhịn mới an khang.",
+    "tags": ["tong_quan", "tinh_duyen", "gia_dao", "suc_khoe"]
+  },
+  {
+    "id": "xx_tho_hung_03",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Thẻ số 88 · Hạ Quẻ · Trương Cung Đứt Dây",
+    "text": "Giương cung quá sức dây liền căng,\nDục tốc bất đạt lẽ công bằng,\nTài chính đề phòng nơi hao tán,\nLùi một bước nhỏ tiến muôn chăng.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep", "thi_cu"]
+  },
+  {
+    "id": "xx_tho_hung_04",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Thẻ số 91 · Hạ Quẻ · Vân Già Minh Nguyệt",
+    "text": "Mây đen che khuất bóng trăng rằm,\nĐường tối đêm khuya bước khó nhằm,\nĐốt ngọn đèn tâm soi trước ngực,\nĐợi ngày quang đãng hết băn khoăn.",
+    "tags": ["tong_quan", "gia_dao", "tinh_duyen", "xuat_hanh", "suc_khoe"]
+  },
+
+  {
+    "id": "xx_tho_daihung_01",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Thẻ số 95 · Hạ Hạ · Cô Chu Ngộ Lãng",
+    "text": "Thuyền đơn giữa biển gặp trùng khơi,\nSóng gió bốn bề khó thảnh thơi,\nHãy gấp thu buồm về bến cũ,\nTu tâm tích đức đổi cơ trời.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_daihung_02",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Thẻ số 97 · Hạ Hạ · Sương Phủ Hàn Lâm",
+    "text": "Rừng đông giá buốt lá rơi nhiều,\nChim mỏi tìm cành lúc tịch liêu,\nChớ nghe lời mật mà khinh suất,\nGiữ mình tĩnh lặng vượt hiểm nghèo.",
+    "tags": ["tong_quan", "tai_loc", "tinh_duyen", "gia_dao"]
+  },
+  {
+    "id": "xx_tho_daihung_03",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Thẻ số 99 · Hạ Hạ · Hổ Khiếu Thâm Sơn",
+    "text": "Đường rừng hiểm trở bóng chiều tà,\nĐộc bước đơn hành chớ đi xa,\nMọi việc lớn lao nên gác lại,\nQuay về tĩnh dưỡng giữ an hòa.",
+    "tags": ["tong_quan", "su_nghiep", "thi_cu", "suc_khoe", "xuat_hanh"]
+  },
+  {
+    "id": "xx_tho_daihung_04",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Thẻ số 100 · Hạ Hạ · Phản Quan Tự Kỷ",
+    "text": "Trăm thứ mưu cầu chưa hợp duyên,\nCàng tranh càng vội lại thêm phiền,\nKhép cửa tịnh tâm ba tháng chẵn,\nBình minh sẽ rạng phía chânuyên.",
+    "tags": ["tong_quan", "tai_loc", "tinh_duyen", "gia_dao", "su_nghiep"]
+  },
+
+  {
+    "id": "xx_lg_daicat_01",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Thời vận đang bước vào chu kỳ rực rỡ nhất như rồng gặp mây. Những nỗ lực bền bỉ và hạt giống thiện lành bạn gieo trồng từ trước nay bắt đầu đơm hoa kết trái. Trong công việc và sự nghiệp, bạn dễ gặp được người đồng hành tâm đầu ý hợp hoặc cấp trên nâng đỡ, các vướng mắc tồn đọng được tháo gỡ nhanh chóng.",
+    "tags": ["tong_quan", "su_nghiep", "thi_cu"]
+  },
+  {
+    "id": "xx_lg_daicat_02",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Vận khí tài lộc và kinh doanh đang hội tụ cát khí mạnh mẽ. Dòng tiền lưu thông thuận lợi, các kế hoạch hợp tác hoặc mở rộng có cơ hội gặt hái thành quả xứng đáng. Sự minh bạch và chữ tín chính là chìa khóa giúp tài nguyên nhân lên bền vững.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "xx_lg_daicat_03",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Nhân duyên và gia đạo tràn ngập hòa khí ấm áp. Người độc thân dễ gặp được tri kỷ chân thành qua những nhân duyên thiện lành; người đã có đôi có cặp thêm phần gắn kết, thấu hiểu và đồng lòng vun đắp tổ ấm. Xuất hành đi xa đều gặp bình an và quý nhân chỉ lối.",
+    "tags": ["tinh_duyen", "gia_dao", "xuat_hanh", "suc_khoe"]
+  },
+  {
+    "id": "xx_lg_daicat_04",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Thân tâm thanh tịnh, trí tuệ minh mẫn giúp mọi quyết định trong giai đoạn này đều đạt độ chuẩn xác cao. Dù là thi cử, nghiên cứu hay khởi sự kế hoạch mới, bạn đều có đủ nội lực và thiên thời ủng hộ để vươn tới mục tiêu cao nhất.",
+    "tags": ["thi_cu", "suc_khoe", "tong_quan", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lg_cat_01",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Vận trình đang trên đà đi lên vững chắc và thuận lợi. Công việc tiến triển đúng lộ trình, tuy không phải bước nhảy vọt đột ngột nhưng từng bước đều mang lại thành quả thực chất. Những người làm việc chăm chỉ, có kế hoạch rõ ràng sẽ sớm nhận được sự ghi nhận xứng đáng.",
+    "tags": ["tong_quan", "su_nghiep", "thi_cu"]
+  },
+  {
+    "id": "xx_lg_cat_02",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Tài lộc ở mức khá tốt, thu nhập chính ổn định và có thêm những khoản lộc nhỏ từ sự uy tín cá nhân. Đây là thời điểm tốt để tích lũy, củng cố nền tảng tài chính và đầu tư vào kiến thức hoặc công cụ phục vụ dài hạn.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "xx_lg_cat_03",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Chuyện tình cảm và gia đạo êm đềm như mặt nước mùa thu. Những khúc mắc nhỏ trước đây dần được hóa giải nhờ sự lắng nghe. Sức khỏe tinh thần khởi sắc, các chuyến đi xa hoặc thay đổi nhỏ trong sinh hoạt đều mang lại nguồn cảm hứng mới.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lg_cat_04",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Việc học hành, thi cử và trau dồi chuyên môn có tín hiệu đáng mừng. Tâm trí tập trung giúp bạn tiếp thu nhanh và trình bày rõ ràng những gì đã ôn luyện. Cứ giữ nhịp độ đều đặn hiện tại thì kết quả sẽ đạt như kỳ vọng.",
+    "tags": ["thi_cu", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+
+  {
+    "id": "xx_lg_binh_01",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Quẻ báo hiệu giai đoạn tĩnh tại, mọi việc đang trong quá trình ấp ủ và chuyển giao nên chưa thể thấy ngay kết quả tức thì. Công việc và tài chính duy trì ở mức cân bằng: không có biến cố đáng ngại nhưng cũng chưa phải lúc mạo hiểm thay đổi lớn.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "xx_lg_binh_02",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Trong chuyện tình cảm và gia đạo, đôi bên cần thêm thời gian để thực sự thấu hiểu nhịp sống của nhau. Đừng vội vàng đòi hỏi câu trả lời ngay lập tức; sự chân thành và kiên nhẫn qua từng việc nhỏ hàng ngày mới là chất keo bền chặt nhất.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "xx_lg_binh_03",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Về học tập, thi cử hoặc xuất hành, kết quả phụ thuộc hoàn toàn vào mức độ chuẩn bị thực tế của bạn, không có yếu tố may rủi đột biến. Sức khỏe ở trạng thái ổn định, chỉ cần lưu ý cân đối thời gian làm việc và nghỉ ngơi hợp lý.",
+    "tags": ["thi_cu", "suc_khoe", "xuat_hanh", "su_nghiep"]
+  },
+  {
+    "id": "xx_lg_binh_04",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Tài chính và các mối quan hệ xã hội đang ở trạng thái trung hòa. Thu chi vừa đủ, nếu biết tiết chế những khoản chi tiêu theo cảm hứng thì tâm trí sẽ luôn nhẹ nhàng, tạo đà vững chắc cho thời cơ mở ra vào giai đoạn tới.",
+    "tags": ["tai_loc", "gia_dao", "tinh_duyen", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lg_hung_01",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Vận trình đang gặp một vài cơn gió ngược khiến kế hoạch công việc hoặc tài chính chậm hơn dự kiến. Có thể xuất hiện sự bất đồng quan điểm nơi công sở hoặc những chi phí phát sinh ngoài tính toán. Nếu nóng vội thúc ép lúc này sẽ dễ mắc sai sót không đáng có.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "xx_lg_hung_02",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Chuyện tình cảm hoặc gia đạo dễ nảy sinh hiểu lầm do lời nói lúc mệt mỏi, thiếu kiềm chế. Đôi khi cả hai đều có ý tốt nhưng cách diễn đạt cứng nhắc lại làm tổn thương nhau. Cần tạm lắng lại trước khi tranh luận đúng sai.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "xx_lg_hung_03",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Tâm trí dễ bị phân tán bởi nhiều nỗi lo cùng lúc, ảnh hưởng đến hiệu suất ôn luyện thi cử cũng như sự an toàn khi di chuyển xa. Về sức khỏe, cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và lắng nghe tín hiệu mệt mỏi của cơ thể.",
+    "tags": ["thi_cu", "suc_khoe", "xuat_hanh", "su_nghiep"]
+  },
+  {
+    "id": "xx_lg_hung_04",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Các giao dịch tiền bạc, cho vay mượn hoặc ký kết giấy tờ trong giai đoạn này tiềm ẩn rủi ro chậm thu hồi. Không nên vì cả nể hay lời hứa hẹn lợi nhuận nhanh mà bỏ qua bước kiểm chứng kỹ lưỡng.",
+    "tags": ["tai_loc", "xuat_hanh", "gia_dao", "tinh_duyen"]
+  },
+
+  {
+    "id": "xx_lg_daihung_01",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Quẻ cảnh báo thời điểm sóng to gió lớn, ngoại cảnh có nhiều biến động bất lợi cho các quyết định mạo hiểm. Trong công việc và tài chính, tuyệt đối tránh tất tay đầu tư, tránh đứng ra bảo lãnh nợ nần hoặc khởi sự dự án lớn khi chưa đủ nguồn lực dự phòng.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "xx_lg_daihung_02",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Mối quan hệ tình cảm và gia đình đang chịu áp lực căng thẳng nếu đôi bên để cái tôi lấn át sự bao dung. Những lời nói nóng giận trong lúc bức xúc có thể tạo thành vết rạn khó hàn gắn. Hơn lúc nào hết, im lặng chánh niệm là tấm khiên bảo vệ quý giá nhất.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "xx_lg_daihung_03",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Năng lượng thể chất và tinh thần có dấu hiệu suy giảm do căng thẳng kéo dài. Với thân thể, cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ; với việc đi xa hay thi cử, cần rà soát kỹ từng chi tiết nhỏ và luôn có phương án dự phòng an toàn.",
+    "tags": ["suc_khoe", "xuat_hanh", "thi_cu", "su_nghiep"]
+  },
+  {
+    "id": "xx_lg_daihung_04",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Cục diện hiện tại nhắc nhở bạn cần thu mình phòng thủ ('ẩn nhẫn đãi thời'). Mọi sự cưỡng cầu hay tranh thắng thua lúc này đều gây hao tổn tâm lực và tiền bạc. Chấp nhận lùi một bước để bảo toàn gốc rễ chính là trí tuệ lớn.",
+    "tags": ["tai_loc", "gia_dao", "tinh_duyen", "xuat_hanh", "thi_cu"]
+  },
+
+  {
+    "id": "xx_lk_daicat_01",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy mạnh dạn triển khai các kế hoạch trọng tâm vì thiên thời đang ủng hộ. Lời nhắc cân bằng: Khi vận đang thịnh nhất cũng là lúc dễ sinh tâm chủ quan; hãy giữ thái độ khiêm cung, trích một phần lộc lành để sẻ chia giúp đỡ người khó khăn thì phúc báo mới bền lâu.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_lk_daicat_02",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Mở lòng đón nhận thiện ý từ quý nhân và trân trọng những người thân yêu bên cạnh. Lời nhắc cân bằng: Giữa lúc thành công rực rỡ, đừng quên dành thời gian chăm sóc giấc ngủ và lắng nghe cơ thể, chớ để guồng quay bận rộn làm vơi đi sự bình yên nội tâm.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_daicat_03",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Tận dụng sự minh mẫn hiện tại để hoàn tất các mục tiêu lớn trong năm. Lời nhắc cân bằng: Lộc lớn đi kèm trách nhiệm lớn, hãy luôn kiểm soát rủi ro pháp lý, giữ chữ tín trọn vẹn và không ngủ quên trên chiến thắng.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_daicat_04",
+    "mon": "xin_xam",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Chủ động kết nối và lan tỏa năng lượng tích cực đến tập thể. Lời nhắc cân bằng: Cây càng cao gió càng lớn, càng ở vị trí thuận lợi càng nên nói lời ôn hòa, tránh phô trương để giữ trọn hòa khí nhân duyên.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lk_cat_01",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Kiên trì đi đúng lộ trình đã vạch ra và hoàn thiện từng bước thật chỉn chu. Lời nhắc cân bằng: Dù thuận lợi cũng không nên ôm đồm quá nhiều mục tiêu cùng lúc; hãy tập trung vào 1-2 việc cốt lõi và giữ quỹ dự phòng an toàn.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_lk_cat_02",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Dành lời khen ngợi và sự quan tâm chân thành cho người đồng hành. Lời nhắc cân bằng: Hạnh phúc và sức khỏe cần được tưới tẩm mỗi ngày bằng sự điều độ, đừng đợi đến khi mệt mỏi mới nhớ tới nghỉ ngơi.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_cat_03",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Tiếp tục trau dồi kỹ năng và giữ kỷ luật cá nhân đều đặn. Lời nhắc cân bằng: Khi mọi việc đang trôi chảy, hãy vẫn kiểm tra kỹ hợp đồng, lịch trình và lắng nghe cả những ý kiến phản biện trái chiều.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_cat_04",
+    "mon": "xin_xam",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Biết đủ (tri túc) với những thành quả đang có để tâm luôn an vui. Lời nhắc cân bằng: Tránh so sánh tiến độ của mình với người khác; đi chậm mà chắc sẽ giúp bạn đi được quãng đường xa nhất.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lk_binh_01",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Lấy sự ổn định làm trọng tâm: làm tốt công việc hiện tại, rà soát lại các khoản thu chi và bồi đắp nền tảng kiến thức. Đợi khi đủ duyên đủ lực hãy thực hiện bước chuyển mình lớn.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "thi_cu"]
+  },
+  {
+    "id": "xx_lk_binh_02",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Giữ nhịp sinh hoạt điều độ, dành 10-15 phút mỗi tối để tĩnh tâm thở sâu và trò chuyện nhẹ nhàng cùng người thân. Sự bình thản của bạn sẽ giữ cho gia đạo luôn ấm êm.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_binh_03",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Chia nhỏ mục tiêu lớn thành những việc cụ thể có thể hoàn thành ngay trong tuần. Không nên đứng núi này trông núi nọ khi chưa hoàn tất phần việc đang dang dở.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_binh_04",
+    "mon": "xin_xam",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Quan sát kỹ trước khi hành động, giữ tâm trung dung không quá bi quan cũng không quá kỳ vọng viển vông. Bình an trong hiện tại chính là nền móng của phúc lộc ngày mai.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lk_hung_01",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Tạm hoãn các quyết định đầu tư mạo hiểm hoặc thay đổi đột ngột trong vài tuần tới. Trước mọi tình huống trái ý, hãy hít thở sâu ba nhịp rồi mới phản hồi để tránh khẩu thiệt thị phi.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_hung_02",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Chủ động lắng nghe và nhường nhịn một câu trong lúc người kia đang căng thẳng. Với bản thân, cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và ngủ đủ giấc để phục hồi sinh khí.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "thi_cu"]
+  },
+  {
+    "id": "xx_lk_hung_03",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Kiểm tra cẩn thận giấy tờ, khóa cửa, phương tiện đi lại và sao lưu dữ liệu công việc. Cẩn tắc vô áy náy sẽ giúp bạn giảm thiểu 90% rắc rối phát sinh.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_hung_04",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Thu hẹp phạm vi lo lắng, chỉ tập trung giải quyết từng việc một theo thứ tự ưu tiên. Tìm lời khuyên từ người có chuyên môn thay vì tự mình suy đoán trong lo âu.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_lk_daihung_01",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Chuyển sang thế phòng thủ toàn diện: bảo toàn tiền mặt, không ký kết khoản vay hay hùn hạp mới, tránh xa các cuộc tranh cãi hơn thua. Dừng lại đúng lúc là cách thông minh nhất để tránh tổn thất.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_daihung_02",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Đặt sự an toàn và hòa khí lên hàng đầu. Khi tâm đang bất an, tuyệt đối không đưa ra quyết định chia tay hay cắt đứt quan hệ trong lúc nóng giận. Cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để chăm sóc sức khỏe.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "thi_cu"]
+  },
+  {
+    "id": "xx_lk_daihung_03",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hạn chế đi xa vào đêm muộn hoặc nơi địa hình phức tạp nếu không thực sự cấp thiết. Hãy tìm về không gian yên tĩnh, dọn dẹp lại bàn làm việc và nhà cửa cho quang đãng để đổi mới trường năng lượng.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_lk_daihung_04",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy coi nghịch cảnh hiện tại là khoảng lặng quý báu để nhìn lại mình. Khi bạn buông bỏ tâm lý nôn nóng gỡ gạc và quay về chăm sóc thân tâm, vận dữ sẽ tự khắc tiêu trừ.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_hg_hung_01",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải: Dành 3-5 phút tại Hội Thiền 432Hz điều hòa hơi thở Mandala 4-4-6 để lắng dịu tâm nóng vội; trong ngày nên nói lời ái ngữ, chủ động giúp đỡ một người xung quanh hoặc gieo duyên Hòm Công Đức để chuyển hóa khẩu thiệt thành thiện duyên.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_hung_02",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải: Thắp một nén Trầm Hương cầu an tại chính điện, dọn dẹp góc làm việc và phòng ngủ cho thông thoáng ánh sáng. Ghi chép rõ ràng mọi khoản chi tiêu trong tuần để hóa giải vận hao tài nhỏ.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_hung_03",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải: Thực hành lắng nghe sâu mà không phán xét trong 24 giờ tới. Uống đủ nước ấm, đi ngủ trước 23h và nghe tiếng Chuông Chánh Niệm để giải tỏa áp lực thần kinh, đưa khí huyết về trạng thái cân bằng.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_hung_04",
+    "mon": "xin_xam",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải: Trước khi xuất hành hoặc ký kết công việc, hãy dành 1 phút tĩnh tâm kiểm tra lại toàn bộ danh mục chuẩn bị. Làm một việc thiện nhỏ không cần báo đáp (như nhường đường, san sẻ bữa ăn) để tăng bồi phúc khí hộ thân.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+
+  {
+    "id": "xx_hg_daihung_01",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung: (1) Tạm dừng ngay các quyết định mạo hiểm trong 7 ngày tới; (2) Vào Hội Thiền 432Hz thực hành trọn một thời khóa tĩnh tâm để cắt đứt chuỗi lo âu; (3) Phát tâm cúng dường Hòm Công Đức hoặc giúp đỡ người hoạn nạn để lấy đại phúc hóa giải đại hạn.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_daihung_02",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung: Thực hành 'Tịnh Khẩu & Tịnh Tâm' — tránh tuyệt đối mọi cuộc tranh luận gay gắt trên mạng và ngoài đời trong 3 ngày. Thắp Hoa Đăng Cầu An hồi hướng bình an cho gia đạo, đồng thời rà soát lại quỹ dự phòng tài chính và sức khỏe.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_daihung_03",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung: Hóa giải bằng hành động thực tế kết hợp chánh niệm: chủ động xin lỗi hoặc tha thứ cho một khúc mắc cũ, dọn bỏ đồ đạc hư hỏng tích tụ trong nhà để thông khí, và dành trọn ngày nghỉ để dưỡng sức, khám sức khỏe định kỳ.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  },
+  {
+    "id": "xx_hg_daihung_04",
+    "mon": "xin_xam",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung: Khi gặp quẻ Cực Hung cũng là lúc 'Bĩ cực thái lai' sắp mở nếu biết tu sửa. Hãy ngồi thiền định tâm 432Hz, chia sẻ gánh nặng với người thân tin cậy thay vì chịu đựng một mình, và gieo hạt lành qua việc thiện nguyện.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc", "gia_dao", "tinh_duyen", "suc_khoe", "thi_cu", "xuat_hanh"]
+  }
+]
+

@@ -1,293 +1,183 @@
 import * as THREE from 'three'
-import type { PBRMaterialFactory } from '../materials/PBRMaterialFactory'
 import { CollisionWorld, BoxCollider } from '../collision'
 import { MapLayout } from '../world/MapLayout'
+import { LowPolyBuilder } from '../style/LowPolyBuilder'
+import { SlotBatch } from '../style/SlotBatch'
+import { createCurvedHipRoof } from '../style/RoofBuilder'
+import { createPlaqueTexture } from '../utils/PlaqueTexture'
 
 /**
- * Sinh hình học mái cong đầu đao truyền thống cho cổng Tam Quan
+ * TamQuanGate (Cổng Tam Quan low-poly phẳng màu):
+ * - 3 gian: Trung Quan (giữa, cao nhất), Giả Quan và Không Quan (hai bên, thấp hơn).
+ * - 4 trụ đá, xà gỗ, 3 mái cong đầu đao (createCurvedHipRoof), tường hai cánh nối ra hàng rào biên.
+ * - Toàn bộ gộp bằng SlotBatch (mỗi slot màu một Mesh), tự đổi màu theo ngày / hoàng hôn / đêm.
+ * - Đèn lồng phát sáng bằng vật liệu emissive, KHÔNG dùng PointLight.
  */
-function createCurvedGateRoofGeometry(
-  baseW: number,
-  baseD: number,
-  height: number,
-  ridgeW: number,
-  ridgeD: number,
-  eaveLift: number
-): THREE.BufferGeometry {
-  const positions: number[] = []
-  const normals: number[] = []
-  const uvs: number[] = []
-  const indices: number[] = []
-  const segments = 6
 
-  const addRoofFace = (
-    bottomLeft: [number, number],
-    bottomRight: [number, number],
-    topLeft: [number, number],
-    topRight: [number, number]
-  ) => {
-    const startIndex = positions.length / 3
-    for (let row = 0; row <= segments; row++) {
-      const t = row / segments
-      const yNorm = Math.pow(t, 1.3)
-      const baseHeightAtRow = yNorm * height
+const PILLAR_XS = [-6.2, -2.2, 2.2, 6.2]
+const INNER_H = 4.5
+const OUTER_H = 3.6
+const WALL_H = 3.4
+const WALL_LEN = 17.6
+const WALL_T = 0.65
 
-      for (let col = 0; col <= segments; col++) {
-        const s = (col / segments) * 2.0 - 1.0
-
-        const leftX = THREE.MathUtils.lerp(bottomLeft[0], topLeft[0], t)
-        const leftZ = THREE.MathUtils.lerp(bottomLeft[1], topLeft[1], t)
-        const rightX = THREE.MathUtils.lerp(bottomRight[0], topRight[0], t)
-        const rightZ = THREE.MathUtils.lerp(bottomRight[1], topRight[1], t)
-
-        const uCol = (s + 1.0) * 0.5
-        const vx = THREE.MathUtils.lerp(leftX, rightX, uCol)
-        const vz = THREE.MathUtils.lerp(leftZ, rightZ, uCol)
-
-        // Độ vểnh cong đầu đao ở 4 góc
-        const cornerFactor = Math.pow(Math.abs(s), 2.0) * Math.pow(1.0 - t, 1.5)
-        const vy = baseHeightAtRow + cornerFactor * eaveLift
-
-        positions.push(vx, vy, vz)
-        uvs.push(uCol * 3, t * 2)
-        normals.push(0, 1, 0)
-      }
-    }
-
-    const colsCount = segments + 1
-    for (let r = 0; r < segments; r++) {
-      for (let c = 0; c < segments; c++) {
-        const i0 = startIndex + r * colsCount + c
-        const i1 = i0 + 1
-        const i2 = startIndex + (r + 1) * colsCount + c
-        const i3 = i2 + 1
-
-        indices.push(i0, i2, i1)
-        indices.push(i1, i2, i3)
-      }
-    }
-  }
-
-  // Mặt trước
-  addRoofFace([-baseW * 0.5, baseD * 0.5], [baseW * 0.5, baseD * 0.5], [-ridgeW * 0.5, ridgeD * 0.5], [ridgeW * 0.5, ridgeD * 0.5])
-  // Mặt sau
-  addRoofFace([baseW * 0.5, -baseD * 0.5], [-baseW * 0.5, -baseD * 0.5], [ridgeW * 0.5, -ridgeD * 0.5], [-ridgeW * 0.5, -ridgeD * 0.5])
-  // Hông trái
-  addRoofFace([-baseW * 0.5, -baseD * 0.5], [-baseW * 0.5, baseD * 0.5], [-ridgeW * 0.5, -ridgeD * 0.5], [-ridgeW * 0.5, ridgeD * 0.5])
-  // Hông phải
-  addRoofFace([baseW * 0.5, baseD * 0.5], [baseW * 0.5, -baseD * 0.5], [ridgeW * 0.5, ridgeD * 0.5], [ridgeW * 0.5, -ridgeD * 0.5])
-
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
-  geo.setIndex(indices)
-  geo.computeVertexNormals()
-  return geo
-}
-
-/**
- * TamQuanGate (Cổng Tam Quan Cổ Kính):
- * Classical 3-entrance monastery gate: Trung Quan (Center), Giả Quan (Right), Không Quan (Left).
- * Masonry pillars, decorative plaque, curved eaves, and colliders for smooth player traversal.
- */
 export class TamQuanGate {
   public root: THREE.Group = new THREE.Group()
-  private materials: PBRMaterialFactory
   public position = new THREE.Vector3(
     MapLayout.LANDMARKS.TAM_QUAN_GATE.center.x,
     MapLayout.LANDMARKS.TAM_QUAN_GATE.center.y,
     MapLayout.LANDMARKS.TAM_QUAN_GATE.center.z
   )
 
-  constructor(materials: PBRMaterialFactory, collision: CollisionWorld) {
-    this.materials = materials
+  private plaqueMaterial: THREE.MeshBasicMaterial | null = null
+  private plaqueTexture: THREE.CanvasTexture | null = null
+
+  constructor(collision: CollisionWorld) {
+    this.root.name = 'TamQuanGate'
     this.root.position.copy(this.position)
 
-    // 1. Hệ 4 Trụ biểu & Tường hoa bao cổng (Đã khắc phục hoàn toàn khe hở 0.9m)
-    this.buildGatePillarsAndWalls(collision)
-
-    // 2. Mái ngói đao cong 3 gian giật cấp (Thay thế hoàn toàn khối nón Cone)
-    this.buildTripleCurvedRoofs()
-
-    // 3. Hoành phi câu đối "VẠN CẢNH THIỀN TỰ"
-    this.buildCalligraphyPlaque()
+    this.root.add(this.buildStructure())
+    this.buildPlaque()
+    this.registerColliders(collision)
   }
 
-  private buildGatePillarsAndWalls(collision: CollisionWorld) {
-    const stoneMat = this.materials.createGraniteStepMaterial()
-    const woodMat = this.materials.createIronwoodMaterial()
+  private buildStructure(): THREE.Group {
+    const b = new SlotBatch()
 
-    // 4 Cột trụ biểu chính
-    const pillarPositions = [-6.2, -2.2, 2.2, 6.2]
+    // --- 4 trụ biểu: chân tảng, thân, đầu trụ ---
+    PILLAR_XS.forEach((px, i) => {
+      const isInner = i === 1 || i === 2
+      const h = isInner ? INNER_H : OUTER_H
+      const w = isInner ? 0.85 : 0.72
+      b.box('stone', w + 0.35, 0.45, w + 0.35, px, 0.225, 0)
+      b.box('stone', w, h - 0.45, w, px, 0.45 + (h - 0.45) * 0.5, 0)
+      b.box('woodDark', w + 0.2, 0.22, w + 0.2, px, h - 0.11, 0)
+    })
 
-    pillarPositions.forEach((px, i) => {
-      const isInner = (i === 1 || i === 2)
-      const height = isInner ? 5.2 : 4.2
-      const width = isInner ? 0.85 : 0.72
+    // --- Xà ngang ---
+    b.box('woodDark', 4.6, 0.4, 0.55, 0, INNER_H - 0.45, 0)
+    b.box('woodDark', 4.2, 0.34, 0.48, -4.2, OUTER_H - 0.4, 0)
+    b.box('woodDark', 4.2, 0.34, 0.48, 4.2, OUTER_H - 0.4, 0)
+    // Hoành phi nền gỗ sẫm dưới xà giữa (bảng chữ nằm phía trước)
+    b.box('woodDark', 3.3, 0.8, 0.1, 0, 3.75, 0.28)
 
-      // Thân cột đá nguyên khối
-      const col = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, width),
-        stoneMat
-      )
-      col.position.set(px, height * 0.5, 0)
-      col.castShadow = true
-      col.receiveShadow = true
-      this.root.add(col)
+    // --- Mái 3 gian ---
+    const centerRoof = createCurvedHipRoof({
+      eaveW: 6.6,
+      eaveD: 3.9,
+      height: 1.7,
+      ridgeW: 3.4,
+      ridgeD: 0.5,
+      lift: 0.7
+    })
+    b.add('roof', centerRoof, { position: [0, INNER_H, 0] }, true)
 
-      // Chân tảng đá vuông giật cấp
-      const plinth = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.35, 0.45, width + 0.35),
-        stoneMat
-      )
-      plinth.position.set(px, 0.22, 0)
-      plinth.castShadow = true
-      this.root.add(plinth)
+    const sideRoofGeo = createCurvedHipRoof({
+      eaveW: 4.9,
+      eaveD: 3.2,
+      height: 1.3,
+      ridgeW: 2.2,
+      ridgeD: 0.4,
+      lift: 0.55
+    })
+    b.add('roof', sideRoofGeo, { position: [-4.2, OUTER_H, 0] }, true)
+    b.add('roof', sideRoofGeo.clone(), { position: [4.2, OUTER_H, 0] }, true)
 
-      // Đỉnh trụ chạm đài sen hoặc nghê đá
-      const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.25, 0.3, width + 0.25),
-        woodMat
-      )
-      cap.position.set(px, height + 0.15, 0)
-      cap.castShadow = true
-      this.root.add(cap)
+    // Chóp nóc và đầu đao mạ vàng
+    b.cone('gold', 0.26, 0.8, 6, 0, INNER_H + 1.7 + 0.4, 0)
+    b.cone('gold', 0.18, 0.55, 6, -4.2, OUTER_H + 1.3 + 0.28, 0)
+    b.cone('gold', 0.18, 0.55, 6, 4.2, OUTER_H + 1.3 + 0.28, 0)
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        b.cone('gold', 0.12, 0.5, 5, sx * 3.3, INNER_H + 0.7 + 0.22, sz * 1.95)
+      }
+    }
 
-      // Đăng ký Collider cho từng trụ cổng (chừa 3 cửa đi thông thoáng)
+    // --- Hai cánh tường ---
+    for (const sx of [-1, 1]) {
+      const cx = sx * 15.0
+      b.box('wall', WALL_LEN, WALL_H, WALL_T, cx, WALL_H * 0.5, 0)
+      b.box('roofDark', WALL_LEN + 0.3, 0.22, WALL_T + 0.35, cx, WALL_H + 0.11, 0)
+      b.box('stone', WALL_LEN, 0.5, WALL_T + 0.12, cx, 0.25, 0)
+      // Trụ chia ô trên tường
+      for (let k = -3; k <= 3; k++) {
+        b.box('woodDark', 0.3, WALL_H, WALL_T + 0.1, cx + k * 2.4, WALL_H * 0.5, 0)
+      }
+    }
+
+    // --- Đèn lồng treo ở hai gian bên ---
+    for (const lx of [-4.2, 4.2]) {
+      b.cylinder('woodDark', 0.02, 0.02, 0.35, 4, lx, OUTER_H - 0.7, 0)
+      b.addEmissive('lantern', LowPolyBuilder.box(0.3, 0.42, 0.3), { position: [lx, OUTER_H - 1.05, 0] })
+      b.box('gold', 0.38, 0.05, 0.38, lx, OUTER_H - 0.82, 0)
+      b.box('gold', 0.38, 0.05, 0.38, lx, OUTER_H - 1.28, 0)
+    }
+
+    return b.build({ name: 'tam_quan_static', castShadow: true, receiveShadow: true })
+  }
+
+  /** Bảng "VẠN CẢNH THIỀN TỰ" phía trước xà giữa. */
+  private buildPlaque() {
+    // Canvas 1024x240 (tỷ lệ ~4.27:1) khớp mặt phẳng 3.1 x 0.726 m; chữ tự co vừa khung.
+    const tex = createPlaqueTexture({
+      text: 'VẠN CẢNH THIỀN TỰ',
+      background: '#6e1a16',
+      border: '#e0b04a',
+      textColor: '#f6cf74',
+      width: 1024,
+      height: 240
+    })
+    const mat = new THREE.MeshBasicMaterial({ map: tex })
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 0.726), mat)
+    plate.position.set(0, 3.75, 0.34)
+    plate.name = 'tam_quan_plaque'
+    this.root.add(plate)
+    this.plaqueTexture = tex
+    this.plaqueMaterial = mat
+  }
+
+  private registerColliders(collision: CollisionWorld) {
+    PILLAR_XS.forEach((px, i) => {
+      const isInner = i === 1 || i === 2
+      const h = isInner ? INNER_H : OUTER_H
+      const w = isInner ? 0.85 : 0.72
       collision.add(
         new BoxCollider(
           `tam_quan_pillar_${i}`,
-          new THREE.Vector3(this.position.x + px, height * 0.5, this.position.z),
-          new THREE.Vector3(width + 0.1, height, width + 0.1),
+          new THREE.Vector3(this.position.x + px, h * 0.5, this.position.z),
+          new THREE.Vector3(w + 0.1, h, w + 0.1),
           false
         )
       )
     })
 
-    // Xà ngang gỗ lim đè trên 3 vòm cổng
-    const beamCenter = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.45, 0.55), woodMat)
-    beamCenter.position.set(0, 4.4, 0)
-    beamCenter.castShadow = true
-    this.root.add(beamCenter)
-
-    const beamWest = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.38, 0.48), woodMat)
-    beamWest.position.set(-4.2, 3.5, 0)
-    beamWest.castShadow = true
-    this.root.add(beamWest)
-
-    const beamEast = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.38, 0.48), woodMat)
-    beamEast.position.set(4.2, 3.5, 0)
-    beamEast.castShadow = true
-    this.root.add(beamEast)
-
-    // Bức tường cánh tả & cánh hữu: Kéo dài từ x = +-6.2 đến +-23.8m để khép kín hoàn toàn với hàng rào biên
-    const wallMat = this.materials.createStonePavementMaterial()
-    const wallLen = 17.6 // Nối liền hoàn toàn từ 6.2 sang 23.8 (xóa bỏ lỗ hở 0.9m)
-    
-    // Tường Tây: Tâm tại x = -(6.2 + 23.8)/2 = -15.0m
-    const wallWest = new THREE.Mesh(new THREE.BoxGeometry(wallLen, 3.4, 0.65), wallMat)
-    wallWest.position.set(-15.0, 1.7, 0)
-    wallWest.castShadow = true
-    wallWest.receiveShadow = true
-    this.root.add(wallWest)
-
     collision.add(
       new BoxCollider(
         'tam_quan_wall_west',
-        new THREE.Vector3(this.position.x - 15.0, 1.7, this.position.z),
-        new THREE.Vector3(wallLen, 3.4, 0.7),
+        new THREE.Vector3(this.position.x - 15.0, WALL_H * 0.5, this.position.z),
+        new THREE.Vector3(WALL_LEN, WALL_H, WALL_T + 0.05),
         false
       )
     )
-
-    // Tường Đông: Tâm tại x = 15.0m
-    const wallEast = new THREE.Mesh(new THREE.BoxGeometry(wallLen, 3.4, 0.65), wallMat)
-    wallEast.position.set(15.0, 1.7, 0)
-    wallEast.castShadow = true
-    wallEast.receiveShadow = true
-    this.root.add(wallEast)
-
     collision.add(
       new BoxCollider(
         'tam_quan_wall_east',
-        new THREE.Vector3(this.position.x + 15.0, 1.7, this.position.z),
-        new THREE.Vector3(wallLen, 3.4, 0.7),
+        new THREE.Vector3(this.position.x + 15.0, WALL_H * 0.5, this.position.z),
+        new THREE.Vector3(WALL_LEN, WALL_H, WALL_T + 0.05),
         false
       )
     )
   }
 
-  private buildTripleCurvedRoofs() {
-    const roofMat = this.materials.createYinYangRoofMaterial()
-
-    // 1. Mái Trung Quan: Mái cong đao chính cao nhất ở giữa (Rộng 5.8m, Sâu 3.6m, Cao 1.8m, Đao vểnh 0.85m)
-    const roofCenterGeo = createCurvedGateRoofGeometry(5.8, 3.6, 1.8, 3.4, 0.3, 0.85)
-    const roofCenter = new THREE.Mesh(roofCenterGeo, roofMat)
-    roofCenter.position.set(0, 4.6, 0)
-    roofCenter.castShadow = true
-    roofCenter.receiveShadow = true
-    this.root.add(roofCenter)
-
-    // Đỉnh chóp hoa sen mạ vàng
-    const centerFinial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.28, 0.8, 12),
-      this.materials.createSacredGoldLeafMaterial()
-    )
-    centerFinial.position.set(0, 6.7, 0)
-    centerFinial.castShadow = true
-    this.root.add(centerFinial)
-
-    // 2. Mái Giả Quan (Tây: Rộng 4.6m, Sâu 3.0m, Cao 1.4m, Đao vểnh 0.65m)
-    const roofWestGeo = createCurvedGateRoofGeometry(4.6, 3.0, 1.4, 2.6, 0.3, 0.65)
-    const roofWest = new THREE.Mesh(roofWestGeo, roofMat)
-    roofWest.position.set(-4.2, 3.7, 0)
-    roofWest.castShadow = true
-    roofWest.receiveShadow = true
-    this.root.add(roofWest)
-
-    // 3. Mái Không Quan (Đông: Rộng 4.6m, Sâu 3.0m, Cao 1.4m, Đao vểnh 0.65m)
-    const roofEastGeo = createCurvedGateRoofGeometry(4.6, 3.0, 1.4, 2.6, 0.3, 0.65)
-    const roofEast = new THREE.Mesh(roofEastGeo, roofMat)
-    roofEast.position.set(4.2, 3.7, 0)
-    roofEast.castShadow = true
-    roofEast.receiveShadow = true
-    this.root.add(roofEast)
-  }
-
-  private buildCalligraphyPlaque() {
-    const plaqueMat = new THREE.MeshStandardMaterial({
-      color: 0x801818, // Sơn son son đỏ
-      roughness: 0.38,
-      metalness: 0.15
+  public dispose() {
+    this.root.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (m.isMesh && m.geometry) m.geometry.dispose()
     })
-
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.85, 0.08), plaqueMat)
-    frame.position.set(0, 4.75, 0.32)
-    frame.castShadow = true
-    this.root.add(frame)
-
-    // Khắc chữ nổi mạ vàng
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 128
-    const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = '#7a1818'
-    ctx.fillRect(0, 0, 512, 128)
-    ctx.strokeStyle = '#ffd700'
-    ctx.lineWidth = 6
-    ctx.strokeRect(8, 8, 496, 112)
-
-    ctx.font = 'bold 44px serif'
-    ctx.fillStyle = '#ffd700'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('VẠN CẢNH THIỀN TỰ', 256, 64)
-
-    const textTex = new THREE.CanvasTexture(canvas)
-    const textMat = new THREE.MeshBasicMaterial({ map: textTex, transparent: true })
-    const textPlate = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.75), textMat)
-    textPlate.position.set(0, 4.75, 0.38)
-    this.root.add(textPlate)
+    // Vật liệu Flat dùng chung FlatMaterialFactory nên không dispose ở đây
+    this.plaqueMaterial?.dispose()
+    this.plaqueTexture?.dispose()
+    this.plaqueMaterial = null
+    this.plaqueTexture = null
   }
 }

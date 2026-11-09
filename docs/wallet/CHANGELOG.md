@@ -66,3 +66,30 @@
 - **Sửa:**
   - `package.json` — thêm các script tiện ích `wallet:reconcile`, `wallet:test:auth`, `wallet:test:deposit`, `wallet:test:spend`.
   - `docs/wallet/README.md`, `docs/wallet/KIEN_TRUC.md`, `docs/wallet/TEST_REPORT.md` — hoàn thiện toàn bộ sơ đồ Mermaid 3 nghiệp vụ, lược đồ CSDL, danh mục API, mô hình mối đe dọa (Threat Model) và bằng chứng đối soát thực tế trên Preprod.
+
+## Bước 6 – Tích hợp Hybrid Cardano Hydra L2 cho Sổ cái MC Coin (2026-11-05)
+- **Kiến trúc:** SQLite `mc_ledger` vẫn là nguồn sự thật. Khi `HYDRA_L2_ENABLED=true` và Head ở trạng thái `Open`, mỗi giao dịch cộng/trừ MC sau khi commit được phản chiếu thành một L2 tx phí 0 (inline datum "State UTxO" + metadata CIP-20 nhãn 674), ký bằng Session Key do server dẫn xuất, gửi qua WebSocket `NewTx`. `TxValid`/`SnapshotConfirmed` cập nhật `hydra_tx_hash`, `hydra_snapshot_no`, `hydra_status`. Tắt hoặc mất kết nối → tự động fallback `offchain`, không ảnh hưởng nghiệp vụ.
+- **Mới:**
+  - `server/utils/hydra/{config,hydraClient,l2TxBuilder,sessionKey,hydraQueue}.ts` — cấu hình, client WS (WebSocket toàn cục của Node, tự reconnect), dựng/ký L2 tx bằng `@hydra-sdk/cardano-wasm`, khóa phiên + Fuel Pool, hàng đợi tuần tự theo tài khoản.
+  - `server/plugins/hydra-l2.ts`, `server/api/hydra/status.get.ts` — khởi động client và API trạng thái.
+  - `components/HydraBadge.vue` — huy hiệu `⚡ Hydra L2 Verified · Snapshot #N · Tx: abcd…wxyz`.
+  - `scripts/hydra-mock-server.mjs` — hydra-node giả lập (Greetings, GetUTxO, NewTx → TxValid/SnapshotConfirmed/TxInvalid); chạy bằng `npm run hydra:mock`.
+  - `scripts/wallet/test-hydra-l2.mjs` — 11 ca kiểm thử E2E (`npm run wallet:test:hydra`, **11/11 PASS**).
+- **Sửa:**
+  - `server/db/migrations.ts` — migration #4: `mc_ledger.hydra_tx_hash/hydra_snapshot_no/hydra_status`, `accounts.l2_session_vkey/l2_address`.
+  - `server/utils/wallet/mcService.ts`, `orders.ts`, `server/api/auth/verify.post.ts` — hook sau commit; `server/api/mc/{fortune/draw,merit/donate,shop/buy}.post.ts` trả thêm `hydra` proof.
+  - `stores/economy.ts`, `components/SanctuaryDrawer.vue`, `components/WalletConnectModal.vue` — hiển thị badge và dòng trạng thái Hydra.
+  - `nuxt.config.ts`, `.env.example`, `package.json` — biến môi trường `HYDRA_L2_ENABLED`, `HYDRA_NODE_WS_URL`, `NUXT_HYDRA_SESSION_SECRET`, `NUXT_HYDRA_STATE_LOVELACE`, `NUXT_HYDRA_FUEL_TARGET`, `NUXT_HYDRA_SUBMIT_TIMEOUT_MS` và script mới.
+- **Lưu ý:** mặc định tắt (`HYDRA_L2_ENABLED=false`). `test-spend.mjs` còn kỳ vọng cũ (bói quẻ 100 MC) trong khi giá hiện hành là 50 MC — không liên quan Hydra.
+
+### Bổ sung: hydra-node thật (offline mode) bằng Docker
+- **Mới:** `docker-compose.hydra.yml`, `scripts/hydra-prepare.mjs`, npm scripts `hydra:prepare|up|down|logs`, `.gitignore` thêm `.hydra-offline/`, `/api/hydra/status` trả thêm `fuelAddress`.
+- **Đã chạy thật:** hydra-node `0.22.4` offline → Head `Open`; nạp +2000 MC, gieo quẻ −50, cúng dường −50 đều `snapshot_confirmed` (snapshot #2–#4, `invalid=0`); State UTxO trên Head có inline datum `[balance_after, ledger_id, delta_mc, account_id]` khớp SQLite (ví dụ `[1100, 4, -800, 1]`), 3 Fuel UTxO được tách tự động.
+- **Lỗi đã gặp:** image `2.4.2` thoát exit code 132 (SIGILL) trên CPU không có AVX2 → restart loop; đã chuyển sang `0.22.4`.
+
+### Bổ sung: hiển thị chế độ sổ cái trên giao diện (Hydra L2 / SQLite)
+- **Chỉ báo toàn cục (HUD):** huy hiệu 'Hydra L2' (xanh) hoặc 'SQLite' (xám) cạnh nút ví trong `components/TempleCanvas.vue`; di chuột để xem giải thích. Dữ liệu từ `stores/hydra.ts` (thăm dò `/api/hydra/status` mỗi 15 giây).
+- **Huy hiệu từng giao dịch:** `components/HydraBadge.vue` viết lại dùng `UiBadge`: 'Hydra L2 · Snapshot #N · Tx abcd…wxyz' khi đã xác nhận, 'SQLite · Ghi ở sổ cái cục bộ' khi giao dịch chỉ nằm ở SQLite. Hiện ở kết quả gieo quẻ, cúng dường, mua đồ và mở khóa thẻ (`components/SanctuaryDrawer.vue`).
+- **Lịch sử:** `getMcOverviewAndHistory` trả thêm `hydra` cho mỗi quẻ trong `fortuneHistory` (JOIN `mc_ledger`); lượt miễn phí 0 MC không có bút toán nên không hiện huy hiệu. Danh sách lịch sử quẻ hiện huy hiệu rút gọn.
+- **Kiểm tra:** `npm run build` OK; `npm run wallet:test:hydra` 11/11 PASS.
+

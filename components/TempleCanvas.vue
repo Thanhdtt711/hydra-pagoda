@@ -4,12 +4,32 @@ import { zenAudio } from '~/lib/audio/ZenAudio'
 import { useUserStore, type CountryId } from '~/stores/user'
 import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
+import { useMeditationStore } from '~/stores/meditation'
+import { useHauDongStore } from '~/stores/hauDong'
 import { MultiplayerClient, type PilgrimPresence, type ZenChatMessage } from '~/lib/network/MultiplayerClient'
 import SanctuaryDrawer, { type DrawerTab } from '~/components/SanctuaryDrawer.vue'
+import UiChip from '~/components/ui/UiChip.vue'
+import UiBadge from '~/components/ui/UiBadge.vue'
+import UiKeycap from '~/components/ui/UiKeycap.vue'
+import UiButton from '~/components/ui/UiButton.vue'
+import UiStatCell from '~/components/ui/UiStatCell.vue'
+import ZenIcon from '~/components/ZenIcon.vue'
+import { DEV_HINTS, INTERACT_HINT, hintsFor } from '~/lib/ui/controlHints'
 
 const user = useUserStore()
 const economy = useEconomyStore()
 const wallet = useWalletStore()
+const hydra = useHydraStore()
+const meditation = useMeditationStore()
+const hauDong = useHauDongStore()
+
+// Gợi ý phím dùng chung (lib/ui/controlHints.ts)
+const loadingHints = hintsFor('loading')
+const pillHints = hintsFor('pill')
+const cheatHints = hintsFor('cheat')
+const interactHint = INTERACT_HINT
+const devHints = DEV_HINTS
+const showDevHints = ref(false)
 
 const canvasContainer = ref<HTMLElement | null>(null)
 let stage: TempleStage | null = null
@@ -23,12 +43,58 @@ watch(() => wallet.accountId, () => {
 
 // Khi người chơi bấm nút "Nạp MC" từ Cửa Hàng / Bói Quẻ / Hòm Công Đức -> mở ngay modal Ví Cardano (tab Mua MC)
 watch(() => economy.topUpModalSignal, () => {
-  if (stage) stage.exitPointerLock()
-  showWalletModal.value = true
+  openWalletModal()
 })
 
 const nearTarget = ref<InteractionTarget>(null)
+const isNearFortune = ref(false)
+const isNearMerit = ref(false)
+const isInsideHauDong = ref(false)
 const currentTimeOfDay = ref<'day' | 'sunset' | 'night'>('day')
+let hauDongSyncTimer: ReturnType<typeof setInterval> | null = null
+
+function syncHauDongToStage() {
+  if (!stage) return
+  const s = hauDong.activeSession
+  if (s) {
+    const deityMap: Record<string, string> = {
+      quan_lon_de_tam: 'quan_de_tam',
+      chau_doi_thuong_ngan: 'chau_doi',
+      ong_hoang_muoi: 'ong_hoang_muoi',
+      co_doi_thuong_ngan: 'co_doi',
+      cau_be_hoang_tu: 'cau_be',
+      duc_ong_tran_trieu: 'duc_ong_tran_trieu',
+      ong_hoang_bay: 'ong_hoang_bay'
+    }
+    const stepMap: Record<number, string> = {
+      1: 'costume',
+      2: 'incense',
+      3: 'descent',
+      4: 'dance',
+      5: 'blessing',
+      6: 'ascent'
+    }
+    stage.hauDongVisualState = {
+      active: true,
+      stageIndex: Math.max(0, (s.giaIndex || 1) - 1),
+      totalStages: 5,
+      deityId: (deityMap[s.deityId] || 'quan_de_tam') as any,
+      deityName: s.deityName,
+      palaceName: s.palace,
+      palaceColorHex: parseInt((s.colorHex || '#fcd535').replace('#', ''), 16) || 0xfcd535,
+      stepId: (stepMap[s.stepId] || 'dance') as any,
+      stepLabel: `Bước ${s.stepId}/6: ${s.stepName}`,
+      stageElapsedSec: s.secInGia || 0,
+      sponsorName: s.sponsorName
+    }
+    zenAudio.syncChauVanAudio(isInsideHauDong.value, s.deityId, s.stepId)
+  } else {
+    if (stage.hauDongVisualState) {
+      stage.hauDongVisualState.active = false
+    }
+    zenAudio.stopChauVanAudio()
+  }
+}
 
 // Multiplayer state
 const remotePilgrimsList = ref<PilgrimPresence[]>([])
@@ -40,8 +106,21 @@ const isMeditating = ref(false)
 const drawerOpen = ref(false)
 const drawerTab = ref<DrawerTab>('fortune')
 
+// Emote Wheel & Wallet Modals
+const showWalletModal = ref(false)
+const showEmoteWheel = ref(false)
+const showDisclaimer = ref(false)
+const isAudioMuted = ref(false)
+
 function openDrawer(tab: DrawerTab) {
-  if (stage) stage.exitPointerLock()
+  if (stage) {
+    stage.exitPointerLock()
+    isNearFortune.value = stage.isNearFortune()
+    isNearMerit.value = stage.isNearMerit()
+  }
+  showWalletModal.value = false
+  showEmoteWheel.value = false
+  showDisclaimer.value = false
   drawerTab.value = tab
   drawerOpen.value = true
 }
@@ -50,11 +129,13 @@ function closeDrawer() {
   drawerOpen.value = false
 }
 
-// Emote Wheel & Wallet Modals
-const showWalletModal = ref(false)
-const showEmoteWheel = ref(false)
-const showDisclaimer = ref(false)
-const isAudioMuted = ref(false)
+function openWalletModal() {
+  if (stage) stage.exitPointerLock()
+  drawerOpen.value = false
+  showEmoteWheel.value = false
+  showDisclaimer.value = false
+  showWalletModal.value = true
+}
 
 // Toast notification banner state
 const toastMessage = ref<{ title: string; desc: string; icon: string } | null>(null)
@@ -83,6 +164,8 @@ const countries: { id: CountryId; name: string; code: string }[] = [
 onMounted(() => {
   if (canvasContainer.value) {
     stage = new TempleStage(canvasContainer.value)
+    stage.setCountry(user.currentCountry as any)
+    stage.setGender(user.gender)
     stage.onNearTarget = (target) => {
       nearTarget.value = target
     }
@@ -92,12 +175,25 @@ onMounted(() => {
     stage.onCameraModeChange = (mode) => {
       user.setCameraMode(mode)
     }
+    stage.onPointerLockStateChange = (locked) => {
+      isPointerLocked.value = locked
+      if (locked) hasEverLocked.value = true
+    }
 
     // Khởi tạo Realtime Sangha Hub WebSocket Client
     multiplayer = new MultiplayerClient()
 
     stage.onLocalMove = (pos, yaw, isMoving) => {
       multiplayer?.streamMove(pos, yaw, isMoving)
+      if (stage) {
+        isNearFortune.value = stage.isNearFortune()
+        isNearMerit.value = stage.isNearMerit()
+        const insideHd = stage.isInsideHauDongZone()
+        if (insideHd !== isInsideHauDong.value) {
+          isInsideHauDong.value = insideHd
+          syncHauDongToStage()
+        }
+      }
     }
 
     multiplayer.onSnapshot = (pilgrims, count) => {
@@ -155,8 +251,9 @@ onMounted(() => {
       name: user.name,
       title: user.title,
       country: user.currentCountry,
-      position: [0, 0, 10],
-      yaw: 0,
+      gender: user.gender,
+      position: stage ? [stage.playerPos.x, stage.playerPos.y, stage.playerPos.z] : [0, 0, 10],
+      yaw: stage ? stage.yaw : 0,
       ticket: await wallet.fetchWsTicket()
     })
     void multiplayer.rejoin()
@@ -164,6 +261,39 @@ onMounted(() => {
     // Tự kết nối lại ví nếu phiên còn hạn và ví vẫn bật cùng tài khoản, đồng thời tải danh mục MC từ server.
     void economy.loadCatalog()
     void wallet.restore()
+    void meditation.refreshStatus()
+    void hauDong.refreshStatus().then(() => {
+      syncHauDongToStage()
+    })
+
+    hauDongSyncTimer = setInterval(async () => {
+      if (stage) {
+        isInsideHauDong.value = stage.isInsideHauDongZone()
+      }
+      if (isInsideHauDong.value) {
+        await hauDong.sendHeartbeat(true, 2)
+      } else {
+        await hauDong.refreshStatus()
+      }
+      syncHauDongToStage()
+    }, 2000)
+
+    meditation.attachStage({
+      isInsideSanctuary: () => stage?.isInsideSanctuary() ?? false,
+      getPlayerXZ: () => stage?.getPlayerXZ() ?? { x: 0, z: 0 },
+      walkToSlot: (slot, onArrive, onAbort) => {
+        stage?.walkToMeditationSlot(slot, onArrive, onAbort)
+      },
+      guideToEntrance: (onArrive, onAbort) => {
+        stage?.guidePlayerToSanctuaryEntrance(onArrive, onAbort)
+      },
+      standUp: () => {
+        stage?.standUpFromMeditation()
+      },
+      cancelWalk: () => {
+        stage?.cancelAutoWalk()
+      }
+    })
 
     const route = useRoute()
     const botCount = parseInt(route.query.bots as string) || 0
@@ -183,7 +313,18 @@ onMounted(() => {
   }
 })
 
+onMounted(() => {
+  hydra.startPolling()
+})
+
 onUnmounted(() => {
+  hydra.stopPolling()
+  meditation.detachStage()
+  zenAudio.stopChauVanAudio()
+  if (hauDongSyncTimer) {
+    clearInterval(hauDongSyncTimer)
+    hauDongSyncTimer = null
+  }
   if (typeof window !== 'undefined') {
     ;(window as any).__STAGE__ = null
   }
@@ -201,6 +342,10 @@ onUnmounted(() => {
 
 // Chế độ Chuột: Giữ ALT để hiện con trỏ tự do (Cách 1)
 const isAltHeld = ref(false)
+
+// Trạng thái pointer lock: dùng cho chip "Nhấp vào cảnh để tiếp tục điều khiển"
+const isPointerLocked = ref(false)
+const hasEverLocked = ref(false)
 
 function onGlobalKeyDown(e: KeyboardEvent) {
   // If user is typing in an input, do not trigger MMO hotkeys
@@ -234,10 +379,6 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 
   if (e.key === 'Escape') {
     closeAllDropups()
-    if (showCountryMenu.value) {
-      showCountryMenu.value = false
-      return
-    }
     if (showHotkeysMenu.value) {
       showHotkeysMenu.value = false
       return
@@ -256,6 +397,8 @@ function onGlobalKeyDown(e: KeyboardEvent) {
     }
   } else if (e.code === 'KeyB') {
     triggerBowAction()
+  } else if (e.code === 'KeyG') {
+    toggleGender()
   } else if (e.code === 'KeyM') {
     toggleMeditationPose()
   } else if (e.code === 'KeyC') {
@@ -291,7 +434,6 @@ function onGlobalKeyUp(e: KeyboardEvent) {
                           showDivinationMenu.value || 
                           showMeditationMenu.value || 
                           showHeritageMenu.value || 
-                          showCountryMenu.value || 
                           showHotkeysMenu.value || 
                           showWalletModal.value || 
                           showEmoteWheel.value || 
@@ -329,6 +471,25 @@ function handleShopOutfitChanged(cId: CountryId) {
   if (stage) {
     stage.setCountry(cId as any)
   }
+  void multiplayer?.rejoin()
+}
+
+function handleGenderSelect(gender: 'female' | 'male') {
+  user.setGender(gender)
+  if (stage) {
+    stage.setGender(gender)
+  }
+  void multiplayer?.rejoin()
+  zenAudio.playWoodenFish()
+  showToast(
+    'Nhân vật Hành Giả [G]',
+    gender === 'male' ? 'Đã chọn Nam Hành Giả (tóc ngắn gọn gàng)' : 'Đã chọn Nữ Hành Giả (tóc dài truyền thống)',
+    'sparkles'
+  )
+}
+
+function toggleGender() {
+  handleGenderSelect(user.gender === 'female' ? 'male' : 'female')
 }
 
 function triggerBowAction() {
@@ -363,6 +524,66 @@ function handleBowToPilgrim(id: string) {
   triggerBowAction()
 }
 
+function handleGuideToFortune() {
+  if (!stage) return
+  showToast('Dẫn đường', 'Đang bước tới Bàn Xin Xăm & Pháp Bảo...', 'fortune')
+  stage.walkToFortuneTable(
+    () => {
+      isNearFortune.value = true
+      showToast('Đã đến Bàn Xin Xăm', 'Bạn đã đến bàn gieo quẻ. Hãy thỉnh quẻ cầu an.', 'fortune')
+    },
+    () => {
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển lại gần bàn xem quẻ.', 'info')
+    }
+  )
+}
+
+function handleGuideToMerit() {
+  if (!stage) return
+  showToast('Dẫn đường', 'Đang bước tới Hòm Công Đức Tam Bảo...', 'coin')
+  stage.walkToMeritBox(
+    () => {
+      isNearMerit.value = true
+      showToast('Đã đến Hòm Công Đức', 'Bạn đã đến trước hòm công đức. Hãy phát tâm cúng dường.', 'coin')
+    },
+    () => {
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển lại gần hòm công đức.', 'info')
+    }
+  )
+}
+
+function handleGuideToHauDong() {
+  if (!stage) return
+  drawerOpen.value = false
+  showToast('Dẫn đường', 'Đang bước sang Điện Thờ Tứ Phủ (Nhà Hầu Đồng phía Đông)...', 'pagoda')
+  stage.walkToHauDongHall(
+    () => {
+      isInsideHauDong.value = stage?.isInsideHauDongZone() ?? true
+      syncHauDongToStage()
+      showToast('Đã tới Nhà Hầu Đồng', 'Bạn đã vào khu vực Chiếu Hầu Tứ Phủ. Đợi Bước 5 mỗi giá để thỉnh lộc MC!', 'sparkles')
+    },
+    () => {
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển sang phía Đông sân chùa.', 'info')
+    }
+  )
+}
+
+async function handleQuickClaimHauDong() {
+  if (!wallet.isConnected) {
+    openWalletModal()
+    return
+  }
+  try {
+    const res = await hauDong.claimBlessing()
+    if (res) {
+      zenAudio.playCoinDrop()
+      showToast('Thỉnh Lộc Tứ Phủ', `Đã nhận +${res.creditedMc} MC (${res.blessingTitle})`, 'coin')
+    }
+  } catch (e: any) {
+    showToast('Chưa thể thỉnh lộc', e?.data?.message || 'Xin đợi tới Bước 5 (Ban Lộc) của giá đồng', 'info')
+  }
+}
+
 function toggleCamera() {
   if (stage) {
     stage.cycleCameraMode()
@@ -371,29 +592,47 @@ function toggleCamera() {
   }
 }
 
-// Country Selector Popover & Hotkeys Modal
-const showCountryMenu = ref(false)
+// Hotkeys Modal & Display Menu
 const showHotkeysMenu = ref(false)
+const showDisplayMenu = ref(false)
 
 // Drop-up Menus (Phương án 2: 3 Cụm Drop-up triệt tiêu 100% trượt ngang)
 const showDivinationMenu = ref(false)
 const showMeditationMenu = ref(false)
 const showHeritageMenu = ref(false)
+
+// Chip nhắc nhấp vào cảnh để lấy lại điều khiển khi pointer lock bị mất
+const showResumeChip = computed(
+  () =>
+    !isSceneLoading.value &&
+    !isPointerLocked.value &&
+    !isAltHeld.value &&
+    !drawerOpen.value &&
+    !showEmoteWheel.value &&
+    !showWalletModal.value &&
+    !showDisclaimer.value &&
+    !showHotkeysMenu.value &&
+    !showDisplayMenu.value &&
+    !showDivinationMenu.value &&
+    !showMeditationMenu.value &&
+    !showHeritageMenu.value
+)
 const selectedFortuneCategory = ref<any>('stick')
 
 const FORTUNE_MENU_ITEMS = [
-  { id: 'stick', name: 'Xin Xăm Bát Quái', short: 'Bổn mạng & Sự nghiệp', icon: 'cards' },
-  { id: 'love', name: 'Tơ Duyên Tương Ngộ', short: 'Nguyệt Lão chỉ hồng', icon: 'sparkles' },
-  { id: 'family', name: 'Cầu Tự Con Cái', short: 'Quan Âm Tống Tử', icon: 'lotus' },
-  { id: 'wealth', name: 'Chiêu Tài Tấn Bảo', short: 'Kinh doanh phát đạt', icon: 'coin' },
-  { id: 'health', name: 'Dược Sư An Khang', short: 'Tiêu tai trừ bệnh', icon: 'meditation' },
-  { id: 'star', name: 'Dâng Sao Giải Hạn', short: 'Bắc Đẩu Thất Tinh', icon: 'sun' }
+  { id: 'stick', index: '01', name: 'Xin Xăm Bát Quái', short: 'Bổn mạng & Sự nghiệp' },
+  { id: 'love', index: '02', name: 'Tơ Duyên Tương Ngộ', short: 'Nguyệt Lão chỉ hồng' },
+  { id: 'family', index: '03', name: 'Cầu Tự Con Cái', short: 'Quan Âm Tống Tử' },
+  { id: 'wealth', index: '04', name: 'Chiêu Tài Tấn Bảo', short: 'Kinh doanh phát đạt' },
+  { id: 'health', index: '05', name: 'Dược Sư An Khang', short: 'Tiêu tai trừ bệnh' },
+  { id: 'star', index: '06', name: 'Dâng Sao Giải Hạn', short: 'Bắc Đẩu Thất Tinh' }
 ]
 
 function closeAllDropups() {
   showDivinationMenu.value = false
   showMeditationMenu.value = false
   showHeritageMenu.value = false
+  showDisplayMenu.value = false
 }
 
 function toggleDivinationMenu() {
@@ -431,12 +670,15 @@ const currentCountryObj = computed(() => {
 
 function handleCountrySelect(cId: CountryId) {
   user.setCountry(cId)
-  showCountryMenu.value = false
   zenAudio.playTempleBell()
   if (stage) {
     stage.setCountry(cId as any)
   }
 }
+
+// Chuột phải vào không gian trống chỉ phát mõ tối đa 1 lần/giây để không bị spam
+const IDLE_WOODEN_FISH_COOLDOWN_MS = 1000
+let lastIdleWoodenFishAt = 0
 
 function handleRightClickAction(target: InteractionTarget) {
   if (target === 'incense') {
@@ -449,6 +691,8 @@ function handleRightClickAction(target: InteractionTarget) {
     openDrawer('fortune')
   } else if (target === 'meditation') {
     openDrawer('meditation')
+  } else if (target === 'hau_dong') {
+    openDrawer('hau_dong')
   } else if (target === 'lantern') {
     openDrawer('shop')
   } else if (target === 'door') {
@@ -461,7 +705,11 @@ function handleRightClickAction(target: InteractionTarget) {
     showToast(isOpen ? 'Mở Cửa Chánh Điện' : 'Đóng Cửa Chánh Điện', 'Cửa bức bàn gỗ lim truyền thống', 'pagoda')
   } else {
     // Chuột phải vào không gian trống: Niệm Phật / chắp tay gõ mõ
-    zenAudio.playWoodenFish()
+    const nowTs = performance.now()
+    if (nowTs - lastIdleWoodenFishAt >= IDLE_WOODEN_FISH_COOLDOWN_MS) {
+      lastIdleWoodenFishAt = nowTs
+      zenAudio.playWoodenFish()
+    }
   }
 }
 
@@ -474,6 +722,7 @@ function getInteractionPrompt(target: InteractionTarget): string {
   if (target === 'merit_box') return 'Mở Hòm Công Đức (ADA / Cúng Dường)'
   if (target === 'fortune') return 'Rút Quẻ Xăm Linh Tự'
   if (target === 'meditation') return 'Tọa Thiền Tĩnh Tâm'
+  if (target === 'hau_dong') return 'Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)'
   if (target === 'lantern') return 'Thả Hoa Đăng Cầu An'
   if (target === 'door') return 'Mở / Đóng Cửa Bức Bàn'
   return 'Tương Tác'
@@ -564,197 +813,239 @@ function simulateLoading() {
     >
       <div
         v-if="isSceneLoading"
-        class="fixed inset-0 z-50 bg-[#0b0e11] flex flex-col items-center justify-center p-6 text-center select-none"
+        class="fixed inset-0 z-50 bg-[var(--bg-0)] flex flex-col items-center justify-center p-6 text-center select-none"
       >
-        <!-- Golden Pagoda Emote with Gentle Pulse -->
-        <div class="relative mb-6">
-          <div class="w-20 h-20 rounded-2xl bg-[#FCD535]/10 border border-[#FCD535]/30 flex items-center justify-center text-[#FCD535] shadow-[0_0_30px_rgba(252,213,53,0.15)] animate-pulse">
-            <ZenIcon name="pagoda" :size="40" />
-          </div>
-        </div>
-
         <!-- Title & Subtitle -->
-        <h2 class="text-xl font-bold tracking-tight text-white mb-1.5 font-display">VẠN CẢNH THIỀN TỰ</h2>
-        <p class="text-xs text-[#FCD535] font-mono tracking-widest uppercase mb-6">Hydra Pagoda // Thế Giới 3D Tâm Linh Web3</p>
+        <h2 class="ui-font-serif text-[24px] font-bold tracking-tight text-[var(--text-primary)] mb-2">Vạn Cảnh Thiền Tự</h2>
+        <p class="text-[13px] text-[var(--text-secondary)] mb-8">Không gian 3D Thiền Tự & Chiêm Bốc Tâm Linh</p>
 
         <!-- Progress Bar -->
-        <div class="w-72 sm:w-96 h-1.5 bg-[#1e2329] rounded-full overflow-hidden mb-3 border border-white/5">
+        <div class="w-72 sm:w-96 h-2 bg-[var(--bg-2)] rounded-full overflow-hidden mb-3 border border-[var(--border-subtle)]">
           <div
-            class="h-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535] transition-all duration-200 ease-out rounded-full shadow-[0_0_12px_rgba(252,213,53,0.5)]"
+            class="h-full bg-[var(--gold-primary)] transition-all duration-200 ease-out rounded-full"
             :style="{ width: `${loadingProgress}%` }"
           ></div>
         </div>
-        <div class="text-[11px] font-mono text-[#848e9c] mb-8">
-          Đang tải cảnh giới thiền môn... {{ loadingProgress }}%
+        <div class="text-[13px] text-[var(--text-secondary)] mb-8">
+          Đang tải cảnh giới thiền môn... <span class="ui-font-mono font-semibold text-[var(--text-primary)]">{{ loadingProgress }}%</span>
         </div>
 
         <!-- Zen Quote -->
-        <div class="max-w-md px-6 py-3 rounded-lg bg-[#181a20]/80 border border-[#2b3139]/50 text-xs italic text-[#eaecef] mb-8 shadow-inner">
+        <div class="max-w-md px-6 py-4 rounded-[12px] bg-[var(--bg-1)] border border-[var(--border-subtle)] text-[14px] italic text-[var(--text-primary)] leading-relaxed mb-8">
           "{{ currentZenQuote }}"
         </div>
 
         <!-- Controls Cheat Sheet -->
-        <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-[#848e9c]">
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">WASD</kbd> Di chuyển</span>
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">Chuột</kbd> Xoay góc nhìn</span>
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">Space</kbd> Nhảy</span>
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">F4</kbd> Đồ họa</span>
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">F5</kbd> Đổi Camera</span>
-          <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-black/60 text-[#eaecef] font-mono border border-white/10">Chuột Phải</kbd> Tương tác</span>
+        <div class="flex flex-wrap items-center justify-center gap-4 text-[13px] text-[var(--text-secondary)]">
+          <span v-for="h in loadingHints" :key="h.id" class="flex items-center gap-1.5">
+            <template v-for="(k, ki) in h.keys" :key="k"><span v-if="ki > 0">{{ h.sep }}</span><UiKeycap>{{ k }}</UiKeycap></template>
+            {{ h.label }}
+          </span>
         </div>
       </div>
     </transition>
 
-    <!-- Top Navigation HUD: Binance Web3 Aesthetic (DESIGN-binance.md) -->
-    <header class="absolute top-3 inset-x-3 flex items-center justify-between gap-3 pointer-events-none z-20">
-      <!-- Left: Wordmark & Dropdown Popover (Phương Án 1) -->
-      <div class="flex items-center gap-2 pointer-events-auto">
-        <!-- Wordmark Card -->
-        <div class="bn-panel flex items-center gap-2.5 rounded-[8px] px-3.5 py-2 shrink-0">
-          <div class="w-7 h-7 rounded-[6px] bg-[#FCD535]/10 border border-[#FCD535]/30 flex items-center justify-center text-[#FCD535]">
-            <ZenIcon name="pagoda" :size="15" />
+    <!-- Top Navigation HUD (Flat 56px Bar, Solid #0b0e11, Hairline #2b3139) -->
+    <header class="hud-top-bar">
+      <!-- Left: Temple Wordmark, Version & Realm, Country Selector -->
+      <div class="hud-top-bar__left">
+        <div class="hud-brand">
+          <div class="hud-brand__title-row">
+            <span class="hud-brand__title">VẠN CẢNH THIỀN TỰ</span>
+            <UiBadge variant="neutral">v0.3.0 // CIP-30</UiBadge>
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-xs font-bold tracking-tight text-white font-display">VẠN CẢNH THIỀN TỰ</h1>
-              <span class="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-[3px] bg-[#FCD535]/15 text-[#FCD535] font-semibold border border-[#FCD535]/30">v0.3.0 // CIP-30</span>
-            </div>
-            <div class="text-[10px] text-[#929aa5] font-mono flex items-center gap-1.5 mt-0.5">
-              <span class="text-[#eaecef] font-medium">{{ user.name }}</span>
-              <span class="text-[#474d57]">/</span>
-              <span class="text-[#FCD535] font-medium">{{ user.title }}</span>
-            </div>
+          <div class="hud-brand__user-row">
+            <span class="hud-brand__user-name">{{ user.name }}</span>
+            <span class="hud-divider">·</span>
+            <span class="hud-brand__user-title">{{ user.title }}</span>
           </div>
         </div>
 
-        <!-- Country Selector Dropdown Popover Button (Phương án 1) -->
-        <div class="relative">
-          <button
-            @click="showCountryMenu = !showCountryMenu"
-            class="bn-btn-secondary h-[42px] px-3 rounded-[8px] text-xs font-semibold flex items-center gap-2 transition shadow-sm"
-            :class="showCountryMenu ? 'border-[#FCD535] text-[#FCD535] bg-[#2b3139]' : 'hover:border-[#474d57]'"
-            title="Đổi quốc gia và khí quyển cổ tự"
-          >
-            <span class="w-2 h-2 rounded-full bg-[#FCD535] animate-pulse"></span>
-            <span class="font-bold text-white">{{ currentCountryObj.code }}</span>
-            <span class="text-[#eaecef] hidden sm:inline">{{ currentCountryObj.name }}</span>
-            <span class="text-[10px] text-[#929aa5] transition-transform" :class="showCountryMenu ? 'rotate-180' : ''">▾</span>
-          </button>
-
-          <!-- Dropdown Popover Menu (9 Countries) -->
-          <div
-            v-if="showCountryMenu"
-            class="absolute top-12 left-0 w-64 p-1.5 rounded-[8px] bg-[#1e2329]/98 border border-[#2b3139] shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-0.5"
-          >
-            <div class="px-2.5 py-1 text-[10px] font-mono text-[#707a8a] uppercase font-bold tracking-wider border-b border-[#2b3139] mb-1 flex items-center justify-between">
-              <span>CỔ TỰ / KHÍ QUYỂN (9 NƯỚC)</span>
-              <span>[1-9]</span>
-            </div>
-            <button
-              v-for="c in countries"
-              :key="c.id"
-              @click="handleCountrySelect(c.id)"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center justify-between transition cursor-pointer text-left"
-              :class="user.currentCountry === c.id ? 'bg-[#2b3139] text-[#FCD535] font-semibold border border-[#FCD535]/30' : 'text-[#eaecef] hover:bg-[#2b3139]/70 hover:text-white'"
-            >
-              <div class="flex items-center gap-2.5">
-                <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/50 text-[#929aa5] border border-white/5">{{ c.code }}</span>
-                <span>{{ c.name }}</span>
-              </div>
-              <span v-if="user.currentCountry === c.id" class="text-xs text-[#FCD535] font-bold">✓</span>
-            </button>
-          </div>
+        <!-- Country Indicator (Non-clickable label per Binance Spec) -->
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated border border-hairline text-secondary select-none" title="Quốc gia hiện tại (Nhấn phím 1-9 để chuyển)">
+          <span class="hud-status-dot hud-status-dot--success" aria-hidden="true" />
+          <span class="font-numbers font-bold text-xs text-secondary">{{ currentCountryObj.code }}</span>
+          <span class="hidden sm:inline font-semibold text-xs text-primary">{{ currentCountryObj.name }}</span>
         </div>
+
+        <!-- Gender Switch Button (Nam / Nữ Hành Giả) -->
+        <button
+          type="button"
+          @click="toggleGender"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated hover:bg-[#363c45] border border-hairline hover:border-gold text-xs font-semibold text-white transition cursor-pointer ui-focus-ring"
+          title="Đổi giới tính nhân vật Nam / Nữ (Phím tắt: G)"
+        >
+          <span class="text-primary font-bold">{{ user.gender === 'male' ? 'Nam' : 'Nữ' }}</span>
+          <span class="hidden md:inline text-secondary">Hành Giả</span>
+        </button>
       </div>
 
-      <!-- Center: 100% Free & Open Sky (No intrusive bar) -->
+      <!-- Right: Stats & Utilities -->
+      <div class="hud-top-bar__right">
+        <!-- Daily Streak Stat -->
+        <UiStatCell
+          label="Ngày Tu"
+          :value="user.streakDays"
+          size="sm"
+          class="hud-stat-cell"
+        />
 
-      <!-- Right: Binance Web3 Utility & Currency Cluster -->
-      <div class="flex items-center gap-2 pointer-events-auto shrink-0">
-        <!-- Daily Streak -->
-        <div class="bn-panel px-2.5 py-1.5 rounded-[6px] flex items-center gap-1.5 text-xs font-mono" title="Chuỗi ngày tu tập chánh niệm (Daily Streak)">
-          <ZenIcon name="sparkles" :size="12" class="text-[#FCD535]" />
-          <span class="text-white font-bold">{{ user.streakDays }}</span>
-          <span class="text-[#929aa5] text-[9px] uppercase tracking-wider">NGÀY TU</span>
-        </div>
+        <div class="hud-v-divider" />
 
-        <!-- Balance Strip (Tabular Binance Digits) -->
-        <div class="bn-panel px-3 py-1.5 rounded-[6px] flex items-center gap-3 text-xs font-mono tabular-nums">
-          <div class="flex items-center gap-1.5 text-[#FCD535] font-bold cursor-pointer hover:opacity-80 transition" @click="showWalletModal = true" title="MC coin (bấm để nạp MC bằng ADA)">
-            <ZenIcon name="coin" :size="13" class="text-[#FCD535]" />
-            <span>{{ economy.meritCoins.toLocaleString() }}</span>
-            <span class="text-[9px] text-[#929aa5]">MC</span>
-            <span class="ml-0.5 px-1 py-px rounded bg-[#FCD535]/20 text-[#FCD535] text-[9px] font-bold">+</span>
-          </div>
-          <template v-if="wallet.isConnected">
-            <div class="w-px h-3 bg-[#2b3139]"></div>
-            <div class="flex items-center gap-1.5 text-[#3b82f6] font-bold cursor-pointer hover:opacity-80 transition" @click="showWalletModal = true" title="Số dư ADA trong ví Cardano">
-              <ZenIcon name="cardano" :size="13" class="text-[#3b82f6]" />
-              <span>{{ wallet.adaBalance }}</span>
-            </div>
+        <!-- Merit Coins Stat + Top-up -->
+        <UiStatCell
+          label="Hành Trang"
+          :value="economy.meritCoins.toLocaleString()"
+          unit="MC"
+          highlight
+          size="sm"
+          class="hud-stat-cell"
+        >
+          <template #action>
+            <UiButton variant="primary" size="sm" class="ml-2" @click="openWalletModal()">
+              + Nạp
+            </UiButton>
           </template>
+        </UiStatCell>
+
+        <div class="hud-v-divider" />
+
+        <!-- Cardano Wallet Status Button -->
+        <button
+          type="button"
+          @click="openWalletModal()"
+          class="hud-wallet-btn ui-focus-ring"
+          title="Kết nối ví Cardano (Eternl)"
+        >
+          <span
+            class="hud-status-dot"
+            :class="wallet.isConnected ? 'hud-status-dot--success' : 'hud-status-dot--warning'"
+            aria-hidden="true"
+          />
+          <span class="text-sm font-semibold" :class="wallet.isConnected ? 'font-numbers' : ''">
+            {{ wallet.isConnected ? wallet.shortAddress : 'Ví Cardano' }}
+          </span>
+          <UiBadge v-if="wallet.isTestnet" variant="warning">TESTNET</UiBadge>
+          </button>
+          
+          <!-- Chỉ báo chế độ sổ cái: Hydra L2 hay SQLite -->
+          <span class="hud-ledger-wrap" :title="hydra.modeDescription">
+            <span
+              class="hud-ledger-mode ui-focus-ring"
+              tabindex="0"
+              role="status"
+              :aria-label="`Chế độ sổ cái: ${hydra.modeLabel}. ${hydra.modeDescription}`"
+              data-testid="hud-ledger-mode"
+            >
+              <UiBadge :variant="!hydra.loaded ? 'neutral' : hydra.isL2Active ? 'success' : 'neutral'" dot>
+                {{ hydra.loaded ? hydra.modeLabel : '…' }}
+              </UiBadge>
+            </span>
+          </span>
+
+        <div class="hud-v-divider" />
+
+        <!-- Display & Camera Settings Dropdown ("Hiển thị") -->
+        <div class="relative">
+          <button
+            type="button"
+            @click="showDisplayMenu = !showDisplayMenu"
+            class="hud-icon-btn hud-display-btn ui-focus-ring"
+            :class="{ 'is-active': showDisplayMenu }"
+            title="Tùy chỉnh Thời gian, Đồ họa (F4) và Góc nhìn (V / F5)"
+          >
+            <span class="text-xs font-semibold">Hiển thị</span>
+            <ZenIcon name="chevron-down" :size="14" class="transition-transform" :class="showDisplayMenu ? 'rotate-180' : ''" />
+          </button>
+
+          <div
+            v-if="showDisplayMenu"
+            class="hud-popover hud-popover--display"
+          >
+            <div class="hud-popover__header">
+              <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Cài đặt hiển thị &amp; Góc nhìn</span>
+            </div>
+            <div class="hud-popover__list">
+              <button
+                type="button"
+                @click="cycleTimeOfDay"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">Thời gian</div>
+                  <div class="text-xs text-secondary">
+                    {{ currentTimeOfDay === 'day' ? 'Ban ngày' : currentTimeOfDay === 'sunset' ? 'Hoàng hôn' : 'Ban đêm' }}
+                  </div>
+                </div>
+                <UiKeycap>{{ currentTimeOfDay.toUpperCase() }}</UiKeycap>
+              </button>
+
+              <button
+                type="button"
+                @click="cycleGraphicsQuality"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">Đồ họa</div>
+                  <div class="text-xs text-secondary uppercase font-numbers">
+                    {{ graphicsQuality }}
+                  </div>
+                </div>
+                <UiKeycap>F4</UiKeycap>
+              </button>
+
+              <button
+                type="button"
+                @click="toggleCamera"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">Góc nhìn</div>
+                  <div class="text-xs text-secondary">
+                    {{ user.cameraMode === 'fpp' ? 'Góc nhìn thứ nhất (FPP)' : 'Góc nhìn thứ ba (TPP)' }}
+                  </div>
+                </div>
+                <UiKeycap>V / F5</UiKeycap>
+              </button>
+
+              <button
+                type="button"
+                @click="toggleGender"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">Nhân vật</div>
+                  <div class="text-xs text-secondary">
+                    {{ user.gender === 'male' ? 'Nam Hành Giả (Tóc ngắn)' : 'Nữ Hành Giả (Tóc dài)' }}
+                  </div>
+                </div>
+                <UiKeycap>G</UiKeycap>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Cardano Wallet CIP-30 -->
+        <!-- Audio Mute / Unmute Button (Icon-Only Whitelisted Item #7) -->
         <button
-          @click="showWalletModal = true"
-          class="bn-btn-secondary h-8 text-[#3b82f6] border-[#3b82f6]/30 hover:border-[#3b82f6]"
-          title="Kết nối ví Cardano CIP-30 (Eternl)"
+          type="button"
+          @click="toggleAudio"
+          aria-label="Bật hoặc tắt âm thanh thiền tự"
+          title="Bật hoặc tắt âm thanh thiền tự"
+          class="hud-icon-btn ui-focus-ring"
         >
-          <ZenIcon name="cardano" :size="13" />
-          <span class="font-mono text-[11px] font-semibold">
-            {{ wallet.isConnected ? wallet.shortAddress : 'VÍ CARDANO' }}
-          </span>
-          <span v-if="wallet.isTestnet" class="font-mono text-[8px] px-1 py-px rounded-[3px] bg-[#FCD535]/15 text-[#FCD535] font-bold">TESTNET</span>
+          <ZenIcon :name="isAudioMuted ? 'volume-x' : 'volume-2'" :size="18" />
         </button>
 
-        <!-- Time of Day Switcher -->
+        <!-- Online Pilgrims Chip -->
         <button
-          @click="cycleTimeOfDay"
-          class="bn-btn-secondary h-8"
-          title="Chuyển thời gian: Ban Ngày / Hoàng Hôn / Ban Đêm"
-        >
-          <ZenIcon :name="currentTimeOfDay === 'day' ? 'sun' : currentTimeOfDay === 'sunset' ? 'sunset' : 'moon'" :size="13" class="text-[#FCD535]" />
-          <span class="font-mono text-[10px] uppercase tracking-wider">
-            {{ currentTimeOfDay === 'day' ? 'Day' : currentTimeOfDay === 'sunset' ? 'Sunset' : 'Night' }}
-          </span>
-        </button>
-
-        <!-- Graphics Quality Switcher (Low / Medium / High / Ultra - Hotkey F4) -->
-        <button
-          @click="cycleGraphicsQuality"
-          class="bn-btn-secondary h-8"
-          :class="graphicsQuality === 'ultra' ? 'text-[#FCD535] border-[#FCD535]/40' : ''"
-          title="Phím F4: Đổi cấu hình đồ họa (Low / Medium / High / Ultra)"
-        >
-          <ZenIcon name="sparkles" :size="12" class="text-[#FCD535]" />
-          <span class="font-mono text-[10px] uppercase tracking-wider font-bold">
-            {{ graphicsQuality.toUpperCase() }} [F4]
-          </span>
-        </button>
-
-        <!-- Camera Perspective Toggle (F5 Hotkey) -->
-        <button
-          @click="toggleCamera"
-          class="bn-btn-secondary h-8"
-          title="Phím F5: Đổi góc nhìn Minecraft (FPP / TPP)"
-        >
-          <ZenIcon name="camera" :size="13" />
-          <span class="font-mono text-[10px] uppercase tracking-wider">
-            {{ user.cameraMode === 'fpp' ? 'FPP [F5]' : 'TPP [F5]' }}
-          </span>
-        </button>
-
-        <!-- Online Pilgrims -> Opens Sangha Tab in Drawer -->
-        <button
+          type="button"
           @click="openDrawer('sangha')"
-          class="bn-btn-secondary h-8 text-[#0ecb81] border-[#0ecb81]/30 hover:border-[#0ecb81]"
-          title="Danh sách đồng tu online & Pháp đàm"
+          class="hud-sangha-btn ui-focus-ring"
+          title="Danh sách đồng tu đang trực tuyến &amp; Pháp đàm"
         >
-          <span class="w-1.5 h-1.5 rounded-full bg-[#0ecb81] animate-pulse"></span>
-          <span class="font-mono text-[11px] font-semibold tracking-tight">
-            {{ onlinePilgrimCount }} ĐỒNG TU
-          </span>
+          <span class="hud-status-dot hud-status-dot--success" aria-hidden="true" />
+          <span class="font-numbers text-sm font-bold">{{ onlinePilgrimCount }}</span>
+          <span class="text-xs text-secondary">Đồng Tu</span>
         </button>
       </div>
     </header>
@@ -762,178 +1053,280 @@ function simulateLoading() {
     <!-- Minecraft Crosshair Dấu Thập (+) ở chính giữa màn hình (CHỈ HIỆN Ở GÓC NHÌN THỨ NHẤT - FPP) -->
     <div v-if="user.cameraMode === 'fpp'" class="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
       <div class="relative w-4 h-4 flex items-center justify-center">
-        <!-- Đường ngang -->
         <div class="absolute w-3.5 h-[1.5px] bg-white/85 shadow-[0_0_1px_rgba(0,0,0,0.9)]"></div>
-        <!-- Đường dọc -->
         <div class="absolute h-3.5 w-[1.5px] bg-white/85 shadow-[0_0_1px_rgba(0,0,0,0.9)]"></div>
-        <!-- Điểm sáng vàng tâm ngắm khi vào vùng tương tác -->
-        <div v-if="nearTarget" class="w-1.5 h-1.5 bg-[#FCD535] rounded-full animate-ping"></div>
+        <div v-if="nearTarget" class="w-1.5 h-1.5 bg-[var(--gold-primary)] rounded-full animate-ping"></div>
       </div>
     </div>
 
-    <!-- Right-Click Action Toast Pill (Binance Yellow Accent) -->
-    <div 
+    <!-- Right-Click Action Toast Pill -->
+    <div
       v-if="nearTarget"
       :class="user.cameraMode === 'fpp' ? 'top-[54%]' : 'bottom-20'"
       class="pointer-events-none absolute left-1/2 -translate-x-1/2 z-20 transition-all duration-150 transform scale-100"
     >
-      <div class="bn-panel border border-[#FCD535]/40 px-3.5 py-1.5 rounded-[6px] shadow-2xl flex items-center gap-2 backdrop-blur-md">
-        <span class="bg-[#FCD535] text-[#181a20] font-mono font-bold text-[10px] px-1.5 py-0.5 rounded-[3px] tracking-tight">CHUỘT PHẢI</span>
-        <ZenIcon :name="nearTarget === 'incense' ? 'incense' : nearTarget === 'merit_box' ? 'coin' : nearTarget === 'meditation' ? 'meditation' : nearTarget === 'lantern' ? 'lotus' : nearTarget === 'door' ? 'pagoda' : 'cards'" :size="13" class="text-[#FCD535]" />
-        <span class="text-white text-xs font-semibold tracking-tight">{{ getInteractionPrompt(nearTarget) }}</span>
+      <div class="bg-surface-card border border-gold px-4 py-2 rounded-md shadow-2xl flex items-center gap-2.5">
+        <template v-for="(k, ki) in interactHint.keys" :key="k">
+          <span v-if="ki > 0" class="text-secondary text-xs">{{ interactHint.sep }}</span>
+          <UiKeycap>{{ k }}</UiKeycap>
+        </template>
+        <span class="text-white text-sm font-semibold">{{ getInteractionPrompt(nearTarget) }}</span>
       </div>
     </div>
 
-    <!-- Bottom Controls: Hotkeys Popover (Left) & Unified Action Island (Right) - Phương án 1 -->
+    <!-- Chip nhắc lấy lại điều khiển khi mất pointer lock -->
+    <div
+      v-if="showResumeChip"
+      role="status"
+      class="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-20 px-3.5 py-2 rounded-md bg-surface-card border border-hairline shadow-lg text-xs text-secondary"
+    >
+      {{ hasEverLocked ? 'Nhấp vào cảnh để tiếp tục điều khiển' : 'Nhấp vào cảnh để bắt đầu điều khiển' }}
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- BẢNG HUD DỰ LỄ HẦU ĐỒNG (HIỆN TỰ ĐỘNG KHI BƯỚC VÀO NHÀ HẦU ĐỒNG TỨ PHỦ)   -->
+    <!-- ========================================================================= -->
+    <div
+      v-if="isInsideHauDong && hauDong.activeSession"
+      class="pointer-events-auto absolute top-16 left-4 z-20 w-80 p-3 rounded-md bg-surface-card border border-[var(--primary,#fcd535)] shadow-2xl space-y-2"
+    >
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-[var(--trading-up,#0ecb81)] animate-pulse" />
+          <span class="text-xs font-bold uppercase tracking-wider text-primary font-numbers">
+            ĐIỆN TỨ PHỦ · GIÁ {{ hauDong.activeSession.giaIndex }}/5
+          </span>
+        </div>
+        <span class="text-xs font-numbers text-secondary">
+          Còn {{ hauDong.activeSession.stepRemainingSec }}s
+        </span>
+      </div>
+
+      <div>
+        <div class="text-sm font-bold text-white leading-tight">
+          {{ hauDong.activeSession.deityName }}
+        </div>
+        <div class="text-xs text-secondary mt-0.5">
+          Bước <span class="font-numbers">{{ hauDong.activeSession.stepId }}/6</span>:
+          <strong class="text-white">{{ hauDong.activeSession.stepName }}</strong>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 pt-1">
+        <UiButton
+          variant="secondary"
+          size="sm"
+          class="flex-1 justify-center"
+          @click="hauDong.isBowing = true; triggerBowAction()"
+        >
+          {{ hauDong.isBowing ? 'Đã Khánh Hỷ' : 'Chắp Tay (+5 MC)' }}
+        </UiButton>
+        <UiButton
+          v-if="hauDong.activeSession.stepId === 5 || hauDong.activeSession.stepId === 6"
+          variant="primary"
+          size="sm"
+          class="flex-1 justify-center"
+          :disabled="hauDong.submitting || Boolean(hauDong.myAttendance?.hasClaimedThisGia)"
+          @click="handleQuickClaimHauDong"
+        >
+          {{ hauDong.myAttendance?.hasClaimedThisGia ? 'Đã Nhận Lộc' : 'Thỉnh Lộc (+MC)' }}
+        </UiButton>
+        <UiButton
+          v-else
+          variant="secondary"
+          size="sm"
+          class="flex-1 justify-center"
+          @click="openDrawer('hau_dong')"
+        >
+          Mở Đàn / Chi Tiết
+        </UiButton>
+      </div>
+    </div>
+
+    <!-- Bottom Controls: Hotkeys Popover (Left) & 3 Drop-up Menus (Right) -->
     <div class="absolute bottom-3 inset-x-3 flex items-center justify-between gap-3 pointer-events-none z-20">
-      <!-- Left: Compact Hotkey Pill with Popover Cheat Sheet + ALT Indicator -->
+      <!-- Left: Compact Hotkey Pill + ALT Indicator -->
       <div class="relative pointer-events-auto flex items-center gap-2">
         <button
+          type="button"
           @click="showHotkeysMenu = !showHotkeysMenu"
-          class="bn-panel px-3 py-1.5 rounded-[6px] text-[11px] text-[#929aa5] hover:text-white border border-[#2b3139] hover:border-[#474d57] flex items-center gap-2 transition cursor-pointer shadow-lg"
+          class="min-h-[40px] px-3.5 py-2 rounded-md bg-surface-card text-xs text-secondary hover:text-white border border-hairline hover:border-hairline flex items-center gap-2 transition cursor-pointer shadow-lg"
           title="Nhấp để xem bảng phím tắt điều khiển"
         >
-          <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/50 text-white border border-white/5">WASD</span>
-          <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FCD535] text-[#181a20]">R-CLICK</span>
-          <span class="text-[10px] text-[#707a8a] hidden sm:inline">Phím tắt [?]</span>
+          <UiKeycap v-for="h in pillHints" :key="h.id">{{ h.keys[0] }}</UiKeycap>
+          <span class="text-xs font-medium hidden sm:inline">Phím tắt</span>
         </button>
 
-        <!-- Live ALT Mouse Cursor Indicator (Cách 1) -->
-        <div 
-          class="bn-panel px-2.5 py-1.5 rounded-[6px] text-[11px] font-mono flex items-center gap-1.5 transition select-none shadow-md"
-          :class="isAltHeld ? 'border-[#FCD535] text-[#FCD535] bg-[#FCD535]/15' : 'text-[#929aa5] border-[#2b3139]'"
-          title="Giữ phím ALT để hiện con trỏ chuột tự do click vào các nút"
+        <!-- Live ALT Mouse Cursor Indicator -->
+        <div
+          class="min-h-[40px] px-3.5 py-2 rounded-md bg-surface-card text-xs border flex items-center gap-2 transition select-none shadow-md"
+          :class="isAltHeld ? 'border-gold text-white bg-surface-elevated' : 'text-secondary border-hairline'"
+          title="Giữ phím ALT để hiện con trỏ chuột tự do bấm vào các nút"
         >
-          <span 
-            class="font-bold px-1.5 py-0.5 rounded text-[10px] transition-all"
-            :class="isAltHeld ? 'bg-[#FCD535] text-[#181a20] font-black scale-105' : 'bg-black/60 text-[#eaecef] border border-white/10'"
-          >ALT</span>
-          <span class="text-[10px] font-medium hidden sm:inline">
-            {{ isAltHeld ? 'ĐANG HIỆN CHUỘT' : 'Giữ ALT: Hiện chuột' }}
+          <UiKeycap>ALT</UiKeycap>
+          <span class="text-xs font-medium hidden sm:inline">
+            {{ isAltHeld ? 'Đang hiện con trỏ chuột' : 'Giữ ALT để hiện chuột' }}
           </span>
         </div>
 
         <!-- Full Hotkey Cheat Sheet Popover -->
         <div
           v-if="showHotkeysMenu"
-          class="absolute bottom-11 left-0 w-80 p-3 rounded-[8px] bg-[#1e2329]/98 border border-[#2b3139] shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-2"
+          class="absolute bottom-14 left-0 w-96 p-4 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-3"
         >
-          <div class="flex items-center justify-between border-b border-[#2b3139] pb-1.5">
-            <span class="text-[10px] font-mono text-[#FCD535] uppercase font-bold tracking-wider">PHÍM TẮT ĐIỀU KHIỂN & CHUỘT</span>
-            <button @click="showHotkeysMenu = false" class="text-xs text-[#707a8a] hover:text-white cursor-pointer">✕</button>
+          <div class="flex items-center justify-between border-b border-hairline pb-2.5">
+            <span class="text-sm font-bold text-white">Phím tắt điều khiển & Chuột</span>
+            <button
+              type="button"
+              aria-label="Đóng bảng phím tắt"
+              @click="showHotkeysMenu = false"
+              class="w-8 h-8 rounded flex items-center justify-center text-secondary hover:text-white hover:bg-surface-elevated cursor-pointer"
+            >
+              <ZenIcon name="x" :size="16" />
+            </button>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 text-[11px]">
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#FCD535] text-[#181a20] font-bold">ALT</span> <span class="text-[#FCD535]">Hiện con trỏ chuột</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">1, 2, 3</span> <span class="text-[#eaecef]">Mở 3 cụm menu</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">W A S D</span> <span class="text-[#929aa5]">Di chuyển</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#FCD535] text-[#181a20] font-bold">R-CLICK</span> <span class="text-[#FCD535]">Tương tác</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">SPACE</span> <span class="text-[#929aa5]">Nhảy</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">SHIFT / 2xW</span> <span class="text-[#929aa5]">Chạy nhanh</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">Z</span> <span class="text-[#929aa5]">Đi chậm (Rón rén)</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">F5</span> <span class="text-[#929aa5]">Góc nhìn</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">B</span> <span class="text-[#929aa5]">Chào</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">M</span> <span class="text-[#929aa5]">Tọa thiền</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">C</span> <span class="text-[#929aa5]">Pháp đàm</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white">X</span> <span class="text-[#929aa5]">Cử chỉ [X]</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-[#0ecb81] font-bold">F3</span> <span class="text-[#0ecb81]">Debug Colliders</span></div>
-            <div class="flex items-center gap-1.5"><span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-[#FCD535] font-bold">F4</span> <span class="text-[#FCD535]">Đồ họa (Low-Ultra)</span></div>
+          <div class="grid grid-cols-2 gap-2.5 text-xs font-numbers">
+            <div v-for="h in cheatHints" :key="h.id" class="flex items-center gap-2">
+              <template v-for="(k, ki) in h.keys" :key="k"><span v-if="ki > 0" class="text-secondary">{{ h.sep }}</span><UiKeycap>{{ k }}</UiKeycap></template>
+              <span class="text-secondary">{{ h.label }}</span>
+            </div>
+          </div>
+          <!-- Nhóm nhà phát triển (ẩn mặc định) -->
+          <div class="border-t border-hairline pt-2.5 flex flex-col gap-2.5">
+            <button
+              type="button"
+              @click="showDevHints = !showDevHints"
+              :aria-expanded="showDevHints"
+              class="flex items-center justify-between text-xs text-secondary hover:text-white cursor-pointer ui-focus-ring"
+            >
+              <span class="font-semibold">Nhà phát triển</span>
+              <ZenIcon name="chevron-down" :size="14" class="transition-transform" :class="showDevHints ? 'rotate-180' : ''" />
+            </button>
+            <div v-if="showDevHints" class="grid grid-cols-2 gap-2.5 text-xs font-numbers">
+              <div v-for="h in devHints" :key="h.id" class="flex items-center gap-2">
+                <template v-for="(k, ki) in h.keys" :key="k"><span v-if="ki > 0" class="text-secondary">{{ h.sep }}</span><UiKeycap>{{ k }}</UiKeycap></template>
+                <span class="text-secondary">{{ h.label }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Right: 3 Cụm Drop-up Island (Phương Án 2: Triệt tiêu 100% trượt ngang) -->
+      <!-- Right: 3 Cụm Drop-up Island -->
       <div class="flex items-center gap-2 pointer-events-auto select-none">
-        <!-- Cụm 1: Bói Quẻ & Cầu An (Primary Gold Button with Drop-up) -->
+        <!-- Cụm 1: Bói Quẻ & Cầu An (Popup Phím 1) -->
         <div class="relative">
-          <!-- Drop-up Popover (Appears upward from the button) -->
           <div
             v-if="showDivinationMenu"
-            class="absolute bottom-11 right-0 w-64 p-1.5 rounded-[8px] bg-[#1e2329]/98 border border-[#2b3139] shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-1"
+            class="hud-popover hud-popover--bottom w-80 p-2"
           >
-            <div class="px-2.5 py-1 text-[10px] font-mono text-[#FCD535] uppercase font-bold tracking-wider border-b border-[#2b3139] flex items-center justify-between">
-              <span>BÓI QUẺ 6 MÔN CẦU AN</span>
-              <span class="text-[#707a8a] text-[9px]">[Phím 1]</span>
+            <div class="px-3 py-2 border-b border-hairline mb-1 flex items-center justify-between">
+              <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Bói Quẻ 6 Môn Cầu An</span>
+              <UiKeycap>Phím 1</UiKeycap>
             </div>
-            <button
-              v-for="cat in FORTUNE_MENU_ITEMS"
-              :key="cat.id"
-              @click="openFortuneCategory(cat.id)"
-              class="w-full px-2.5 py-1.5 rounded-[6px] text-xs flex items-center justify-between text-[#eaecef] hover:bg-[#2b3139] hover:text-[#FCD535] transition cursor-pointer text-left"
-            >
-              <div class="flex items-center gap-2">
-                <ZenIcon :name="cat.icon" :size="13" class="text-[#FCD535]" />
-                <span class="font-medium">{{ cat.name }}</span>
-              </div>
-              <span class="text-[10px] text-[#707a8a] font-mono">{{ cat.short }}</span>
-            </button>
+            <div class="flex flex-col">
+              <button
+                v-for="cat in FORTUNE_MENU_ITEMS"
+                :key="cat.id"
+                type="button"
+                @click="openFortuneCategory(cat.id)"
+                class="hud-markets-row ui-focus-ring"
+              >
+                <span class="font-numbers text-xs font-semibold text-secondary w-6 shrink-0 pt-0.5">
+                  {{ cat.index }}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-semibold text-primary-text leading-tight">
+                    {{ cat.name }}
+                  </div>
+                  <div class="text-xs text-secondary leading-normal mt-0.5">
+                    {{ cat.short }}
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
-          <!-- Trigger Button (Hotkey [1]) -->
-          <button
-            @click="toggleDivinationMenu"
-            class="bn-btn-primary h-8 px-3 rounded-[6px] font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
-            :class="showDivinationMenu ? 'ring-2 ring-[#FCD535]/50' : ''"
+          <!-- Trigger Button (Hotkey [1] - Single Gold Primary Action on HUD) -->
+          <UiButton
+            variant="primary"
+            class="hud-trigger-gold"
+            :class="{ 'ring-2 ring-primary/50': showDivinationMenu }"
             title="Bấm phím [1] hoặc nhấp chuột để mở Bói Quẻ 6 Môn"
+            @click="toggleDivinationMenu"
           >
-            <ZenIcon name="sparkles" :size="13" class="text-[#181a20]" />
-            <span>Bói Quẻ & Cầu An</span>
-            <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-black/20 text-[#181a20] font-extrabold">[1]</span>
-            <span class="text-[10px] transition-transform" :class="showDivinationMenu ? 'rotate-180' : ''">▴</span>
-          </button>
+            <span>Bói Quẻ &amp; Cầu An</span>
+            <UiKeycap class="hud-keycap-gold">1</UiKeycap>
+            <ZenIcon name="chevron-up" :size="16" class="transition-transform" :class="showDivinationMenu ? 'rotate-180' : ''" />
+          </UiButton>
         </div>
 
         <!-- Cụm 2: Thiền & Công Đức (Secondary Drop-up - Hotkey [2]) -->
         <div class="relative">
           <div
             v-if="showMeditationMenu"
-            class="absolute bottom-11 right-0 w-60 p-1.5 rounded-[8px] bg-[#1e2329]/98 border border-[#2b3139] shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-1"
+            class="absolute bottom-14 right-0 w-[320px] p-3 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-1"
           >
-            <div class="px-2.5 py-1 text-[10px] font-mono text-[#0ecb81] uppercase font-bold tracking-wider border-b border-[#2b3139] flex items-center justify-between">
-              <span>HÀNH TRÌ & PHƯỚC ĐỨC</span>
-              <span class="text-[#707a8a] text-[9px]">[Phím 2]</span>
+            <div class="px-3 pb-2.5 mb-1 border-b border-hairline flex items-center justify-between">
+              <span class="text-sm font-bold text-white">Hành Trì & Phước Đức</span>
+              <UiKeycap>Phím 2</UiKeycap>
             </div>
             <button
+              type="button"
               @click="openDrawerFromDropup('merit')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-[#FCD535] transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="coin" :size="13" class="text-[#FCD535]" />
-              <div>
-                <div class="font-medium">Hòm Công Đức Tam Bảo</div>
-                <div class="text-[10px] text-[#707a8a]">Tâm Duyên · Sen Vàng · Cardano ADA</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">01</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Hòm Công Đức Tam Bảo</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Tâm Duyên, Sen Vàng, Cardano ADA</div>
               </div>
             </button>
             <button
+              type="button"
               @click="openDrawerFromDropup('meditation')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-[#0ecb81] transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="meditation" :size="13" class="text-[#0ecb81]" />
-              <div>
-                <div class="font-medium">Hội Thiền 432Hz</div>
-                <div class="text-[10px] text-[#707a8a]">Chuông xoay · Điều tức Mandala 4-4-6</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">02</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Hội Thiền 432Hz</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Chuông xoay & Điều tức chánh niệm</div>
               </div>
             </button>
             <button
+              type="button"
               @click="openDrawerFromDropup('sangha')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-[#3b82f6] transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="message" :size="13" class="text-[#3b82f6]" />
-              <div>
-                <div class="font-medium">Pháp Đàm & Đồng Tu</div>
-                <div class="text-[10px] text-[#707a8a]">Lời nguyện chánh niệm · {{ onlinePilgrimCount }} online</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">03</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Pháp Đàm & Đồng Tu</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Lời nguyện chánh niệm (<span class="font-numbers">{{ onlinePilgrimCount }}</span> đang online)</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              @click="openDrawerFromDropup('hau_dong')"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
+            >
+              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">04</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-primary leading-snug whitespace-nowrap">Nhà Hầu Đồng (Điện Tứ Phủ)</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Hầu đồng 5 Giá (8p), Thỉnh Lộc MC &amp; Mở Đàn</div>
               </div>
             </button>
           </div>
 
           <button
+            type="button"
             @click="toggleMeditationMenu"
-            class="bn-btn-secondary h-8 px-2.5 rounded-[6px] text-xs font-medium flex items-center gap-1.5 cursor-pointer"
-            :class="showMeditationMenu ? 'border-[#0ecb81] text-[#0ecb81] bg-[#2b3139]' : ''"
+            class="min-h-[40px] px-3.5 rounded-md bg-surface-card border text-sm font-medium flex items-center gap-2 transition cursor-pointer"
+            :class="showMeditationMenu ? 'border-gold bg-surface-elevated text-white' : 'border-hairline text-white hover:border-hairline hover:bg-surface-elevated'"
             title="Bấm phím [2] hoặc nhấp chuột để mở Thiền & Công Đức"
           >
-            <ZenIcon name="meditation" :size="13" class="text-[#0ecb81]" />
             <span>Thiền & Công Đức</span>
-            <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-white/10 text-[#0ecb81] font-bold">[2]</span>
-            <span class="text-[10px] transition-transform" :class="showMeditationMenu ? 'rotate-180' : ''">▴</span>
+            <UiKeycap>2</UiKeycap>
+            <ZenIcon name="chevron-up" :size="16" class="text-secondary transition-transform" :class="showMeditationMenu ? 'rotate-180' : ''" />
           </button>
         </div>
 
@@ -941,67 +1334,70 @@ function simulateLoading() {
         <div class="relative">
           <div
             v-if="showHeritageMenu"
-            class="absolute bottom-11 right-0 w-60 p-1.5 rounded-[8px] bg-[#1e2329]/98 border border-[#2b3139] shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-1"
+            class="absolute bottom-14 right-0 w-[320px] p-3 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-1"
           >
-            <div class="px-2.5 py-1 text-[10px] font-mono text-[#3b82f6] uppercase font-bold tracking-wider border-b border-[#2b3139] flex items-center justify-between">
-              <span>DI SẢN & BẢO VẬT</span>
-              <span class="text-[#707a8a] text-[9px]">[Phím 3]</span>
+            <div class="px-3 pb-2.5 mb-1 border-b border-hairline flex items-center justify-between">
+              <span class="text-sm font-bold text-white">Di Sản & Bảo Vật</span>
+              <UiKeycap>Phím 3</UiKeycap>
             </div>
             <button
+              type="button"
               @click="openDrawerFromDropup('shop')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-pink-300 transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="lotus" :size="13" class="text-pink-300" />
-              <div>
-                <div class="font-medium">Cửa Hàng Pháp Bảo</div>
-                <div class="text-[10px] text-[#707a8a]">Cổ phục 9 nước · Nhang trầm · Lễ vật</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">01</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Cửa Hàng Pháp Bảo</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Cổ phục 9 nước, nhang trầm, lễ vật</div>
               </div>
             </button>
             <button
+              type="button"
               @click="openDrawerFromDropup('cards')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-[#3b82f6] transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="cards" :size="13" class="text-[#3b82f6]" />
-              <div>
-                <div class="font-medium">Thẻ Bài Di Sản 3D</div>
-                <div class="text-[10px] text-[#707a8a]">10 Cổ tự mini · Audio · NFT CIP-68</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">02</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Thẻ Bài Di Sản 3D</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">10 cổ tự mini, âm cảnh, NFT CIP-68</div>
               </div>
             </button>
             <button
+              type="button"
               @click="openDrawerFromDropup('soundscape')"
-              class="w-full px-2.5 py-2 rounded-[6px] text-xs flex items-center gap-2 text-[#eaecef] hover:bg-[#2b3139] hover:text-[#FCD535] transition cursor-pointer text-left"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
             >
-              <ZenIcon name="bell" :size="13" class="text-[#FCD535]" />
-              <div>
-                <div class="font-medium">Bộ Trộn Âm Thanh 3D</div>
-                <div class="text-[10px] text-[#707a8a]">6 Kênh âm cảnh không gian thời gian thực</div>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">03</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Bộ Trộn Âm Thanh 3D</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">6 kênh âm cảnh không gian thời gian thực</div>
               </div>
             </button>
             <button
+              type="button"
               @click="showDisclaimer = true; closeAllDropups()"
-              class="w-full px-2.5 py-1.5 rounded-[6px] text-[11px] flex items-center gap-2 text-[#707a8a] hover:bg-[#2b3139] hover:text-white transition cursor-pointer text-left border-t border-[#2b3139]/60 mt-0.5"
+              class="w-full min-h-[40px] px-3 py-2 rounded-md text-xs font-medium text-secondary hover:bg-surface-elevated hover:text-white transition cursor-pointer text-left border-t border-hairline mt-1"
             >
-              <ZenIcon name="shield" :size="12" />
-              <span>Quy Chuẩn Trải Nghiệm & Pháp Lý</span>
+              Quy chuẩn trải nghiệm & Pháp lý
             </button>
           </div>
 
           <button
+            type="button"
             @click="toggleHeritageMenu"
-            class="bn-btn-secondary h-8 px-2.5 rounded-[6px] text-xs font-medium flex items-center gap-1.5 cursor-pointer"
-            :class="showHeritageMenu ? 'border-[#3b82f6] text-[#3b82f6] bg-[#2b3139]' : ''"
+            class="min-h-[40px] px-3.5 rounded-md bg-surface-card border text-sm font-medium flex items-center gap-2 transition cursor-pointer"
+            :class="showHeritageMenu ? 'border-gold bg-surface-elevated text-white' : 'border-hairline text-white hover:border-hairline hover:bg-surface-elevated'"
             title="Bấm phím [3] hoặc nhấp chuột để mở Di Sản & Cửa Hàng"
           >
-            <ZenIcon name="cards" :size="13" class="text-[#3b82f6]" />
             <span>Di Sản & Cửa Hàng</span>
-            <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-white/10 text-[#3b82f6] font-bold">[3]</span>
-            <span class="text-[10px] transition-transform" :class="showHeritageMenu ? 'rotate-180' : ''">▴</span>
+            <UiKeycap>3</UiKeycap>
+            <ZenIcon name="chevron-up" :size="16" class="text-secondary transition-transform" :class="showHeritageMenu ? 'rotate-180' : ''" />
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Toast Notification Banner (Binance Styling) -->
+    <!-- Toast Notification Banner (Whitelisted status icon #5) -->
     <transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="transform translate-y-2 opacity-0"
@@ -1010,14 +1406,12 @@ function simulateLoading() {
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform translate-y-2 opacity-0"
     >
-      <div v-if="toastMessage" class="fixed top-16 right-3 z-50 pointer-events-none">
-        <div class="bn-panel border border-[#FCD535]/30 px-3.5 py-2 rounded-[6px] shadow-2xl flex items-center gap-2.5 backdrop-blur-md">
-          <div class="w-6 h-6 rounded-[4px] bg-[#FCD535]/15 flex items-center justify-center text-[#FCD535] shrink-0">
-            <ZenIcon :name="toastMessage.icon as any" :size="13" />
-          </div>
+      <div v-if="toastMessage" class="fixed top-20 right-3 z-50 pointer-events-none">
+        <div class="bg-surface-card border border-hairline px-4 py-3 rounded-md shadow-2xl flex items-start gap-3 max-w-sm">
+          <ZenIcon name="circle-check" :size="20" class="text-trading-up shrink-0 mt-0.5" />
           <div>
-            <div class="text-xs font-bold text-white tracking-tight">{{ toastMessage.title }}</div>
-            <div class="text-[11px] text-[#929aa5] leading-tight">{{ toastMessage.desc }}</div>
+            <div class="text-sm font-bold text-white leading-snug">{{ toastMessage.title }}</div>
+            <div class="text-xs text-secondary leading-snug mt-0.5">{{ toastMessage.desc }}</div>
           </div>
         </div>
       </div>
@@ -1032,9 +1426,17 @@ function simulateLoading() {
       :online-count="onlinePilgrimCount"
       :remote-pilgrims="remotePilgrimsList"
       :initial-fortune-category="selectedFortuneCategory"
+      :is-near-fortune="isNearFortune"
+      :is-near-merit="isNearMerit"
+      :is-inside-hau-dong="isInsideHauDong"
       @outfit-changed="handleShopOutfitChanged"
+      @gender-changed="handleGenderSelect"
       @greet-pilgrim="handleBowToPilgrim"
       @send-mantra="handleSendChat"
+      @guide-to-fortune="handleGuideToFortune"
+      @guide-to-merit="handleGuideToMerit"
+      @guide-to-hau-dong="handleGuideToHauDong"
+      @trigger-bow="triggerBowAction"
       @update:active-tab="(t) => drawerTab = t"
     />
 
@@ -1044,4 +1446,304 @@ function simulateLoading() {
     <DisclaimerBanner v-if="showDisclaimer" @close="showDisclaimer = false" />
   </div>
 </template>
+
+<style scoped>
+.hud-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--canvas-dark, #0b0e11);
+  border-bottom: 1px solid var(--hairline-on-dark, #2b3139);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 30;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+}
+
+.hud-top-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.hud-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-brand__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-brand__title {
+  font-size: var(--text-sm, 14px);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  line-height: var(--leading-tight, 1.25);
+  white-space: nowrap;
+}
+
+.hud-brand__user-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary, #929aa5);
+  line-height: var(--leading-tight, 1.25);
+}
+
+.hud-brand__user-name {
+  color: var(--text-primary, #eaecef);
+  font-weight: 500;
+}
+
+.hud-divider {
+  color: var(--text-disabled, #707a8a);
+}
+
+.hud-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.hud-status-dot--success {
+  background-color: var(--trading-up, #0ecb81);
+}
+
+.hud-status-dot--warning {
+  background-color: var(--primary, #fcd535);
+}
+
+.hud-top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.hud-v-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--hairline-on-dark, #2b3139);
+  flex-shrink: 0;
+}
+
+.hud-stat-cell {
+  padding: 0 4px;
+}
+
+.hud-ledger-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.hud-ledger-mode {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  cursor: help;
+}
+
+.hud-wallet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--surface-card-dark, #1e2329);
+  border: 1px solid var(--hairline-on-dark, #2b3139);
+  color: var(--text-primary, #eaecef);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 120ms ease), border-color var(--transition-fast, 120ms ease);
+}
+
+.hud-wallet-btn:hover {
+  background-color: var(--surface-elevated-dark, #2b3139);
+  border-color: var(--hairline-on-dark-hover, #474d57);
+}
+
+.hud-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--surface-card-dark, #1e2329);
+  border: 1px solid var(--hairline-on-dark, #2b3139);
+  color: var(--text-secondary, #929aa5);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 120ms ease), color var(--transition-fast, 120ms ease);
+}
+
+.hud-icon-btn:hover {
+  background-color: var(--surface-elevated-dark, #2b3139);
+  color: var(--text-primary, #eaecef);
+}
+
+.hud-icon-btn.is-active {
+  border-color: var(--primary, #fcd535);
+  color: var(--text-primary, #eaecef);
+}
+
+.hud-sangha-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--surface-elevated-dark, #2b3139);
+  border: 1px solid var(--hairline-on-dark, #2b3139);
+  color: var(--text-primary, #eaecef);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 120ms ease);
+}
+
+.hud-sangha-btn:hover {
+  background-color: var(--surface-elevated-dark-hover, #333b44);
+}
+
+/* Popovers */
+.hud-popover {
+  position: absolute;
+  top: 44px;
+  border-radius: var(--radius-md, 6px);
+  background-color: var(--surface-card-dark, #1e2329);
+  border: 1px solid var(--hairline-on-dark, #2b3139);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-popover--display {
+  right: 0;
+  width: 260px;
+  padding: 8px;
+}
+
+.hud-popover--bottom {
+  top: auto;
+  bottom: 50px;
+  right: 0;
+}
+
+.hud-popover__header {
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--hairline-on-dark, #2b3139);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hud-popover__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-popover__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary, #eaecef);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 120ms ease);
+}
+
+.hud-popover__item:hover {
+  background-color: var(--surface-elevated-dark, #2b3139);
+}
+
+.hud-popover__item.is-selected {
+  background-color: var(--surface-elevated-dark, #2b3139);
+  border-color: var(--primary, #fcd535);
+}
+
+.hud-popover__item--row {
+  width: 100%;
+  text-align: left;
+}
+
+/* Markets Row Popup Phím 1 */
+.hud-markets-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline-on-dark, #2b3139);
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color var(--transition-fast, 120ms ease);
+}
+
+.hud-markets-row:last-child {
+  border-bottom: none;
+}
+
+.hud-markets-row:hover {
+  background-color: var(--surface-elevated-dark, #2b3139);
+}
+
+.hud-trigger-gold {
+  gap: 8px;
+  font-weight: 700;
+}
+
+.hud-keycap-gold {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+  color: #181a20 !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Helpers */
+.font-numbers {
+  font-family: var(--font-numbers, 'IBM Plex Sans', sans-serif);
+  font-variant-numeric: tabular-nums;
+}
+
+.text-primary-text {
+  color: var(--text-primary, #eaecef);
+}
+
+.text-secondary {
+  color: var(--text-secondary, #929aa5);
+}
+
+.text-primary {
+  color: var(--primary, #fcd535);
+}
+
+.bg-surface-elevated {
+  background-color: var(--surface-elevated-dark, #2b3139);
+}
+
+.border-hairline {
+  border-color: var(--hairline-on-dark, #2b3139);
+}
+</style>
 

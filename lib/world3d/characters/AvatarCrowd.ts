@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { PilgrimAvatar, type PilgrimCountry, PALETTES } from '../PilgrimAvatar'
+import { PilgrimAvatar, type AvatarGender, type PilgrimCountry } from '../PilgrimAvatar'
 import { AvatarKit } from './AvatarKit'
 import { NameplateAtlas } from './NameplateAtlas'
 import { FootstepSystem } from './FootstepSystem'
@@ -10,6 +10,7 @@ export interface CrowdPilgrim {
   name: string
   title: string
   country: PilgrimCountry
+  gender: AvatarGender
   currentPos: THREE.Vector3
   targetPos: THREE.Vector3
   currentYaw: number
@@ -21,42 +22,47 @@ export interface CrowdPilgrim {
   avatarLOD0?: PilgrimAvatar
 }
 
+interface CountryInstances {
+  lod1: THREE.InstancedMesh
+  lod2: THREE.InstancedMesh
+  lod1Count: number
+  lod2Count: number
+}
+
 /**
- * AvatarCrowd (Hệ Thống Đám Đông 500 Người Tối Ưu Hóa Tuyệt Đối):
- * Slices 500 avatars into 4 LOD tiers:
- * - LOD0 (0-15m, max 25 near camera): Full skeleton rig mesh with dynamic headwear and walking animation.
- * - LOD1 (15-45m): Merged low-poly InstancedMesh (1 draw call).
- * - LOD2 (45-90m): Ultra-low poly impostor InstancedMesh (1 draw call).
- * - LOD3 (>90m or frustum culled): 0 draw calls, CPU-only logic.
- * Consolidated NameplateAtlas (1 draw call) and global FootstepSystem (1 draw call).
+ * AvatarCrowd (đám đông low-poly, thiết kế cho ~200 người cùng lúc):
+ * - LOD0 (0-15 m, tối đa 12 người): 6 bộ phận rigid có hoạt ảnh đầy đủ (PilgrimAvatar).
+ * - LOD1 (15-45 m): mô hình đứng gộp ~500 tam giác, InstancedMesh theo từng quốc gia.
+ * - LOD2 (45-95 m): hình khối rất thô ~100 tam giác, InstancedMesh theo từng quốc gia.
+ * - LOD3 (>95 m hoặc ngoài khung nhìn): chỉ tính logic trên CPU.
+ * Màu sắc nằm trong vertex color của từng quốc gia nên không cần instanceColor.
+ * NameplateAtlas (1 draw call) và FootstepSystem (1 draw call) dùng chung toàn cục.
  */
 export class AvatarCrowd {
   public root = new THREE.Group()
 
-  private maxPilgrims = 600
+  /** Sức chứa mỗi InstancedMesh (theo từng quốc gia). */
+  private readonly instanceCapacity = 256
   private pilgrims = new Map<string, CrowdPilgrim>()
 
-  // LOD0 Pool (Max 15 detailed avatars nearest to camera)
-  private readonly maxLOD0 = 15
+  // LOD0 pool
+  private maxLOD0 = 12
   private lod0Pool: PilgrimAvatar[] = []
   private availableLOD0: PilgrimAvatar[] = []
 
-  // LOD1 & LOD2 Instanced Meshes
-  private lod1Mesh: THREE.InstancedMesh
-  private lod2Mesh: THREE.InstancedMesh
+  // LOD1 / LOD2 theo quốc gia (tạo lười khi gặp quốc gia đó lần đầu)
+  private instances = new Map<PilgrimCountry, CountryInstances>()
   private avatarKit: AvatarKit
 
-  // 1 Draw Call Nameplate Atlas & Footstep System
-  public nameplateAtlas: NameplateAtlas
-  public footstepSystem: FootstepSystem
+  private nameplateAtlas: NameplateAtlas
+  private footstepSystem: FootstepSystem
 
-  // Spatial Frustum Culling
   private frustum = new THREE.Frustum()
   private projScreenMatrix = new THREE.Matrix4()
   private dummy = new THREE.Object3D()
-  private tempColor = new THREE.Color()
+  private sorted: CrowdPilgrim[] = []
 
-  // Breakdown statistics for F2 Profiler HUD
+  // Thống kê hiển thị trên HUD F2
   private stats = {
     total: 0,
     lod0: 0,
@@ -68,7 +74,6 @@ export class AvatarCrowd {
   constructor(scene: THREE.Scene) {
     this.avatarKit = AvatarKit.getInstance()
 
-    // 1. Tạo Pool cho LOD0 (25 chi tiết nhất)
     for (let i = 0; i < this.maxLOD0; i++) {
       const avatar = new PilgrimAvatar()
       avatar.root.visible = false
@@ -77,29 +82,6 @@ export class AvatarCrowd {
       this.availableLOD0.push(avatar)
     }
 
-    // 2. Tạo InstancedMesh cho LOD1 (~380 tris / avatar, 1 draw call)
-    this.lod1Mesh = new THREE.InstancedMesh(this.avatarKit.lod1Geometry, this.avatarKit.lod1Material, this.maxPilgrims)
-    this.lod1Mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    this.lod1Mesh.castShadow = true
-    this.lod1Mesh.receiveShadow = true
-    this.root.add(this.lod1Mesh)
-
-    // 3. Tạo InstancedMesh cho LOD2 (~80 tris / avatar, 1 draw call)
-    this.lod2Mesh = new THREE.InstancedMesh(this.avatarKit.lod2Geometry, this.avatarKit.lod2Material, this.maxPilgrims)
-    this.lod2Mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    this.root.add(this.lod2Mesh)
-
-    // Khởi tạo ma trận ẩn cho instanced meshes
-    this.dummy.position.set(0, -500, 0)
-    this.dummy.updateMatrix()
-    for (let i = 0; i < this.maxPilgrims; i++) {
-      this.lod1Mesh.setMatrixAt(i, this.dummy.matrix)
-      this.lod2Mesh.setMatrixAt(i, this.dummy.matrix)
-    }
-    this.lod1Mesh.instanceMatrix.needsUpdate = true
-    this.lod2Mesh.instanceMatrix.needsUpdate = true
-
-    // 4. Bảng tên Atlas toàn cục (1 draw call) & Dấu chân hoa sen (1 draw call)
     this.nameplateAtlas = new NameplateAtlas()
     this.root.add(this.nameplateAtlas.mesh)
 
@@ -109,24 +91,53 @@ export class AvatarCrowd {
     scene.add(this.root)
   }
 
+  private getInstances(country: PilgrimCountry): CountryInstances {
+    let inst = this.instances.get(country)
+    if (inst) return inst
+
+    const material = this.avatarKit.material
+    const lod1 = new THREE.InstancedMesh(this.avatarKit.getLod1Geometry(country), material, this.instanceCapacity)
+    lod1.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    lod1.castShadow = true
+    lod1.receiveShadow = false
+    lod1.frustumCulled = false
+    lod1.count = 0
+
+    const lod2 = new THREE.InstancedMesh(this.avatarKit.getLod2Geometry(country), material, this.instanceCapacity)
+    lod2.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    lod2.frustumCulled = false
+    lod2.count = 0
+
+    this.root.add(lod1, lod2)
+    inst = { lod1, lod2, lod1Count: 0, lod2Count: 0 }
+    this.instances.set(country, inst)
+    return inst
+  }
+
   /**
-   * Thêm hoặc cập nhật người chơi trong đám đông
+   * Thêm mới hoặc cập nhật một người hành hương.
    */
   public upsertPilgrim(data: Partial<PilgrimPresence> & { id: string }) {
     let p = this.pilgrims.get(data.id)
+
     if (!p) {
-      const country = (data.country && data.country.trim() !== '' ? data.country : 'vietnam') as PilgrimCountry
+      const rawCountry = data.country && data.country.trim() !== '' ? data.country.split(':')[0] : 'vietnam'
+      const country = rawCountry as PilgrimCountry
+      const gender: AvatarGender =
+        data.gender === 'male' || (data.country && data.country.endsWith(':male')) ? 'male' : 'female'
       const name = data.name && data.name.trim() !== '' ? data.name : `Đồng tu ${data.id.slice(0, 6)}`
       const title = data.title && data.title.trim() !== '' ? data.title : 'Hành Giả'
 
       const pos = data.position
         ? new THREE.Vector3(data.position[0], data.position[1], data.position[2])
         : new THREE.Vector3()
+
       p = {
         id: data.id,
         name,
         title,
         country,
+        gender,
         currentPos: pos.clone(),
         targetPos: pos.clone(),
         currentYaw: data.yaw || 0,
@@ -145,12 +156,25 @@ export class AvatarCrowd {
       if (data.yaw !== undefined) {
         p.targetYaw = data.yaw
       }
-      if (data.country && data.country.trim() !== '' && p.country !== data.country) {
-        p.country = data.country as PilgrimCountry
-        if (p.avatarLOD0) {
-          p.avatarLOD0.setCountryStyle(p.country)
+      if (data.country && data.country.trim() !== '') {
+        const nextCountry = data.country.split(':')[0] as PilgrimCountry
+        if (p.country !== nextCountry) {
+          p.country = nextCountry
+          if (p.avatarLOD0) {
+            p.avatarLOD0.setCountryStyle(p.country)
+          }
+          this.nameplateAtlas.register(p.id, p.name, p.title, p.country)
         }
-        this.nameplateAtlas.register(p.id, p.name, p.title, p.country)
+      }
+      if (data.gender || (data.country && data.country.includes(':'))) {
+        const nextGender: AvatarGender =
+          data.gender === 'male' || (data.country && data.country.endsWith(':male')) ? 'male' : 'female'
+        if (p.gender !== nextGender) {
+          p.gender = nextGender
+          if (p.avatarLOD0) {
+            p.avatarLOD0.setGender(p.gender)
+          }
+        }
       }
       if (data.name && data.name.trim() !== '') {
         p.name = data.name
@@ -159,19 +183,14 @@ export class AvatarCrowd {
     }
   }
 
-  /**
-   * Kích hoạt Emote (bow, meditate, pray) cho người chơi từ xa
-   */
+  /** Kích hoạt hoạt ảnh biểu cảm (chỉ thấy rõ ở LOD0). */
   public triggerEmote(id: string, action: string) {
     const p = this.pilgrims.get(id)
-    if (p && p.avatarLOD0) {
+    if (p?.avatarLOD0) {
       p.avatarLOD0.setAction(action)
     }
   }
 
-  /**
-   * Xóa người chơi rời khỏi thế giới
-   */
   public removePilgrim(id: string) {
     const p = this.pilgrims.get(id)
     if (!p) return
@@ -186,14 +205,30 @@ export class AvatarCrowd {
     this.pilgrims.delete(id)
   }
 
+  private releaseLOD0(p: CrowdPilgrim) {
+    if (p.avatarLOD0) {
+      p.avatarLOD0.root.visible = false
+      this.availableLOD0.push(p.avatarLOD0)
+      p.avatarLOD0 = undefined
+    }
+  }
+
+  private writeInstance(mesh: THREE.InstancedMesh, index: number, p: CrowdPilgrim) {
+    this.dummy.position.copy(p.currentPos)
+    this.dummy.rotation.set(0, p.currentYaw, 0)
+    this.dummy.scale.set(1, 1, 1)
+    this.dummy.updateMatrix()
+    mesh.setMatrixAt(index, this.dummy.matrix)
+  }
+
   /**
    * Cập nhật đám đông mỗi frame:
-   * 1. Nội suy tọa độ di chuyển mượt mà (100ms snapshot buffer lerp).
-   * 2. Phân loại khoảng cách và Frustum Culling.
-   * 3. Gán linh hoạt LOD0/1/2/3 và cập nhật InstancedMesh + Nameplates.
+   * 1. Nội suy toạ độ và góc xoay.
+   * 2. Phân loại theo khoảng cách + frustum culling.
+   * 3. Gán LOD0/1/2/3, cập nhật InstancedMesh và nameplate.
    */
   public update(delta: number, camera: THREE.PerspectiveCamera, playerPos: THREE.Vector3) {
-    // Cập nhật Frustum camera để culling nhanh
+    void playerPos
     this.projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     this.frustum.setFromProjectionMatrix(this.projScreenMatrix)
 
@@ -203,10 +238,14 @@ export class AvatarCrowd {
     let lod2Count = 0
     let lod3Count = 0
 
-    // Thu hồi các avatar LOD0 để tái phân bổ theo cự ly gần nhất
-    const sortedPilgrims = Array.from(this.pilgrims.values())
-    for (const p of sortedPilgrims) {
-      // Nội suy vị trí & góc xoay
+    this.instances.forEach((inst) => {
+      inst.lod1Count = 0
+      inst.lod2Count = 0
+    })
+
+    const list = this.sorted
+    list.length = 0
+    for (const p of this.pilgrims.values()) {
       const distToTarget = p.currentPos.distanceTo(p.targetPos)
       p.isMoving = distToTarget > 0.05
       p.currentPos.lerp(p.targetPos, Math.min(delta * 14.0, 1.0))
@@ -216,56 +255,42 @@ export class AvatarCrowd {
       while (diff > Math.PI) diff -= Math.PI * 2
       p.currentYaw += diff * Math.min(delta * 14.0, 1.0)
 
-      // Kiểm tra bước chân hoa sen
       if (p.isMoving) {
-        const stepDist = p.currentPos.distanceTo(p.prevStepPos)
-        p.lastStepDist += stepDist
+        p.lastStepDist += p.currentPos.distanceTo(p.prevStepPos)
         if (p.lastStepDist > 1.2) {
           this.footstepSystem.addFootstep(p.currentPos)
           p.lastStepDist = 0
         }
       }
       p.prevStepPos.copy(p.currentPos)
+      list.push(p)
     }
 
-    // Sắp xếp người chơi theo khoảng cách tới camera để ưu tiên LOD0 cho người ở gần
-    sortedPilgrims.sort((a, b) => {
-      const distA = a.currentPos.distanceToSquared(camPos)
-      const distB = b.currentPos.distanceToSquared(camPos)
-      return distA - distB
-    })
+    // Người gần camera nhất được ưu tiên LOD0
+    list.sort((a, b) => a.currentPos.distanceToSquared(camPos) - b.currentPos.distanceToSquared(camPos))
 
-    let lod1InstanceIndex = 0
-    let lod2InstanceIndex = 0
-
-    for (const p of sortedPilgrims) {
+    for (const p of list) {
       const distToCam = p.currentPos.distanceTo(camPos)
-
-      // Frustum Culling: Kiểm tra xem điểm có nằm trong nón nhìn camera không
-      const inFrustum = this.frustum.containsPoint(p.currentPos)
+      const inFrustum = this.frustum.containsPoint(p.currentPos) || distToCam < 4
 
       if (!inFrustum || distToCam > 95.0) {
-        // LOD3: Culling hoàn toàn
         p.lod = 3
-        if (p.avatarLOD0) {
-          p.avatarLOD0.root.visible = false
-          this.availableLOD0.push(p.avatarLOD0)
-          p.avatarLOD0 = undefined
-        }
+        this.releaseLOD0(p)
         this.nameplateAtlas.updatePosition(p.id, 0, 0, 0, false)
         lod3Count++
         continue
       }
 
-      // Phân chia tầng LOD
       if (distToCam <= 15.0 && lod0Count < this.maxLOD0) {
-        // --- LOD 0 (Cực chi tiết: 0 - 15m) ---
+        // --- LOD0: đầy đủ hoạt ảnh ---
         p.lod = 0
         lod0Count++
 
         if (!p.avatarLOD0 && this.availableLOD0.length > 0) {
           p.avatarLOD0 = this.availableLOD0.pop()!
           p.avatarLOD0.setCountryStyle(p.country)
+          p.avatarLOD0.setGender(p.gender)
+          p.avatarLOD0.setAction('standing')
         }
 
         if (p.avatarLOD0) {
@@ -277,75 +302,39 @@ export class AvatarCrowd {
 
         this.nameplateAtlas.updatePosition(p.id, p.currentPos.x, p.currentPos.y, p.currentPos.z, true)
       } else if (distToCam <= 45.0) {
-        // --- LOD 1 (Instanced Mesh tầm trung: 15 - 45m) ---
+        // --- LOD1: mô hình đứng gộp ---
         p.lod = 1
-        lod1Count++
+        this.releaseLOD0(p)
 
-        if (p.avatarLOD0) {
-          p.avatarLOD0.root.visible = false
-          this.availableLOD0.push(p.avatarLOD0)
-          p.avatarLOD0 = undefined
+        const inst = this.getInstances(p.country)
+        if (inst.lod1Count < this.instanceCapacity) {
+          this.writeInstance(inst.lod1, inst.lod1Count, p)
+          inst.lod1Count++
+          lod1Count++
         }
-
-        if (lod1InstanceIndex < this.maxPilgrims) {
-          this.dummy.position.copy(p.currentPos)
-          this.dummy.rotation.y = p.currentYaw
-          this.dummy.scale.set(1, 1, 1)
-          this.dummy.updateMatrix()
-          this.lod1Mesh.setMatrixAt(lod1InstanceIndex, this.dummy.matrix)
-          const robeHex = PALETTES[p.country]?.robeColor || 0x3d5a80
-          this.tempColor.setHex(robeHex)
-          this.lod1Mesh.setColorAt(lod1InstanceIndex, this.tempColor)
-          lod1InstanceIndex++
-        }
-
-        this.nameplateAtlas.updatePosition(p.id, p.currentPos.x, p.currentPos.y, p.currentPos.z, true)
+        this.nameplateAtlas.updatePosition(p.id, p.currentPos.x, p.currentPos.y, p.currentPos.z, distToCam <= 30.0)
       } else {
-        // --- LOD 2 (Instanced Mesh tầm xa: 45 - 90m) ---
+        // --- LOD2: hình khối thô ---
         p.lod = 2
-        lod2Count++
+        this.releaseLOD0(p)
 
-        if (p.avatarLOD0) {
-          p.avatarLOD0.root.visible = false
-          this.availableLOD0.push(p.avatarLOD0)
-          p.avatarLOD0 = undefined
+        const inst = this.getInstances(p.country)
+        if (inst.lod2Count < this.instanceCapacity) {
+          this.writeInstance(inst.lod2, inst.lod2Count, p)
+          inst.lod2Count++
+          lod2Count++
         }
-
-        if (lod2InstanceIndex < this.maxPilgrims) {
-          this.dummy.position.copy(p.currentPos)
-          this.dummy.rotation.y = p.currentYaw
-          this.dummy.scale.set(1, 1, 1)
-          this.dummy.updateMatrix()
-          this.lod2Mesh.setMatrixAt(lod2InstanceIndex, this.dummy.matrix)
-          const robeHex = PALETTES[p.country]?.robeColor || 0x3d5a80
-          this.tempColor.setHex(robeHex)
-          this.lod2Mesh.setColorAt(lod2InstanceIndex, this.tempColor)
-          lod2InstanceIndex++
-        }
-
-        // Ẩn bảng tên ở cự ly xa để giảm tải thị giác
         this.nameplateAtlas.updatePosition(p.id, 0, 0, 0, false)
       }
     }
 
-    // Ẩn các instance còn lại của LOD1 và LOD2
-    for (let i = lod1InstanceIndex; i < this.maxPilgrims; i++) {
-      this.dummy.position.set(0, -500, 0)
-      this.dummy.updateMatrix()
-      this.lod1Mesh.setMatrixAt(i, this.dummy.matrix)
-    }
-    for (let i = lod2InstanceIndex; i < this.maxPilgrims; i++) {
-      this.dummy.position.set(0, -500, 0)
-      this.dummy.updateMatrix()
-      this.lod2Mesh.setMatrixAt(i, this.dummy.matrix)
-    }
+    this.instances.forEach((inst) => {
+      inst.lod1.count = inst.lod1Count
+      inst.lod2.count = inst.lod2Count
+      inst.lod1.instanceMatrix.needsUpdate = true
+      inst.lod2.instanceMatrix.needsUpdate = true
+    })
 
-    this.lod1Mesh.instanceMatrix.needsUpdate = true
-    this.lod2Mesh.instanceMatrix.needsUpdate = true
-    if (this.lod1Mesh.instanceColor) this.lod1Mesh.instanceColor.needsUpdate = true
-    if (this.lod2Mesh.instanceColor) this.lod2Mesh.instanceColor.needsUpdate = true
-
-    // Cập nhật hệ thống dấu chân hoa sen toàn cục
     this.footstepSystem.update(delta)
 
     this.stats = {
@@ -367,14 +356,14 @@ export class AvatarCrowd {
 
   public clear() {
     for (const p of this.pilgrims.values()) {
-      if (p.avatarLOD0) {
-        p.avatarLOD0.root.visible = false
-        this.availableLOD0.push(p.avatarLOD0)
-        p.avatarLOD0 = undefined
-      }
+      this.releaseLOD0(p)
     }
     this.pilgrims.clear()
     this.nameplateAtlas.clear()
+    this.instances.forEach((inst) => {
+      inst.lod1.count = 0
+      inst.lod2.count = 0
+    })
   }
 
   public dispose() {
@@ -384,10 +373,15 @@ export class AvatarCrowd {
     }
     this.lod0Pool = []
     this.availableLOD0 = []
-    this.lod1Mesh.geometry.dispose()
-    ;(this.lod1Mesh.material as THREE.Material).dispose()
-    this.lod2Mesh.geometry.dispose()
-    ;(this.lod2Mesh.material as THREE.Material).dispose()
+
+    // Hình học LOD thuộc AvatarKit, vật liệu thuộc FlatMaterialFactory: chỉ giải phóng bộ đệm instance.
+    this.instances.forEach((inst) => {
+      inst.lod1.dispose()
+      inst.lod2.dispose()
+    })
+    this.instances.clear()
+    this.avatarKit.dispose()
+
     this.nameplateAtlas.dispose()
     this.footstepSystem.dispose()
   }

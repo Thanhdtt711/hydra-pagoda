@@ -310,7 +310,7 @@ try {
   )
 
   // ============================================================================
-  // 11. Test 10: Gieo quẻ Hoàng Kim (100 MC) sinh kết quả ở server & lưu lịch sử
+  // 11. Test 10: Gieo quẻ Cát Tường (50 MC) sinh kết quả ở server & lưu lịch sử
   // ============================================================================
   const fortuneReqId = 'req_fortune_golden_0001'
   const fortRes = await api('/api/mc/fortune/draw', {
@@ -319,11 +319,11 @@ try {
     body: { category: 'wealth', tier: 'golden', requestId: fortuneReqId }
   })
   log(
-    '10. Gieo quẻ Hoàng Kim (-100 MC) sinh kết quả ở server -> mcBalance = 1,000 MC',
+    '10. Gieo quẻ Cát Tường (-50 MC) sinh kết quả ở server -> mcBalance = 1,050 MC',
     fortRes.status === 200 &&
-      fortRes.json?.mcBalance === 1000 &&
+      fortRes.json?.mcBalance === 1050 &&
       Boolean(fortRes.json?.fortune?.title) &&
-      fortRes.json?.fortune?.costMc === 100 &&
+      fortRes.json?.fortune?.costMc === 50 &&
       fortRes.json?.idempotentReplay === false,
     `title="${fortRes.json?.fortune?.title}", mcBalance=${fortRes.json?.mcBalance}`
   )
@@ -340,32 +340,32 @@ try {
     '11. Idempotency Gieo quẻ: gửi lặp requestId trả lại đúng quẻ cũ, không trừ thêm MC',
     fortReplayRes.status === 200 &&
       fortReplayRes.json?.idempotentReplay === true &&
-      fortReplayRes.json?.mcBalance === 1000 &&
+      fortReplayRes.json?.mcBalance === 1050 &&
       fortReplayRes.json?.fortune?.id === fortRes.json?.fortune?.id,
     `fortuneId=${fortReplayRes.json?.fortune?.id}, mcBalance=${fortReplayRes.json?.mcBalance}`
   )
 
   // ============================================================================
-  // 13. Test 12: Công đức 500 MC -> trừ 500 MC (còn 500 MC), tặng Hoa Đăng & cập nhật bảng công đức
+  // 13. Test 12: Công đức 550 MC -> trừ 550 MC (còn 500 MC), tặng Hoa Đăng & cập nhật bảng công đức
   // ============================================================================
   const meritReqId = 'req_merit_500_0001'
   const meritRes = await api('/api/mc/merit/donate', {
     method: 'POST',
     cookie,
     body: {
-      amountMc: 500,
+      amountMc: 550,
       prayer: 'Cầu quốc thái dân an, mưa thuận gió hòa',
       requestId: meritReqId
     }
   })
   const hasLantern = meritRes.json?.inventory?.some(i => i.itemId === 'lotus_lantern' && i.quantity >= 1)
   log(
-    '12. Hòm công đức (-500 MC) -> mcBalance = 500 MC, tặng Hoa Đăng Cầu An & ghi sổ vàng',
+    '12. Hòm công đức (-550 MC) -> mcBalance = 500 MC, tặng Hoa Đăng Cầu An & ghi sổ vàng',
     meritRes.status === 200 &&
       meritRes.json?.mcBalance === 500 &&
       meritRes.json?.donation?.rewardItemId === 'lotus_lantern' &&
       hasLantern &&
-      meritRes.json?.globalMeritTotal >= 500,
+      meritRes.json?.globalMeritTotal >= 550,
     `mcBalance=${meritRes.json?.mcBalance}, reward=${meritRes.json?.donation?.rewardItemId}`
   )
 

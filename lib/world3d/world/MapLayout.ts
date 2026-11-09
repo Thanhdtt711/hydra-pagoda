@@ -92,14 +92,14 @@ export class MapLayout {
       id: 'sanctuary_hall',
       name: 'Đại Hùng Bảo Điện',
       category: 'building',
-      center: { x: 0, y: 0, z: -14.5 },
-      footprint: { type: 'box', width: 46.0, depth: 36.0 }, // Bao trọn thềm x in [-23, 23], z in [-32.5, 3.5]
+      center: { x: 0, y: 0, z: -9.5 },
+      footprint: { type: 'box', width: 32.0, depth: 26.0 }, // Bao trọn thềm x in [-16, 16], z in [-22.5, 3.5]
       elevation: 1.35,
       rotationY: 0,
       clearance: 2.0,
       isWalkable: true,
       isExclusion: true,
-      size: { width: 40.0, height: 15.5, depth: 30.0 },
+      size: { width: 28.0, height: 11.5, depth: 22.0 },
       doorCenter: { x: 0, y: 1.35, z: 0.5 }
     },
 
@@ -108,7 +108,7 @@ export class MapLayout {
       id: 'buddha_statue',
       name: 'Kim Thân Đức Phật Bổn Sư',
       category: 'prop',
-      center: { x: 0, y: 1.35, z: -23.5 },
+      center: { x: 0, y: 1.35, z: -19.0 },
       footprint: { type: 'box', width: 4.5, depth: 4.0 },
       elevation: 1.35,
       rotationY: 0,
@@ -184,24 +184,24 @@ export class MapLayout {
       id: 'incense_burner',
       name: 'Đại Lư Hương Sân Chánh Điện',
       category: 'prop',
-      center: { x: 0, y: 0.08, z: 10.0 },
+      center: { x: 0, y: 0.14, z: 9.8 },
       footprint: { type: 'circle', radius: 1.3 },
       radius: 1.3,
-      elevation: 0.08,
+      elevation: 0.14,
       rotationY: 0,
       clearance: 0.8,
       isWalkable: false,
       isExclusion: true
     },
 
-    // 9. HÒM CÔNG ĐỨC (Đứng bên phải ngự đạo cạnh lư hương)
+    // 9. HÒM CÔNG ĐỨC (Đứng bên phải ngự đạo cạnh lư hương, tách hẳn khỏi hàng đèn đá)
     MERIT_BOX: {
       id: 'merit_box',
       name: 'Hòm Công Đức',
       category: 'prop',
-      center: { x: 4.0, y: 0.08, z: 10.0 },
+      center: { x: 5.0, y: 0.14, z: 9.8 },
       footprint: { type: 'box', width: 1.5, depth: 1.1 },
-      elevation: 0.08,
+      elevation: 0.14,
       rotationY: 0,
       clearance: 0.8,
       isWalkable: false,
@@ -209,28 +209,44 @@ export class MapLayout {
       size: { width: 1.5, height: 1.2, depth: 1.1 }
     },
 
-    // 10. BÀN XIN XĂM & PHÁP BẢO (Đứng bên trái ngự đạo cạnh lư hương)
+    // 10. BÀN XIN XĂM & PHÁP BẢO (Đứng bên trái ngự đạo cạnh lư hương, tách hẳn khỏi hàng đèn đá)
     FORTUNE_TABLE: {
       id: 'fortune_table',
       name: 'Bàn Xin Xăm & Pháp Bảo',
       category: 'prop',
-      center: { x: -4.0, y: 0.08, z: 10.0 },
+      center: { x: -5.0, y: 0.14, z: 9.8 },
       footprint: { type: 'box', width: 1.6, depth: 1.1 },
-      elevation: 0.08,
+      elevation: 0.14,
       rotationY: 0,
       clearance: 0.8,
       isWalkable: false,
       isExclusion: true,
       size: { width: 1.6, height: 1.15, depth: 1.1 }
+    },
+
+    // 11. NHÀ HẦU ĐỒNG — ĐIỆN THỜ TỨ PHỦ & TRẦN TRIỀU (Phía Đông / Bên phải Đại Hùng Bảo Điện)
+    HAU_DONG_HALL: {
+      id: 'hau_dong_hall',
+      name: 'Nhà Hầu Đồng (Điện Tứ Phủ & Trần Triều)',
+      category: 'building',
+      center: { x: 35.0, y: 0, z: -9.5 },
+      footprint: { type: 'box', width: 22.0, depth: 20.0 },
+      elevation: 0.90,
+      rotationY: 0,
+      clearance: 2.0,
+      isWalkable: true,
+      isExclusion: true,
+      size: { width: 20.0, height: 9.5, depth: 18.0 },
+      doorCenter: { x: 35.0, y: 0.90, z: -0.5 }
     }
   }
 
-  // 8 ĐÈN ĐÁ TŌRŌ DỌC NGỰ ĐẠO (Được bố trí song song 2 bên trục ngự đạo x = ±3.8)
+  // 8 ĐÈN ĐÁ TŌRŌ DỌC NGỰ ĐẠO (Bố trí song song 2 bên trục ngự đạo x = ±3.6, chừa khoảng thoáng quanh Hòm Công Đức & Bàn Xem Quẻ ở z = 9.8)
   public static readonly LANTERN_COORDINATES: Array<[number, number]> = [
-    [-3.8, 4.5],  [3.8, 4.5],   // Cặp 1: Chân bậc thang Chánh Điện
-    [-3.8, 9.5],  [3.8, 9.5],   // Cặp 2: Sân lư hương đại đỉnh
-    [-3.8, 15.0], [3.8, 15.0],  // Cặp 3: Giữa sân chùa (ngang hồ sen & lầu chuông)
-    [-3.8, 20.5], [3.8, 20.5]   // Cặp 4: Trước Cổng Tam Quan
+    [-3.6, 5.2], [3.6, 5.2],   // Cặp 1: Chân bậc thang Chánh Điện
+    [-3.6, 13.0], [3.6, 13.0], // Cặp 2: Phía Nam sân lư hương (cách Hòm Công Đức & Bàn Xem Quẻ > 3.5m)
+    [-3.6, 16.8], [3.6, 16.8], // Cặp 3: Giữa sân chùa (ngang hồ sen & lầu chuông)
+    [-3.6, 20.6], [3.6, 20.6]  // Cặp 4: Trước Cổng Tam Quan
   ]
 
   // Bậc thang Chánh Điện mặt Nam (Tam cấp chuẩn hóa <= 0.18m mỗi bậc)
@@ -240,7 +256,7 @@ export class MapLayout {
     stepRiser: 1.35 / 8, // ~0.16875m <= 0.18m
     totalDepth: 3.2,
     stepTread: 3.2 / 8,  // 0.40m >= 0.30m
-    width: 14.0,
+    width: 12.0,
     startZ: 3.5,
     endZ: 6.7
   }
@@ -276,7 +292,7 @@ export class MapLayout {
     { id: 'bodhi_path', name: 'Đường Bồ Đề', position: { x: -6.5, y: 0.08, z: 11.5 }, yaw: Math.PI * 0.9 },
     { id: 'pond_promenade', name: 'Bến Hồ Sen', position: { x: -10.0, y: 0.08, z: 13.5 }, yaw: Math.PI * 0.5 },
     { id: 'bell_terrace', name: 'Sân Lầu Chuông', position: { x: 10.0, y: 0.08, z: 13.5 }, yaw: -Math.PI * 0.5 },
-    { id: 'sanctuary_interior', name: 'Lòng Chánh Điện', position: { x: 0, y: 1.35, z: -12.0 }, yaw: Math.PI }
+    { id: 'sanctuary_interior', name: 'Lòng Chánh Điện', position: { x: 0, y: 1.35, z: -8.0 }, yaw: Math.PI }
   ]
 
   /**
@@ -291,9 +307,9 @@ export class MapLayout {
       // 2. Cây Đa Cổ Thụ (Phía Đông đối xứng sân chùa: 9.0, 0, 7.5)
       { id: 'tree_banyan_east', species: 'banyan', x: 9.0, z: 7.5, scale: 1.10, rotY: 1.82, seed: 1002 },
 
-      // 3. Thông Cổ Tự Ngoại Vi & Hậu Viện (Đặt an toàn ngoài thềm Chánh Điện z < -35 và hai bên đồi x > 25, x < -25)
-      { id: 'tree_pine_bell_1', species: 'pine', x: 26.0, z: 13.5, scale: 1.05, rotY: 0.2, seed: 1003 },
-      { id: 'tree_pine_bell_2', species: 'pine', x: 27.5, z: 3.5, scale: 0.95, rotY: 1.1, seed: 1004 },
+      // 3. Thông Cổ Tự Ngoại Vi & Hậu Viện (Đặt an toàn ngoài thềm Chánh Điện & Nhà Hầu Đồng)
+      { id: 'tree_pine_bell_1', species: 'pine', x: 26.0, z: 16.5, scale: 1.05, rotY: 0.2, seed: 1003 },
+      { id: 'tree_pine_bell_2', species: 'pine', x: 54.0, z: 3.5, scale: 0.95, rotY: 1.1, seed: 1004 },
       { id: 'tree_pine_back_1', species: 'pine', x: -18.0, z: -36.0, scale: 1.10, rotY: 2.3, seed: 1005 },
       { id: 'tree_pine_back_2', species: 'pine', x: 18.0, z: -36.0, scale: 1.05, rotY: 0.8, seed: 1006 },
       { id: 'tree_pine_back_3', species: 'pine', x: 0.0, z: -37.5, scale: 1.15, rotY: 1.4, seed: 1007 },
@@ -303,20 +319,20 @@ export class MapLayout {
       // 4. Phong Đỏ / Anh Đào (Bốn góc hoa viên ngoại vi)
       { id: 'tree_sakura_sw', species: 'cherry_maple', x: -26.0, z: 2.0, scale: 0.95, rotY: 1.2, seed: 1010 },
       { id: 'tree_sakura_nw', species: 'cherry_maple', x: -26.5, z: -14.0, scale: 1.05, rotY: 0.5, seed: 1011 },
-      { id: 'tree_sakura_se', species: 'cherry_maple', x: 26.0, z: 2.0, scale: 0.95, rotY: 2.1, seed: 1012 },
-      { id: 'tree_sakura_ne', species: 'cherry_maple', x: 26.5, z: -14.0, scale: 1.05, rotY: 1.7, seed: 1013 },
+      { id: 'tree_sakura_se', species: 'cherry_maple', x: 53.5, z: -2.0, scale: 0.95, rotY: 2.1, seed: 1012 },
+      { id: 'tree_sakura_ne', species: 'cherry_maple', x: 54.0, z: -14.0, scale: 1.05, rotY: 1.7, seed: 1013 },
 
       // 5. Cau Cảnh / Cọ Nam Á (Lối đi ven hoa viên Tây và Đông)
       { id: 'tree_palm_pond_1', species: 'palm', x: -26.0, z: 12.0, scale: 1.0, rotY: 0.3, seed: 1014 },
       { id: 'tree_palm_pond_2', species: 'palm', x: -26.0, z: 16.0, scale: 0.95, rotY: 1.4, seed: 1015 },
-      { id: 'tree_palm_bell_1', species: 'palm', x: 26.0, z: 12.0, scale: 1.0, rotY: 2.2, seed: 1016 },
-      { id: 'tree_palm_bell_2', species: 'palm', x: 26.0, z: 16.0, scale: 0.95, rotY: 0.9, seed: 1017 },
+      { id: 'tree_palm_bell_1', species: 'palm', x: 26.0, z: 14.0, scale: 1.0, rotY: 2.2, seed: 1016 },
+      { id: 'tree_palm_bell_2', species: 'palm', x: 26.0, z: 18.0, scale: 0.95, rotY: 0.9, seed: 1017 },
 
       // 6. Rặng Trúc Thiền Tông (Dọc vách hoa viên Tây và Đông)
       { id: 'tree_bamboo_w1', species: 'bamboo', x: -28.0, z: 6.0, scale: 1.05, rotY: 0.0, seed: 1018 },
       { id: 'tree_bamboo_w2', species: 'bamboo', x: -28.5, z: 8.5, scale: 0.95, rotY: 0.8, seed: 1019 },
-      { id: 'tree_bamboo_e1', species: 'bamboo', x: 28.0, z: 6.0, scale: 1.05, rotY: 0.4, seed: 1020 },
-      { id: 'tree_bamboo_e2', species: 'bamboo', x: 28.5, z: 8.5, scale: 0.95, rotY: 1.2, seed: 1021 }
+      { id: 'tree_bamboo_e1', species: 'bamboo', x: 53.5, z: 6.0, scale: 1.05, rotY: 0.4, seed: 1020 },
+      { id: 'tree_bamboo_e2', species: 'bamboo', x: 54.0, z: 8.5, scale: 0.95, rotY: 1.2, seed: 1021 }
     ]
 
     // Sinh thêm rặng cây rừng bao quanh ngoại vi thung lũng (R = 32m tới 108m) bằng Poisson-disk
@@ -401,6 +417,17 @@ export class MapLayout {
 
     // Trục đường dẫn Nam ra ngoài: x in [-5.0, 5.0], z in [24.0, 80.0]
     if (Math.abs(x) < 5.0 + extraMargin && z >= 24.0 && z <= 80.0) {
+      return true
+    }
+
+    // Khuôn viên mở rộng phía Đông (Nhà Hầu Đồng, sân trước, bậc tam cấp & đường đá kết nối từ sân chính):
+    // Không cho bất kỳ cây rừng, khóm cỏ hay hoa dại nào mọc đè lên Nhà Hầu Đồng và lối đi phía Đông
+    if (
+      x >= 10.0 - extraMargin &&
+      x <= 50.0 + extraMargin &&
+      z >= -23.0 - extraMargin &&
+      z <= 11.5 + extraMargin
+    ) {
       return true
     }
 

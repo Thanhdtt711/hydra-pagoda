@@ -1,5 +1,5 @@
 // server/routes/_ws.ts - High-Performance Spatial Grid (AoI) WebSocket Route
-// Engineered for 500 concurrent avatars with binary packet compression and 40x40m AoI cells.
+// Ngân sách thiết kế: ~200 avatar đồng thời (binary packet 24 byte, AoI cell 40x40m).
 
 import {
   MSG_MOVE,
@@ -17,6 +17,7 @@ export interface PilgrimPresence {
   name: string
   title: string
   country: string
+  gender?: 'female' | 'male'
   position: [number, number, number]
   yaw: number
   action: MovementAction
@@ -168,11 +169,18 @@ export default defineWebSocketHandler({
             ? [rawPos[0], rawPos[1], rawPos[2]]
             : [0, 0, 10]
 
+        const rawCountry = typeof data.country === 'string' ? data.country.split(':')[0] : 'vietnam'
+        const rawGender =
+          data.gender === 'male' || (typeof data.country === 'string' && data.country.endsWith(':male'))
+            ? 'male'
+            : 'female'
+
         const presence: PilgrimPresence = {
           id: requestedId,
           name: account ? account.displayName : `Khách ${requestedId.slice(-4)}`,
           title: cleanText(data.title, 40, 'Sơ Tâm Nhập Đạo'),
-          country: ALLOWED_COUNTRIES.has(data.country) ? data.country : 'vietnam',
+          country: ALLOWED_COUNTRIES.has(rawCountry) ? rawCountry : 'vietnam',
+          gender: rawGender,
           position: pos,
           yaw: typeof data.yaw === 'number' && Number.isFinite(data.yaw) ? data.yaw : 0,
           action: data.action || 'standing',
@@ -181,7 +189,7 @@ export default defineWebSocketHandler({
         }
 
         peerPilgrimIds.set(peer.id, presence.id)
-        ;(peer as any).pilgrimId = presence.id
+          ; (peer as any).pilgrimId = presence.id
         pilgrims.set(presence.id, presence)
 
         const [cx, cz] = getCellCoords(presence.position[0], presence.position[2])
@@ -279,7 +287,7 @@ export default defineWebSocketHandler({
         for (const c of subs) {
           try {
             peer.unsubscribe(c)
-          } catch (e) {}
+          } catch (e) { }
         }
         peerSubscribedCells.delete(peer.id)
       }
@@ -314,7 +322,7 @@ function updatePeerSubscriptions(peer: any, cx: number, cz: number) {
     if (!newNeighbors.includes(c)) {
       try {
         peer.unsubscribe(c)
-      } catch (e) {}
+      } catch (e) { }
       currentSubs.delete(c)
     }
   }
@@ -324,7 +332,7 @@ function updatePeerSubscriptions(peer: any, cx: number, cz: number) {
     if (!currentSubs.has(c)) {
       try {
         peer.subscribe(c)
-      } catch (e) {}
+      } catch (e) { }
       currentSubs.add(c)
     }
   }

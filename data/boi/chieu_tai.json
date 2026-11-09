@@ -1,0 +1,583 @@
+[
+  {
+    "id": "cht_tho_daicat_01",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 01 · Thượng Thượng · Kim Ngọc Mãn Đường",
+    "text": "Gió đông thổi mở cánh cửa vàng,\nTài lộc bốn phương tụ rỡ ràng,\nBuôn bán chữ tâm làm gốc rễ,\nKho lẫm đầy vơi phúc vạn đàng.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daicat_02",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 08 · Thượng Thượng · Vạn Thương Vân Tập",
+    "text": "Thuyền buôn no gió vượt sông dài,\nBến lớn thông thương rộng đất trời,\nQuý nhân dẫn lối trao cơ hội,\nMột vốn sinh sôi gấp mấy mươi.",
+    "tags": ["tai_loc", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daicat_03",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 17 · Thượng Thượng · Phong Niên Đại Hữu",
+    "text": "Mưa thuận gió hòa lúa trĩu bông,\nBao ngày cày xới thỏa tấm lòng,\nChính tài phụ lộc cùng quy tụ,\nChia ngọt sẻ bùi nghĩa thong dong.",
+    "tags": ["tai_loc", "su_nghiep", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daicat_04",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 26 · Thượng Thượng · Bảo Châu Xuất Thủy",
+    "text": "Châu ngọc vươn lên khỏi mặt hồ,\nÁnh vàng lấp lánh rạng cơ đồ,\nHợp đồng ký kết đều suôn sẻ,\nUy tín vang xa khắp bản đồ.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_tho_cat_01",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 12 · Thượng Cát · Nguyên Lưu Bất Tuyệt",
+    "text": "Suối nguồn róc rách chảy đêm ngày,\nTích tiểu thành đại lộc về tay,\nKhách quý tin yêu nhờ chữ tín,\nĐường dài vững bước chẳng lung lay.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_cat_02",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 21 · Thượng Cát · Xuân Mộc Phát Vinh",
+    "text": "Cây gặp mùa xuân trổ lộc non,\nKinh doanh khởi sắc dạ vuông tròn,\nHợp tác đôi bên cùng có lợi,\nLợi nhuận tăng đều phúc mãi còn.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_cat_03",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 32 · Thượng Cát · Hòa Khí Sinh Tài",
+    "text": "Nụ cười ấm áp đón người qua,\nHòa khí sinh tài khắp cửa nhà,\nChất lượng tận tâm người nhớ mãi,\nBốn mùa lộc biếc nở đơm hoa.",
+    "tags": ["tai_loc", "su_nghiep", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_cat_04",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 41 · Thượng Cát · Thuận Thủy Hành Chu",
+    "text": "Đò xuôi theo nước nhẹ tay chèo,\nChi phí thu về đúng mốc theo,\nKiên định nghề xưa thêm sáng tạo,\nAn cư lạc nghiệp vượt qua đèo.",
+    "tags": ["tai_loc", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+
+  {
+    "id": "cht_tho_binh_01",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 52 · Trung Bình · Thủ Tín Tri Túc",
+    "text": "Chợ chiều mua bán nhịp vừa tầm,\nChớ vội chạy theo tiếng gọi thầm,\nGiữ chặt ngân khố chăm khách cũ,\nQua mùa biến động dạ yên tâm.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_binh_02",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 60 · Trung Bình · Bình Nguyên Canh Tác",
+    "text": "Ruộng bằng cày cấy sức chuyên cần,\nThu nhập đủ đầy nuôi bản thân,\nĐầu tư lớn mới nên cân nhắc,\nChờ thêm tín hiệu lúc sang xuân.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_binh_03",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 67 · Trung Bình · Tích Cốc Phòng Cơ",
+    "text": "Lúa thu vào bồ cất kỹ càng,\nThu chi cân đối sổ minh quang,\nKhông tham lợi nóng không vay mượn,\nTự khắc trong lòng hưởng thênh thang.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_binh_04",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 73 · Trung Bình · Tiệm Tiến Thành Công",
+    "text": "Xây đài từ đất một viên gạch,\nNền móng vững vàng mới cao thanh,\nHôm nay gieo hạt chăm tưới nước,\nNgày sau quả ngọt trĩu trên cành.",
+    "tags": ["tai_loc", "su_nghiep", "thi_cu", "tong_quan"]
+  },
+
+  {
+    "id": "cht_tho_hung_01",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 78 · Hạ Quẻ · Lậu Đẩu Hao Tài",
+    "text": "Nước đổ vào bình rỉ kẽ chân,\nKiếm nhiều tiêu lắm cũng hao dần,\nHợp đồng giấy mực xem cho kỹ,\nĐừng vì lời ngọt vội xuất ngân.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_hung_02",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 82 · Hạ Quẻ · Thương Lộ Trở Phong",
+    "text": "Đường buôn gặp gió bước hơi chùng,\nVốn liếng quay vòng chớ bung lung,\nCắt giảm những phần không thiết yếu,\nGiữ nguyên nội lực đợi thời chung.",
+    "tags": ["tai_loc", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_hung_03",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 86 · Hạ Quẻ · Ngư Trầm Đáy Nước",
+    "text": "Bóng cá lung linh dưới đáy hồ,\nNhìn gần tưởng dễ bắt hư vô,\nLợi nhanh trước mắt nhiều cạm bẫy,\nTỉnh táo suy lường khỏi điểm tô.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_hung_04",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 89 · Hạ Quẻ · Đồng Sàng Dị Mộng",
+    "text": "Chung thuyền buôn bán khác suy tư,\nSổ sách không明 dễ thiệt hư,\nRõ ràng trách nhiệm ngay từ trước,\nĐỡ phần tranh chấp lúc doanh dư.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_tho_daihung_01",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 94 · Hạ Hạ · Phong Đào Nghịch Thủy",
+    "text": "Sóng dữ dâng cao giữa biển khơi,\nChở nặng vàng ròng dễ chới với,\nThu quân giữ vốn về nơi cũ,\nBảo toàn sinh lực đợi thiên thời.",
+    "tags": ["tai_loc", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daihung_02",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 96 · Hạ Hạ · Hư Danh Thiệt Thực",
+    "text": "Bề ngoài hào nhoáng ruột rỗng không,\nVay mượn đua đòi gánh nặng chồng,\nHãy dứt tâm tham dừng mạo hiểm,\nBình tâm cơ cấu lại non sông.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daihung_03",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 98 · Hạ Hạ · Băng Thượng Hành Xa",
+    "text": "Đánh xe chở nặng bước qua băng,\nNóng vội gỡ gạc dễ sa chân,\nKhông ký bảo lãnh không đánh cược,\nGiữ yên gốc rễ vượt gian truân.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_tho_daihung_04",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Chiêu Tài 100 · Hạ Hạ · Tàng Khí Đãi Thời",
+    "text": "Ngọc quý tạm thời cất giữ sâu,\nChợ đời biến động chớ tranh đầu,\nLấy đức làm nền chăm chữ tín,\nQua cơn bĩ cực lộc bền lâu.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lg_daicat_01",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Vận khí tài lộc đang mở rộng rực rỡ. Công việc kinh doanh, thương mại hoặc dự án bạn tâm huyết bắt đầu thu về dòng tiền dồi dào. Khách hàng cũ quay lại giới thiệu thêm khách hàng mới nhờ uy tín và chất lượng dịch vụ bền bỉ của bạn.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daicat_02",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Có quý nhân mang tới cơ hội hợp tác hoặc mở rộng thị trường rất triển vọng. Các cuộc đàm phán hợp đồng, đề xuất tăng lương hoặc gọi vốn trong giai đoạn này dễ đạt được sự đồng thuận cao.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daicat_03",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Cả chính tài (thu nhập từ công việc chuyên môn) lẫn phụ tài đều hanh thông. Sự nhạy bén với nhu cầu thực tế của thị trường giúp bạn đi trước một bước và tạo ra giá trị thực chất.",
+    "tags": ["tai_loc", "su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daicat_04",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Nền tảng tài chính gia đình và cá nhân được củng cố vững chắc. Những khoản đầu tư vào tri thức, công nghệ hoặc sản phẩm cốt lõi từ trước nay bắt đầu sinh lời vượt kỳ vọng.",
+    "tags": ["tai_loc", "gia_dao", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lg_cat_01",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Dòng tiền thu vào đều đặn và ổn định. Việc buôn bán tuy không bùng nổ đột biến trong một đêm nhưng tăng trưởng bền vững theo từng tuần. Đây là lúc rất tốt để chuẩn hóa quy trình và nâng cao trải nghiệm khách hàng.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_cat_02",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Việc hợp tác với đồng nghiệp hoặc đối tác diễn ra hài hòa, đôi bên cùng giữ đúng cam kết. Các khoản công nợ tồn đọng có tín hiệu thu hồi thuận lợi nếu bạn nhắc nhở khéo léo và đúng lúc.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_cat_03",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Kế hoạch tiết kiệm và phân bổ tài sản của bạn đang phát huy hiệu quả rõ rệt. Bạn có khả năng cân đối tốt giữa việc tái đầu tư cho công việc và chăm lo đời sống gia đình.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_cat_04",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Hướng phát triển nghề nghiệp phụ hoặc mở rộng danh mục sản phẩm có tín hiệu khả quan. Nên bắt đầu thử nghiệm ở quy mô vừa phải để đo lường phản hồi thực tế trước khi nhân rộng.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lg_binh_01",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Tình hình tài chính và kinh doanh ở mức giữ nhịp trung bình: thu đủ bù chi và có khoản tích lũy nhỏ. Thị trường chung đang trong giai đoạn quan sát nên việc giữ vững tệp khách hàng thân thiết quan trọng hơn chạy theo mở rộng nóng.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_binh_02",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Với các dự định xuống vốn mới, hiện tại thông tin chưa thật sự đầy đủ. Bạn nên dành thêm thời gian khảo sát thực địa, tính kỹ điểm hòa vốn và chi phí dự phòng trước khi quyết định.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_binh_03",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Công việc chuyên môn duy trì ổn định. Để gia tăng thu nhập trong giai đoạn tới, bạn nên đầu tư nâng cấp kỹ năng chuyên sâu hoặc chứng chỉ nghề nghiệp thay vì phân tán sức lực vào quá nhiều việc vụn vặt.",
+    "tags": ["su_nghiep", "thi_cu", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_binh_04",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Dòng tiền trong nhà ở trạng thái cân bằng. Hãy duy trì thói quen ghi chép thu chi định kỳ để kiểm soát tốt các khoản mua sắm không thực sự cấp thiết.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lg_hung_01",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Vận tài lộc đang có dấu hiệu thất thoát qua những khoản chi lặt vặt hoặc chi phí vận hành đội lên cao. Trong kinh doanh, dễ gặp tình trạng doanh thu bề ngoài có vẻ lớn nhưng lợi nhuận ròng lại mỏng do chưa tối ưu chi phí.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_hung_02",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Cần hết sức thận trọng với những lời mời gọi đầu tư lãi suất cao bất thường hoặc hùn vốn không có hợp đồng ràng buộc pháp lý rõ ràng. Lòng tham lợi nhuận ngắn hạn dễ dẫn tới chôn vốn lâu dài.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_hung_03",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Việc hợp tác làm ăn dễ phát sinh bất đồng về cách phân chia lợi nhuận hoặc quyền quyết định. Mọi thỏa thuận tài chính cần được lập thành văn bản minh bạch ngay từ đầu để giữ trọn tình nghĩa.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_hung_04",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Tiến độ thanh toán hoặc thu hồi công nợ có thể chậm hơn dự kiến. Bạn cần chuẩn bị sẵn quỹ tiền mặt dự phòng tối thiểu 3-6 tháng để không bị động trước các chi phí cố định.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lg_daihung_01",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Quẻ cảnh báo rủi ro hao tài lớn nếu bạn sử dụng đòn bẩy nợ vay cao hoặc tất tay vào các kênh đầu cơ biến động mạnh lúc này. Nguyên tắc sống còn trong giai đoạn này là 'Bảo toàn vốn gốc quan trọng hơn tìm kiếm lợi nhuận'.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daihung_02",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Tuyệt đối không đứng tên vay hộ, không ký bảo lãnh tài chính và không cho vay số tiền vượt quá khả năng chấp nhận rủi ro. Sự cả nể trong lúc vận tài chính đang nghịch có thể đẩy gia đình vào cảnh túng thiếu.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daihung_03",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Hoạt động kinh doanh đang đối mặt với áp lực cạnh tranh hoặc sụt giảm sức mua. Thay vì vay thêm tiền để gồng lỗ một mô hình kém hiệu quả, bạn cần dũng cảm cắt giảm mảng thua lỗ và thu gọn bộ máy.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lg_daihung_04",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Tâm lý nôn nóng muốn gỡ gạc nhanh sau một khoản thua lỗ chính là cái bẫy nguy hiểm nhất. Hãy dừng ngay các quyết định giao dịch theo cảm xúc và quay về củng cố nguồn thu nhập từ công việc chuyên môn.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lk_daicat_01",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Nắm bắt thời cơ để ký kết các hợp đồng trọng điểm và mở rộng tệp khách hàng. Lời nhắc cân bằng: Khi tiền bạc về nhiều, hãy lập tức trích lập quỹ dự phòng rủi ro và quỹ thiện nguyện; đồng tiền có đạo đức và sẻ chia mới ở lại bền lâu.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daicat_02",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Tái đầu tư lợi nhuận vào việc nâng cao chất lượng sản phẩm và đãi ngộ xứng đáng cho cộng sự. Lời nhắc cân bằng: Tuyệt đối không vì thắng lợi liên tiếp mà mở rộng sang lĩnh vực mình không am hiểu hoặc dùng đòn bẩy quá mức.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daicat_03",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Giữ trọn chữ Tín về tiến độ và chất lượng như đã cam kết với khách hàng. Lời nhắc cân bằng: Tài lộc dồi dào không được đánh đổi bằng sự kiệt sức của cơ thể hay sự xa cách với gia đình.",
+    "tags": ["tai_loc", "gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daicat_04",
+    "mon": "chieu_tai",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Thực hiện đầy đủ nghĩa vụ pháp lý, thuế phí và sổ sách minh bạch. Lời nhắc cân bằng: Càng giàu có càng nên sống giản dị, khiêm nhường để tránh thị phi và lòng đố kỵ không đáng có.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lk_cat_01",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Kiên trì chăm sóc khách hàng tận tâm và tối ưu hóa từng khâu vận hành. Lời nhắc cân bằng: Dù doanh thu khả quan, hãy luôn tách biệt rõ ràng giữa ví tiền cá nhân/gia đình và dòng tiền lưu động của cửa hàng/doanh nghiệp.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_cat_02",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Duy trì kỷ luật trích tối thiểu 20% thu nhập hàng tháng vào quỹ tích lũy an toàn. Lời nhắc cân bằng: Tránh tâm lý hưng phấn mua sắm tài sản tiêu sản lớn ngay khi vừa có khoản thưởng hoặc lợi nhuận đầu tiên.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_cat_03",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Mở rộng mạng lưới quan hệ nghề nghiệp trên tinh thần chân thành, giúp đỡ lẫn nhau. Lời nhắc cân bằng: Mọi hợp tác làm ăn với bạn bè thân thiết càng phải rõ ràng giấy trắng mực đen ngay từ lúc thuận lợi.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_cat_04",
+    "mon": "chieu_tai",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Đầu tư vào công cụ làm việc và kiến thức chuyên môn để nâng cao năng suất. Lời nhắc cân bằng: Hãy giữ sự tỉnh táo trước các trào lưu đầu tư theo đám đông.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lk_binh_01",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Tập trung nâng cao chất lượng dịch vụ cốt lõi và giữ chân khách hàng hiện hữu. Chờ khi thị trường rõ xu hướng hơn hãy giải ngân vốn lớn.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_binh_02",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Rà soát lại bảng cân đối thu chi hàng tháng, cắt bỏ những khoản đăng ký hoặc chi phí định kỳ không mang lại hiệu quả thực tế.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_binh_03",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Bồi đắp uy tín cá nhân qua từng việc nhỏ đúng hẹn; chữ Tín tích lũy hôm nay sẽ chuyển hóa thành tài lộc lớn vào chu kỳ tới.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_binh_04",
+    "mon": "chieu_tai",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Giữ tâm tri túc (biết đủ), không vì thấy người khác khoe lợi nhuận nhanh mà xao nhãng con đường vững chắc của mình.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lk_hung_01",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Áp dụng quy tắc chờ 48 giờ trước mọi quyết định chi tiêu hoặc xuống tiền đầu tư lớn. Kiểm tra kỹ điều khoản phạt và nghĩa vụ pháp lý trong mọi hợp đồng.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_hung_02",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Ưu tiên thu hồi công nợ và giữ tỷ trọng tiền mặt cao. Hạn chế nhập hàng tồn kho quá nhiều khi sức mua chưa ổn định.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_hung_03",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Minh bạch hóa sổ sách kế toán nếu đang làm ăn chung; thẳng thắn trao đổi về các nút thắt chi phí thay vì ngại ngùng để kéo dài.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_hung_04",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Không dùng tiền vay ngắn hạn để đầu tư vào các tài sản khó thanh khoản. Bảo vệ quỹ sinh hoạt phí của gia đình trước tiên.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "cht_lk_daihung_01",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Khóa chặt két sắt trước mọi lời rủ rê đầu cơ làm giàu nhanh. Chuyển sang chiến lược phòng thủ tiền mặt tối đa và tất toán dần các khoản nợ lãi suất cao.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daihung_02",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Học cách nói lời từ chối lịch sự nhưng dứt khoát trước các yêu cầu vay mượn hoặc bảo lãnh vượt khả năng. Giữ an toàn cho gia đình là trách nhiệm cao nhất.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daihung_03",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Dũng cảm cắt lỗ sớm những khoản đầu tư sai lầm thay vì cố bơm thêm tiền gồng lỗ. Còn người, còn sức khỏe và còn uy tín là còn làm lại được tất cả.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_lk_daihung_04",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Tạm lùi lại để rà soát toàn bộ lỗ hổng quản trị tài chính; tham khảo ý kiến chuyên gia tài chính/pháp lý độc lập trước khi ký bất kỳ văn bản nào.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "cht_hg_hung_01",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Chiêu Tài: Thực hành 'Chủ động ứng vận' bằng cách trích một khoản nhỏ cúng dường Hòm Công Đức hoặc giúp người nghèo khó (chuyển hóa vận hao tài thụ động thành việc bố thí chủ động sinh phước), đồng thời lập sổ kiểm soát chi tiêu từng ngày.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_hung_02",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Chiêu Tài: Dọn dẹp quầy thu ngân, bàn làm việc và ví tiền cho ngăn nắp, sạch sẽ; vào Hội Thiền 432Hz tĩnh tâm 5 phút trước khi đàm phán để giữ đầu óc tỉnh táo, không quyết định vội vì áp lực.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_hung_03",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Chiêu Tài: Thắp Trầm Hương cầu an, rà soát lại toàn bộ các khoản công nợ và hợp đồng đang hiệu lực; giữ thái độ hòa nhã, uy tín với khách hàng để giữ vững nguồn thu chính.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_hung_04",
+    "mon": "chieu_tai",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Chiêu Tài: Tạm khóa các ứng dụng mua sắm/giao dịch ngẫu hứng trong 7 ngày; tập trung hoàn thành dứt điểm các công việc tồn đọng để khơi thông lại mạch tài khí.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "cht_hg_daihung_01",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Chiêu Tài: (1) Đóng băng ngay mọi khoản đầu cơ rủi ro cao trong 30 ngày; (2) Vào Hội Thiền 432Hz thực hành thở chánh niệm để dập tắt tâm lý cay cú muốn gỡ gạc; (3) Phát tâm thiện nguyện tại Hòm Công Đức để gieo lại nhân lành tài bảo.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_daihung_02",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Chiêu Tài: Lập tức tách bạch quỹ an toàn của gia đình sang tài khoản tiết kiệm riêng không đụng tới; minh bạch tình hình với người bạn đời để cùng đồng lòng tiết kiệm vượt qua giai đoạn thắt lưng buộc bụng.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_daihung_03",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Chiêu Tài: Lấy chữ Tín làm phao cứu sinh — nếu đang gặp khó khăn dòng tiền, hãy chủ động đàm phán trung thực với đối tác để giãn tiến độ thay vì né tránh; tu tâm dưỡng tính và chăm chỉ làm việc thực chất.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "cht_hg_daihung_04",
+    "mon": "chieu_tai",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Chiêu Tài: Thắp Hoa Đăng Cầu An tịnh hóa tâm tham cầu; dọn bỏ vật dụng hư hỏng chắn lối cửa chính và nơi làm việc để đón sinh khí mới, kiên trì tích tiểu thành đại từ đầu.",
+    "tags": ["tai_loc", "su_nghiep", "tong_quan"]
+  }
+]
+

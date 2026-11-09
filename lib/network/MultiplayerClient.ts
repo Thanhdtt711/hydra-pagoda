@@ -14,6 +14,7 @@ export interface PilgrimPresence {
   name: string
   title: string
   country: string
+  gender?: 'female' | 'male'
   position: [number, number, number]
   yaw: number
   action: MovementAction
@@ -246,13 +247,14 @@ export class MultiplayerClient {
 
   // Send local pilgrim join payload
   // `ticket` (tùy chọn): vé một lần đổi từ phiên đăng nhập ví; có vé thì server đặt tên theo tài khoản.
-  public joinSangha(meta: { name: string; title: string; country: string; position: [number, number, number]; yaw: number; ticket?: string | null }) {
+  public joinSangha(meta: { name: string; title: string; country: string; gender?: 'female' | 'male'; position: [number, number, number]; yaw: number; ticket?: string | null }) {
     this.sendJson({
       type: 'client:join',
       id: this.localPilgrimId,
       name: meta.name,
       title: meta.title,
       country: meta.country,
+      gender: meta.gender || 'female',
       position: meta.position,
       yaw: meta.yaw,
       action: 'standing',
@@ -264,7 +266,7 @@ export class MultiplayerClient {
    * Nhà cung cấp dữ liệu join (gọi lại mỗi lần cần join: kết nối mở/mở lại, hoặc vừa đăng nhập/đăng xuất).
    * Vé WS dùng một lần nên phải xin mới mỗi lần.
    */
-  public joinProvider: (() => Promise<{ name: string; title: string; country: string; position: [number, number, number]; yaw: number; ticket?: string | null }>) | null = null
+  public joinProvider: (() => Promise<{ name: string; title: string; country: string; gender?: 'female' | 'male'; position: [number, number, number]; yaw: number; ticket?: string | null }>) | null = null
 
   /** Join lại bằng `joinProvider` (an toàn khi ws chưa mở: sẽ tự gọi lại trong onopen). */
   public async rejoin() {
@@ -323,7 +325,8 @@ export class MultiplayerClient {
 
   private sendBinary(data: Uint8Array) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(data)
+      // Ép kiểu BufferSource: tránh lỗi TS2769 do Uint8Array<ArrayBufferLike> (SharedArrayBuffer)
+      this.ws.send(data as unknown as BufferSource)
       this.bytesOut += data.byteLength
     }
   }

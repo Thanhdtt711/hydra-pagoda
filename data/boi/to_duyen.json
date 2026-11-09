@@ -1,0 +1,585 @@
+[
+  {
+    "id": "td_tho_daicat_01",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 01 · Thượng Thượng · Loan Phượng Hòa Minh",
+    "text": "Tơ hồng Nguyệt Lão khéo se dây,\nLoan phượng song phi giữa tầng mây,\nHai chữ đồng tâm bền tạc đá,\nTrăm năm hạnh phúc trọn sum vầy.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daicat_02",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 06 · Thượng Thượng · Kim Ngọc Lương Duyên",
+    "text": "Trăng tròn soi bóng nước hồ thu,\nThuyền tình cập bến hết sương mù,\nTiền định ba sinh nay hội ngộ,\nCửa nhà đầm ấm phúc thiên thu.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daicat_03",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 15 · Thượng Thượng · Song Liên Tinh Khiết",
+    "text": "Đầm sen nở rộ đóa tịnh đài,\nHương thơm ngào ngạt tỏa ban mai,\nÝ hợp tâm đầu không khoảng cách,\nCùng nhau vun đắp mộng tương lai.",
+    "tags": ["tinh_duyen", "gia_dao", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daicat_04",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 22 · Thượng Thượng · Đào Hoa Đắc Lộ",
+    "text": "Gió xuân thổi nhẹ cánh đào tươi,\nNhân duyên lành đến rạng nụ cười,\nChân thành trao gửi lời ước hẹn,\nTình sâu nghĩa nặng sánh đôi mươi.",
+    "tags": ["tinh_duyen", "gia_dao", "xuat_hanh", "tong_quan"]
+  },
+
+  {
+    "id": "td_tho_cat_01",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 11 · Thượng Cát · Xuân Nhạn Quy Sào",
+    "text": "Nhạn về tổ ấm lúc xuân sang,\nNắng chiếu hiên nhà sắc dịu dàng,\nHai phía lắng nghe lời chân thật,\nDuyên tình gắn kết bước an khang.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_cat_02",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 19 · Thượng Cát · Tương Kính Như Tân",
+    "text": "Trà thơm đối ẩm dưới hiên trăng,\nMỗi lời thấu hiểu nghĩa sâu đằm,\nKính nhường hai chữ làm nền móng,\nGia đạo thuận hòa suốt tháng năm.",
+    "tags": ["tinh_duyen", "gia_dao", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "td_tho_cat_03",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 29 · Thượng Cát · Vũ Hậu Thanh Thiên",
+    "text": "Mưa rào vừa dứt ánh cầu vồng,\nGiận hờn tan biến hóa hư không,\nNgười xa xích lại gần thêm bước,\nẤm áp bàn tay giữ tấm lòng.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_cat_04",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 34 · Thượng Cát · Liên Lý Chi Giao",
+    "text": "Hai cây khác gốc chụm cành xanh,\nChe chở cùng nhau trước gió mành,\nĐộc thân sớm gặp người tri kỷ,\nCó đôi thêm bền mối duyên lành.",
+    "tags": ["tinh_duyen", "gia_dao", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "td_tho_binh_01",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 46 · Trung Bình · Tĩnh Đợi Hoa Khai",
+    "text": "Nụ hoa còn chúm dưới sương mai,\nChớ vội trách sao tháng ngày dài,\nChăm bón gốc rễ bằng chân thật,\nĐủ nắng hoa cười tỏa sắc phai.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_binh_02",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 53 · Trung Bình · Bình Thủy Tương Phùng",
+    "text": "Nước chảy êm đềm qua bến xưa,\nTình cảm hôm nay nắng xen mưa,\nKhông quá nồng nàn không lạnh nhạt,\nCần thêm sẻ chia mỗi sớm trưa.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_binh_03",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 61 · Trung Bình · Minh Nguyệt Độc Chiếu",
+    "text": "Trăng thanh soi bóng giữa hiên đình,\nQuay về chăm sóc lấy tâm mình,\nKhi lòng tự tại không cưỡng ép,\nTự khắc người thương sẽ hữu tình.",
+    "tags": ["tinh_duyen", "gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "td_tho_binh_04",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 68 · Trung Bình · Đồng Chu Cộng Tế",
+    "text": "Hai người chung một chuyến đò ngang,\nNhịp chèo cần khớp mới vững vàng,\nBớt đi đòi hỏi thêm thông cảm,\nĐường xa rồi cũng tới thôn trang.",
+    "tags": ["tinh_duyen", "gia_dao", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "td_tho_hung_01",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 76 · Hạ Quẻ · Tơ Vương Lạc Lối",
+    "text": "Chỉ hồng vướng bụi rối đôi đầu,\nLời nói vô tâm dễ chạm đau,\nNếu cứ hơn thua phân phải trái,\nKhoảng cách vô hình lại thêm sâu.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_hung_02",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 81 · Hạ Quẻ · Thu Phong Hiu Hắt",
+    "text": "Gió thu se sắt lá vàng rơi,\nHai ngả suy tư chẳng ngỏ lời,\nNghi ngại trong lòng không giải tỏ,\nĐể tình xa cách giữa chơi vơi.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_hung_03",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 85 · Hạ Quẻ · Kính Chiếu Khuyết Nguyệt",
+    "text": "Gương soi bóng nguyệt khuyết đôi phần,\nCưỡng cầu vội vã dễ phân vân,\nHãy lùi một bước nhìn sâu thẳm,\nĐừng vì cô đơn chọn sai phần.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_hung_04",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 90 · Hạ Quẻ · Song Điểu Phản Hướng",
+    "text": "Đôi chim cùng đậu một nhành mai,\nChợt gặp mưa dông rẽ hướng bay,\nCần giữ bình tâm đừng trách móc,\nChờ cơn giông tạnh nối vòng tay.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_tho_daihung_01",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 94 · Hạ Hạ · Đoạn Huyền Cầm Lạnh",
+    "text": "Đàn xưa đứt phím giữa đêm trường,\nKhúc nhạc dang dở lắm vấn vương,\nChấp niệm càng sâu càng mỏi mệt,\nBuông tay tịnh dưỡng thấy con đường.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daihung_02",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 96 · Hạ Hạ · Hàn Giang Độc Điếu",
+    "text": "Sông băng lạnh lẽo bóng thuyền côi,\nLời hứa năm nao gió cuốn trôi,\nChớ lấy oán hờn gieo khổ lụy,\nQuay về thương lấy chính mình thôi.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daihung_03",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 98 · Hạ Hạ · Lưỡng Sơn Cách Trở",
+    "text": "Hai ngọn núi cao chắn lối đi,\nNóng lòng bước vội ích chi gì,\nTạm ngưng tranh biện trong giông bão,\nLắng lòng quán chiếu mọi sân si.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_tho_daihung_04",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Tơ Duyên 100 · Hạ Hạ · Hoa Rơi Nước Chảy",
+    "text": "Hoa rơi hữu ý nước vô tình,\nDuyên chưa chín muồi chớ ép mình,\nKhép lại ưu tư nơi quá khứ,\nBình minh sẽ nở đóa tâm linh.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lg_daicat_01",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Nhân duyên hội tụ cát khí viên mãn. Nếu đang đối sánh hai tuổi, bản mệnh đôi bên có sự nâng đỡ và bồi đắp năng lượng cho nhau rất lớn: một người khởi ý, một người vun bồi giúp cả tình cảm lẫn sự nghiệp chung đều thăng hoa.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"],
+    "dieukien": { "quanHe": ["tuong_sinh", "binh_hoa"] }
+  },
+  {
+    "id": "td_lg_daicat_02",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Sợi chỉ đỏ Nguyệt Lão đang kết nối mạnh mẽ. Người độc thân có cơ hội lớn gặp được người tâm đầu ý hợp qua môi trường công việc hoặc sinh hoạt thiện lành; người đã có đôi đón nhận sự đồng thuận từ gia đình hai bên, thuận lợi để bàn chuyện trăm năm.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_daicat_03",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Dù ngũ hành bản mệnh có nét khác biệt nhưng nhờ cát tinh hộ chiếu trong ngày, sự khác biệt ấy lại trở thành mảnh ghép bù trừ hoàn hảo. Khi hai người cùng hướng về mục tiêu xây dựng tổ ấm chung, mọi trở ngại nhỏ đều hóa thành động lực gắn kết.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_daicat_04",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Hòa khí lứa đôi đang ở độ chín muồi và rực rỡ nhất. Những hiểu lầm cũ được tháo gỡ triệt để bằng sự bao dung, nhường chỗ cho niềm tin vững chắc. Khi hai trái tim đồng điệu, cả tài vận và phúc khí gia đình đều cùng khởi sắc.",
+    "tags": ["tinh_duyen", "gia_dao", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "td_lg_cat_01",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Mối nhân duyên phát triển theo hướng ấm áp, chân thành và bền vững. Hai người có nhiều điểm chung trong quan điểm sống và cách vun vén gia đình. Sự tôn trọng không gian riêng của nhau chính là bí quyết giúp tình cảm ngày càng sâu sắc.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_cat_02",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Nếu bạn đang chờ đợi một tín hiệu tình cảm hoặc muốn làm lành sau cuộc giận hờn, đây là thời điểm rất thuận lợi để chủ động mở lời. Một cuộc trò chuyện nhẹ nhàng, không đổ lỗi sẽ nhanh chóng khôi phục lại sự gắn kết vốn có.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_cat_03",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Hai tuổi kết hợp với nhau tạo nên thế bình ổn, vừa là bạn đời vừa là tri kỷ nâng đỡ nhau trong cuộc sống thường nhật. Về mặt tài chính gia đình, nếu hai người cùng minh bạch kế hoạch thu chi thì việc tích lũy an cư sẽ sớm thành tựu.",
+    "tags": ["gia_dao", "tinh_duyen", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "td_lg_cat_04",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Với người đang độc thân, duyên lành đang đến gần từ những mối quan hệ quen biết hoặc qua lời giới thiệu của người đáng tin cậy. Không cần tìm kiếm đâu xa, hãy mở lòng đón nhận những cuộc gặp gỡ giản dị.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lg_binh_01",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Chuyện tình cảm đang ở nhịp độ trầm lắng và cần thêm thời gian thử thách. Hai người đều có thiện cảm nhưng chưa thực sự mở hết lòng mình hoặc còn bận tâm nhiều về công việc cá nhân. Đừng vội thúc ép đối phương phải đưa ra cam kết ngay lúc này.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_binh_02",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Giữa hai mệnh có cả nét tương đồng lẫn những góc nhìn khác biệt cần dung hòa. Hạnh phúc không tự nhiên sẵn có mà đòi hỏi cả hai cùng học cách lắng nghe và điều chỉnh thói quen sinh hoạt vì nhau qua từng ngày.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_binh_03",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Nếu bạn đang phân vân giữa việc giữ lại chuyện cũ hay bước tiếp, quẻ khuyên bạn hãy tạm dừng suy đoán và quay về chăm sóc sự bình an của chính mình trước. Khi tâm bạn lắng trong như mặt hồ, câu trả lời đúng đắn sẽ tự hiện rõ.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_binh_04",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Đời sống hôn nhân hoặc tình yêu đang đi vào giai đoạn quen thuộc dễ dẫn đến cảm giác đơn điệu. Không có sóng gió lớn, nhưng đôi bên nên chủ động tạo lại những khoảnh khắc sẻ chia ấm áp để làm mới tình cảm.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+
+  {
+    "id": "td_lg_hung_01",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Giữa hai người đang có sự xung khắc nhẹ về cá tính hoặc cách biểu đạt cảm xúc (một bên muốn nói rõ ngay, một bên lại chọn im lặng). Nếu để sự suy diễn cá nhân dẫn dắt, chuyện nhỏ rất dễ bị thổi phồng thành mâu thuẫn lớn.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_hung_02",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Đối sánh ngũ hành hoặc vận trình ngày cho thấy hai bên dễ va chạm vì áp lực công việc và tiền bạc bên ngoài đem về nhà. Cần tách bạch rõ ràng giữa áp lực mưu sinh và tình nghĩa vợ chồng / đôi lứa.",
+    "tags": ["tinh_duyen", "gia_dao", "tai_loc", "tong_quan"],
+    "dieukien": { "quanHe": ["tuong_khac", "binh_hoa"] }
+  },
+  {
+    "id": "td_lg_hung_03",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Với người đang tìm kiếm nhân duyên mới, giai đoạn này dễ gặp những mối quan hệ hào nhoáng bề ngoài nhưng thiếu sự gắn kết chân thật. Hãy tìm hiểu kỹ nhân cách và lối sống của đối phương qua thời gian thay vì vội vàng trao gửi niềm tin.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_hung_04",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Những kỳ vọng quá cao mà không được nói ra thẳng thắn đang tạo thành bức tường vô hình giữa hai người. Đừng mong người kia tự đoán được mọi ý nghĩ của mình; sự chân thành chia sẻ mới là chìa khóa tháo gỡ nút thắt.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lg_daihung_01",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Vận trình tình cảm đang ở điểm căng thẳng cao độ hoặc hai bản mệnh đang rơi vào thế xung khắc mạnh trong ngắn hạn. Cả hai đều đang mang nhiều tổn thương và mệt mỏi nên mỗi lời tranh cãi lúc này đều như đổ thêm dầu vào lửa.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_daihung_02",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Quẻ cảnh báo sự bế tắc nếu bạn cứ cố chấp níu giữ một mối quan hệ đã cạn kiệt sự tôn trọng hoặc chỉ mang lại nước mắt. Trong tình yêu, biết dừng lại để bảo vệ phẩm giá và sự bình an của bản thân cũng là một sự tỉnh thức cần thiết.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lg_daihung_03",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Gia đạo hoặc chuyện cưới hỏi đang gặp trở ngại từ ngoại cảnh hoặc sự bất đồng sâu sắc về quan điểm tài chính, lối sống. Tuyệt đối không nên dùng lời lẽ nặng nề hay ép buộc đối phương chọn lựa trong lúc đang khủng hoảng.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lg_daihung_04",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Tâm trạng cô đơn hoặc tổn thương từ quá khứ đang che mờ sự sáng suốt của bạn. Đây chưa phải thời điểm thích hợp để bắt đầu một cam kết tình cảm mới hay đưa ra quyết định ly tán vội vàng trong cơn nóng giận.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lk_daicat_01",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy bày tỏ lòng biết ơn và dành thời gian chất lượng bên người thương để cùng lên kế hoạch tương lai. Lời nhắc cân bằng: Dù hợp mệnh đến đâu thì tình yêu vẫn cần sự tôn trọng khác biệt cá nhân; đừng vì quá gắn bó mà kiểm soát khoảng trời riêng của nhau.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daicat_02",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Thuận lợi để ra mắt gia đình hai bên hoặc bàn tính chuyện lâu dài. Lời nhắc cân bằng: Hạnh phúc lứa đôi bền vững nhất khi đi kèm nền tảng tài chính minh bạch và lối sống giản dị, tránh phô trương hình thức gây áp lực sau lễ cưới.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daicat_03",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy mở lòng đón nhận nhân duyên thiện lành đang gõ cửa. Lời nhắc cân bằng: Khi tình cảm đang thăng hoa ngọt ngào, hãy vẫn giữ đôi chân trên mặt đất, cùng nhau rèn luyện sự kiên nhẫn khi đối diện với những trách nhiệm đời thường.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daicat_04",
+    "mon": "to_duyen",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Cùng người thương gieo trồng thêm hạt giống phước đức qua những việc thiện nguyện chung. Lời nhắc cân bằng: Đừng coi sự hy sinh của đối phương là điều hiển nhiên; một lời cảm ơn ấm áp mỗi ngày sẽ giữ ngọn lửa tình yêu cháy mãi.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lk_cat_01",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Chủ động lắng nghe và chia sẻ những niềm vui nhỏ trong ngày cùng người ấy. Lời nhắc cân bằng: Tình cảm tốt đẹp cần được nuôi dưỡng bằng sự chân thật, tránh giấu những băn khoăn nhỏ trong lòng lâu ngày.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_cat_02",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Dành một buổi tối cuối tuần không thiết bị điện tử để thực sự hiện diện bên nhau. Lời nhắc cân bằng: Khi đang êm ấm, hãy cùng nhau thống nhất nguyên tắc ứng xử văn minh lúc bất đồng để bảo vệ tình cảm trước mọi thử thách.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lk_cat_03",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy tin tưởng vào hành trình tự nhiên của mối quan hệ hiện tại. Lời nhắc cân bằng: Đừng đem chuyện tình cảm của mình so sánh với hình mẫu trên mạng xã hội; sự bình yên thực chất bên trong tổ ấm mới là điều quý giá nhất.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_cat_04",
+    "mon": "to_duyen",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Khích lệ và ủng hộ mục tiêu phát triển bản thân của đối phương. Lời nhắc cân bằng: Hai người yêu nhau lành mạnh là hai cái cây cùng vươn đón ánh nắng nhưng không che khuất bóng của nhau.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lk_binh_01",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Cho nhau khoảng không gian vừa đủ để mỗi người tự cân bằng công việc và cảm xúc. Sự kiên nhẫn và thái độ dịu dàng lúc này có giá trị hơn ngàn lời thúc giục.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_binh_02",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Hãy bắt đầu từ việc chăm sóc tốt sức khỏe, niềm vui và đời sống tinh thần của chính mình. Khi bạn tỏa ra năng lượng an nhiên, mối quan hệ xung quanh cũng tự khắc chuyển biến tích cực.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_binh_03",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Thay vì đoán ý nhau, hãy chọn thời điểm cả hai cùng thư thái để trò chuyện chân thành về mong muốn của mỗi người trong 6 tháng tới.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lk_binh_04",
+    "mon": "to_duyen",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Giữ tâm bình thản: duyên đến thì trân trọng đón nhận, duyên chưa tới thì vui vẻ hoàn thiện bản thân. Không vì cô đơn nhất thời mà vội vàng nắm một bàn tay chưa đủ thấu hiểu.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lk_hung_01",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Áp dụng nguyên tắc 'Tạm dừng 10 phút' khi cảm thấy cuộc trò chuyện bắt đầu căng thẳng. Trong tình nghĩa lứa đôi, thắng một cuộc cãi vã thường là thua một phần tình cảm.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_hung_02",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Đừng nghe lời bàn tán từ người thứ ba chưa hiểu rõ nội tình mà vội nghi ngờ người thương. Mọi khúc mắc cần được hai người trực tiếp đối thoại bằng sự tôn trọng.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_hung_03",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Nếu hai tuổi có ngũ hành tương khắc, hãy nhớ rằng 'Đức năng thắng số': sự nhường nhịn khi người kia nóng giận (dùng Thủy/Thổ nhu hòa để trung hòa Hỏa/Kim) chính là chiếc chìa khóa giữ gìn hạnh phúc.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lk_hung_04",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Hạ bớt cái tôi và những tiêu chuẩn khắt khe áp đặt lên người bạn đời. Hãy nhìn vào những điều tốt đẹp mà người ấy đã cố gắng vì gia đình để nuôi dưỡng lòng bao dung.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_lk_daihung_01",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Tuyệt đối không đưa ra quyết định chia tay, ly thân hay nói lời tuyệt tình trong lúc đang tức giận hoặc kiệt sức. Hãy tạm lùi lại vài ngày để cả hai cùng hạ nhiệt cảm xúc.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daihung_02",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Nếu một mối quan hệ liên tục gây tổn hại đến sự an toàn và phẩm giá của bạn, hãy dũng cảm tìm sự hỗ trợ từ gia đình và người thân tin cậy, không chịu đựng trong im lặng một mình.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daihung_03",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Ngưng ngay việc nhắc lại lỗi lầm cũ để chì chiết nhau. Muốn bước qua giai đoạn sóng gió này, cả hai cần ngồi lại với tinh thần giải quyết vấn đề chứ không phải kết tội đối phương.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "td_lk_daihung_04",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy quay về chữa lành vết thương lòng của chính mình trước khi tìm kiếm sự lấp đầy từ người khác. Một trái tim bình an mới có thể đón nhận một nhân duyên bình an.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_hg_hung_01",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Tơ Duyên: Thực hành pháp 'Ái Ngữ & Lắng Nghe Sâu' — trong 3 ngày tới, chủ động nói một lời ghi nhận chân thành với người thương và lắng nghe trọn vẹn không ngắt lời. Vào Hội Thiền 432Hz thở Mandala 4-4-6 để làm dịu Hỏa khí nóng nảy trong tâm.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_hung_02",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Tơ Duyên: Để hóa giải thế xung khắc ngũ hành giữa hai mệnh, hai người nên chọn hành trung gian thông quan (ví dụ: Kim khắc Mộc thì dùng Thủy — sự mềm mỏng, dịu dàng; Thủy khắc Hỏa thì dùng Mộc — sự bao dung, nâng đỡ) và cùng nhau thắp Hoa Đăng Cầu An.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_hung_03",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Tơ Duyên: Thay đổi không gian giao tiếp — rủ người ấy đi dạo nơi thoáng đãng có cây xanh hoặc mặt nước thay vì tranh luận trong phòng kín. Viết ra điều mình mong muốn bằng lời lẽ tôn trọng thay vì trách móc.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_hung_04",
+    "mon": "to_duyen",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Tơ Duyên: Dọn dẹp phòng ngủ gọn gàng, thay hoa tươi hoặc thắp hương trầm dịu nhẹ để thanh lọc trường khí gia đạo. Cùng nhau thực hiện một việc thiện nhỏ để bồi đắp phước duyên chung.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "td_hg_daihung_01",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Tơ Duyên: (1) Thực hành 'Tịnh Khẩu Chánh Niệm' ít nhất 24 giờ khi xung đột lên đỉnh điểm để tránh lời nói gây sát thương vĩnh viễn; (2) Ngồi Hội Thiền 432Hz quán chiếu hơi thở để tháo gỡ nút thắt oán giận; (3) Phát tâm cúng dường Hòm Công Đức hồi hướng bình an cho nhân duyên.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_daihung_02",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Tơ Duyên: Khi hai mệnh xung khắc gay gắt, hãy tạm giãn khoảng cách căng thẳng bằng cách tập trung vào công việc thiện lành và nhờ một bậc trưởng bối điềm đạm, công tâm lắng nghe tháo gỡ, tuyệt đối tránh tự suy diễn trong đêm khuya.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_daihung_03",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Tơ Duyên: Thực hành buông xả chấp niệm (Letting go of attachment) — viết hết những nỗi buồn ra giấy rồi khép lại, dành trọn thời gian chăm sóc giấc ngủ, sức khỏe và kết nối lại với cha mẹ, bạn bè tích cực.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "td_hg_daihung_04",
+    "mon": "to_duyen",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Tơ Duyên: Hóa giải bằng tâm Từ Bi — dù chọn cùng nhau sửa đổi hay chọn khép lại một chặng đường không còn phù hợp, hãy hành xử văn minh, không gieo thêm lời oán trách để giữ trọn phước báu cho chặng đường phía trước.",
+    "tags": ["tinh_duyen", "gia_dao", "tong_quan"]
+  }
+]
+

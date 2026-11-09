@@ -10,7 +10,16 @@
     "wallet:reconcile": "node scripts/wallet/reconcile.mjs",
     "wallet:test:auth": "node scripts/wallet/test-auth.mjs",
     "wallet:test:deposit": "node scripts/wallet/test-deposit.mjs",
-    "wallet:test:spend": "node scripts/wallet/test-spend.mjs"
+    "wallet:test:spend": "node scripts/wallet/test-spend.mjs",
+    "wallet:test:hydra": "node scripts/wallet/test-hydra-l2.mjs",
+    "wallet:test:meditation": "node scripts/wallet/test-meditation.mjs",
+    "hydra:mock": "node scripts/hydra-mock-server.mjs",
+    "hydra:prepare": "node scripts/hydra-prepare.mjs",
+    "hydra:up": "docker compose -f docker-compose.hydra.yml up -d",
+    "hydra:down": "docker compose -f docker-compose.hydra.yml down",
+    "hydra:logs": "docker compose -f docker-compose.hydra.yml logs -f --tail=50",
+    "boi:test": "node --experimental-strip-types scripts/boi/test-fortune-engine.mjs",
+    "boi:test:golden": "node --experimental-strip-types scripts/boi/test-golden-suite.mjs"
   },
   "dependencies": {
     "@hydra-sdk/cardano-wasm": "1.0.0",

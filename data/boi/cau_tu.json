@@ -1,0 +1,583 @@
+[
+  {
+    "id": "ct_tho_daicat_01",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 01 · Thượng Thượng · Liên Hoa Khai Nhụy",
+    "text": "Đài sen nở rộ ánh ban mai,\nChồi biếc vươn lên phúc lộc dài,\nTích thiện gia môn迎 hỷ sự,\nTiếng cười con trẻ ấm hiên ngoài.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daicat_02",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 09 · Thượng Thượng · Kỳ Lân Trình Tường",
+    "text": "Mây lành ngũ sắc phủ đình tiền,\nHòa khí phu thê kết thiện duyên,\nCây đức dày sâu sinh quả ngọt,\nGia đình sum họp phúc miên miên.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daicat_03",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 18 · Thượng Thượng · Xuân Vũ Nhuận Mộc",
+    "text": "Mưa xuân thấm đẫm đất vườn nhà,\nMầm non xanh biếc nở ngàn hoa,\nCha mẹ đồng tâm nuôi dưỡng thiện,\nTin vui gõ cửa rạng gần xa.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daicat_04",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 27 · Thượng Thượng · Ngọc Thụ Sinh Chi",
+    "text": "Cây ngọc đâm chồi dưới nắng xuân,\nHương thơm lan tỏa khắp khuôn sân,\nTâm an thân khỏe duyên hội đủ,\nPhúc ấm muôn đời trọn nghĩa nhân.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_tho_cat_01",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 14 · Thượng Cát · Yến Quy Noãn Sào",
+    "text": "Chim yến tìm về xây tổ ấm,\nGió hòa nắng dịu khắp non sông,\nVợ chồng thấu hiểu thêm gắn kết,\nChồi non nảy lộc thỏa ước mong.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_cat_02",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 23 · Thượng Cát · Thanh Tuyền Dưỡng Mộc",
+    "text": "Suối trong tưới mát gốc tùng xanh,\nDưỡng tâm dưỡng thể đón duyên lành,\nCon cái ngoan hiền chăm học hỏi,\nTrong ấm ngoài êm phúc tự thành.",
+    "tags": ["gia_dao", "suc_khoe", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_cat_03",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 33 · Thượng Cát · Huệ Lan Đồng Phương",
+    "text": "Hoa lan hoa huệ ngát hương đưa,\nNề nếp gia phong giữ sớm trưa,\nChăm sóc thân tâm đầy sinh khí,\nLộc trời ban xuống chẳng thiếu thừa.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_cat_04",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 42 · Thượng Cát · Minh Nguyệt Đương Không",
+    "text": "Trăng sáng đêm rằm chiếu hiên nhà,\nTâm tư thư thái hết bôn ba,\nNuôi con bằng cả lòng kiên nhẫn,\nTrưởng thành vững chãi rạng ông bà.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+
+  {
+    "id": "ct_tho_binh_01",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 51 · Trung Bình · Tĩnh Thổ Hàm Mầm",
+    "text": "Hạt giống nằm yên dưới đất mềm,\nĐợi ngày mưa nắng ấm nhiều thêm,\nĐừng mang lo lắng đè tâm trí,\nCứ giữ gia đình trọn ấm êm.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_binh_02",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 59 · Trung Bình · Xuân Trì Đợi Nắng",
+    "text": "Tiết xuân đến muộn chớ ưu phiền,\nVạn sự trên đời hợp chữ duyên,\nChăm lo giấc ngủ cùng dinh dưỡng,\nTâm bình khí vượng phúc tự nhiên.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_binh_03",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 66 · Trung Bình · Điềm Nhiên Gia Đạo",
+    "text": "Cơm lành canh ngọt mỗi chiều hôm,\nHai phía sẻ chia việc sớm hôm,\nCon trẻ lớn khôn cần uốn nắn,\nKiên trì dạy dỗ bằng yêu thương.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_binh_04",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 72 · Trung Bình · Tuyết Tận Xuân Lai",
+    "text": "Qua ngày se lạnh nắng lên dần,\nBồi đắp nguyên khí dưỡng tinh thần,\nBớt nghe lời nói gây áp lực,\nVững lòng tin tưởng bước đường gần.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_tho_hung_01",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 80 · Hạ Quẻ · Tâm Lao Khí Nhược",
+    "text": "Đêm dài trằn trọc lắm suy tư,\nCơ thể mỏi mệt bởi ưu tư,\nHãy buông áp lực quay về nghỉ,\nThân an tâm tĩnh phúc mới dư.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_hung_02",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 84 · Hạ Quẻ · Phong Động Hoa Nghiêng",
+    "text": "Gió chiều thổi mạnh nhánh hoa nghiêng,\nNóng lòng mong mỏi dễ ưu phiền,\nHai người hãy nắm tay nâng đỡ,\nGiữ gìn sức khỏe vượt truân chuyên.",
+    "tags": ["gia_dao", "suc_khoe", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_hung_03",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 87 · Hạ Quẻ · Dục Tốc Tâm Bất An",
+    "text": "Càng thúc càng mong dạ rối bời,\nĐừng đem áp lực đặt lên lời,\nKhoan thai dưỡng sức chờ năm tháng,\nMây tạnh trăng thanh sáng giữa trời.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_hung_04",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 91 · Hạ Quẻ · Hàn Lộ Ngưng Sương",
+    "text": "Sương khuya còn đọng ở đầu cành,\nChưa phải lúc vội ép mầm xanh,\nCần thêm tĩnh dưỡng và thăm khám,\nGiữ lửa yêu thương dưới mái tranh.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_tho_daihung_01",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 95 · Hạ Hạ · Thuấn Tâm Tĩnh Dưỡng",
+    "text": "Công việc bộn bề sức hao vơi,\nLo âu chồng chất chẳng thảnh thơi,\nHãy tạm gác lại niềm mong mỏi,\nNghỉ ngơi dưỡng thể thuận đạo trời.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daihung_02",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 97 · Hạ Hạ · Đông Hàn Bảo Nguyên",
+    "text": "Giữa mùa đông lạnh giữ lò than,\nĐừng để lời ra tiếng thở than,\nVợ chồng thương yêu cùng chăm sóc,\nQua hồi mỏi mệt đón bình an.",
+    "tags": ["gia_dao", "suc_khoe", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daihung_03",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 99 · Hạ Hạ · An Thần Định Khí",
+    "text": "Tâm thần căng thẳng suốt canh thâu,\nCưỡng cầu vội vã chỉ thêm sầu,\nBuông hết muộn phiền chăm giấc ngủ,\nBình tâm tĩnh trí phúc dài lâu.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_tho_daihung_04",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Cầu Tự 100 · Hạ Hạ · Thủ Hòa Đãi Xuân",
+    "text": "Đất trời bốn mùa có thịnh suy,\nChớ vì chậm muộn nặng sầu bi,\nKiên nhẫn nghỉ ngơi chăm thân thể,\nNắng ấm xuân về hết hiểm nguy.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lg_daicat_01",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Khí vận gia đạo đang hội tụ cát tường và tràn đầy sinh lực. Tâm thế thoải mái, sự đồng lòng yêu thương giữa hai vợ chồng cùng chế độ sinh hoạt điều độ tạo nên mảnh đất màu mỡ nhất để đón nhận tin vui con cái hoặc niềm tự hào về sự trưởng thành của con trẻ.",
+    "tags": ["gia_dao", "suc_khoe", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daicat_02",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Trong gia đình đang có hỷ khí lan tỏa. Nếu đang nuôi dạy con cái, con trẻ trong giai đoạn này tiếp thu nhanh, ngoan ngoãn và gắn bó sâu sắc với cha mẹ. Sự gương mẫu và ấm áp của cha mẹ chính là phước báu lớn nhất cho con.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daicat_03",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Thân tâm của cả hai vợ chồng đều đang ở trạng thái cân bằng lý tưởng. Sự chuẩn bị chu đáo cả về sức khỏe, tài chính lẫn tinh thần giúp tổ ấm sẵn sàng đón nhận những bước ngoặt hạnh phúc viên mãn.",
+    "tags": ["gia_dao", "tai_loc", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daicat_04",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Phước đức tổ tiên và thiện nghiệp gia đình đang nâng đỡ mạnh mẽ cho tổ ấm của bạn. Mọi sự chuẩn bị cho tương lai của con cái đều gặp được điều kiện thuận lợi và sự hỗ trợ tận tình từ người thân.",
+    "tags": ["gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lg_cat_01",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Hòa khí trong nhà rất êm ấm và thuận lợi. Hai vợ chồng biết lắng nghe và san sẻ việc nhà cùng nhau, giúp giải tỏa áp lực tâm lý. Đây là nền tảng rất tốt cho việc chăm sóc sức khỏe sinh sản cũng như nuôi dạy con cái.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_cat_02",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Việc học tập và phát triển của con trẻ trong nhà đang đi đúng hướng. Khi cha mẹ thay thế sự thúc ép bằng lời động viên kịp thời, con cái sẽ phát huy được sự tự giác và niềm vui học hỏi.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_cat_03",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Sức khỏe và tinh thần của gia đình có sự chuyển biến tích cực nhờ thói quen ăn uống lành mạnh và nghỉ ngơi đúng giờ. Giữ vững nhịp sinh hoạt này sẽ giúp gia đạo đón nhận nhiều niềm vui mới.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_cat_04",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Tổ ấm tràn ngập tiếng cười và sự sẻ chia giữa các thế hệ. Sự đồng thuận giữa ông bà và cha mẹ tạo nên môi trường giáo dục gia đình đầy ắp tình yêu thương.",
+    "tags": ["gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lg_binh_01",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Mọi việc trong gia đạo đang diễn ra bình ổn. Với những mong cầu về con cái, đây là giai đoạn cần sự chuẩn bị tự nhiên, thư thái, không nên tự đặt mốc thời gian gây căng thẳng cho cả hai vợ chồng.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_binh_02",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Trong việc đồng hành cùng con trẻ, mỗi đứa trẻ có một nhịp độ trưởng thành riêng. Cha mẹ cần giữ tâm bình thản, kiên trì lắng nghe tâm tư của con thay vì so sánh con với người khác.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_binh_03",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Nhịp sống gia đình đang ở mức cân bằng nhưng đôi lúc còn bận rộn với công việc bên ngoài. Hãy sắp xếp lại lịch trình để có thêm những bữa cơm tối sum họp ấm cúng.",
+    "tags": ["gia_dao", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_binh_04",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Thể trạng và tinh thần ở mức trung bình ổn định. Hai vợ chồng nên duy trì vận động nhẹ nhàng, ngủ sớm và giữ tâm trạng vui vẻ để bồi đắp sinh khí lâu dài.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lg_hung_01",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Giai đoạn này hai vợ chồng đang chịu nhiều áp lực công việc và tâm lý mong ngóng nên cơ thể dễ mệt mỏi: cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để được tư vấn chăm sóc sức khỏe khoa học và giữ tinh thần thư thái.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_hung_02",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Sự lo âu hoặc những lời hỏi han vô tình từ xung quanh đang làm tâm trí bạn căng thẳng. Trước mọi mong cầu về gia đạo và con cái, bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và cùng người bạn đời sẻ chia dịu dàng.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_hung_03",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Nhịp sinh hoạt thức khuya hoặc làm việc quá sức đang làm tiêu hao năng lượng của gia đình. Bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để bảo dưỡng thể lực và tránh tạo áp lực lên bản thân hay con trẻ.",
+    "tags": ["suc_khoe", "gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_hung_04",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Trong gia đình dễ có chút lệch nhịp về quan điểm chăm sóc hoặc nuôi dạy con cái. Cả hai cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để giữ thân tâm khỏe mạnh rồi mới bình tĩnh thống nhất cùng nhau.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lg_daihung_01",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Tâm lực của hai vợ chồng đang có dấu hiệu quá tải vì lo nghĩ nhiều ngày. Quẻ nhắc nhở bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ tại các cơ sở y tế uy tín và tạm gác lại mọi áp lực tự trách bản thân.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daihung_02",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Khi tinh thần căng thẳng cực độ, mọi sự thúc ép đều phản tác dụng. Trong giai đoạn này, hai vợ chồng cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và ưu tiên tuyệt đối việc khôi phục sự bình yên, thương yêu trong tổ ấm.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daihung_03",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Năng lượng thể chất đang cần được hồi phục sâu sau chuỗi ngày vất vả. Hãy nhớ rằng bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ theo hướng dẫn chuyên môn và không nghe theo các mẹo truyền miệng thiếu cơ sở khoa học.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ct_lg_daihung_04",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Áp lực từ nhiều phía đang làm không khí gia đình trở nên nặng nề. Hơn lúc nào hết, hai bên cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và nắm chặt tay nhau vượt qua giai đoạn mỏi mệt này bằng lòng bao dung.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lk_daicat_01",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Duy trì bầu không khí gia đình ấm áp, tràn ngập tiếng cười và chế độ dinh dưỡng khoa học. Lời nhắc cân bằng: Khi đón nhận tin vui hoặc thành tích tốt của con cái, hãy giữ tâm bình dị, không đặt kỳ vọng hoàn hảo gây áp lực lên con trẻ và người bạn đời.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daicat_02",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Cùng người bạn đời chuẩn bị chu đáo quỹ tài chính gia đình và môi trường sống trong lành. Lời nhắc cân bằng: Bên cạnh việc chăm lo cho con cái, hai vợ chồng vẫn cần duy trì việc khám sức khỏe định kỳ và dành thời gian nghỉ ngơi cho riêng mình.",
+    "tags": ["gia_dao", "tai_loc", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daicat_03",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Lan tỏa phước lành của gia đình bằng cách giúp đỡ trẻ em có hoàn cảnh khó khăn. Lời nhắc cân bằng: Nuôi dạy con cái là hành trình dài cả đời, hãy dạy con lòng biết ơn và tính tự lập ngay từ những lúc gia cảnh thuận lợi nhất.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daicat_04",
+    "mon": "cau_tu",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy tận hưởng trọn vẹn từng khoảnh khắc bình yên bên gia đình. Lời nhắc cân bằng: Sức khỏe của người mẹ và người cha là chiếc nôi của tổ ấm, đừng vì quá bận rộn chuẩn bị vật chất mà quên chăm sóc giấc ngủ mỗi đêm.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lk_cat_01",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Tiếp tục giữ thói quen đi bộ nhẹ nhàng, ăn uống thanh đạm và trò chuyện tích cực mỗi tối. Lời nhắc cân bằng: Đừng vội vàng so sánh hành trình của gia đình mình với bất kỳ ai; sự an vui tự nhiên chính là dưỡng chất tốt nhất.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_cat_02",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Khích lệ con trẻ bằng sự công nhận nỗ lực thay vì chỉ nhìn vào điểm số. Lời nhắc cân bằng: Cha mẹ hòa thuận, tôn trọng nhau chính là bài học sống động nhất giúp con cái phát triển nhân cách vững vàng.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_cat_03",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Chủ động chia sẻ việc nhà để cả hai vợ chồng đều có thời gian tái tạo năng lượng. Lời nhắc cân bằng: Hãy kết hợp hài hòa giữa đời sống tinh thần chánh niệm và việc kiểm tra sức khỏe định kỳ theo y học hiện đại.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_cat_04",
+    "mon": "cau_tu",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Giữ cho không gian sống luôn nhiều ánh sáng tự nhiên và cây xanh. Lời nhắc cân bằng: Bình an đến từ sự điều độ mỗi ngày, hãy tránh làm việc quá khuya để bảo toàn nguyên khí lâu dài.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lk_binh_01",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Hãy để tâm trí thật sự thư giãn, điều chỉnh lại giờ giấc ngủ nghỉ trước 23h và duy trì khám sức khỏe tổng quát định kỳ. Khi thân khỏe tâm an, duyên lành sẽ tự nhiên hội tụ.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_binh_02",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Dành thời gian cuối tuần cùng người bạn đời hoặc con cái hòa mình vào thiên nhiên để giải tỏa sự đơn điệu thường nhật.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_binh_03",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Lắng nghe ý kiến của bác sĩ chuyên khoa và giữ chế độ dinh dưỡng cân bằng, tránh nghe theo những lời đồn đoán thiếu căn cứ gây hoang mang.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_binh_04",
+    "mon": "cau_tu",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Kiên nhẫn đồng hành cùng con cái qua từng bước nhỏ, lấy sự thấu hiểu làm cầu nối giữa cha mẹ và con cái.",
+    "tags": ["gia_dao", "thi_cu", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lk_hung_01",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để theo dõi sức khỏe khoa học; đồng thời giảm bớt khối lượng công việc ngoài giờ để cơ thể được phục hồi.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_hung_02",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Hai vợ chồng cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và tuyệt đối tránh đổ lỗi hay tạo áp lực tâm lý cho nhau.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_hung_03",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy nhẹ nhàng từ chối những câu hỏi gây áp lực từ người ngoài; bản thân bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để chăm sóc thân tâm tốt nhất.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_hung_04",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Trong việc chăm sóc gia đình, cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và giữ nhịp thở chánh niệm mỗi khi cảm thấy lo âu.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_lk_daihung_01",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Ưu tiên số một lúc này là giải tỏa căng thẳng: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ tại bệnh viện uy tín và dành thời gian tĩnh dưỡng trọn vẹn.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daihung_02",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy bảo vệ hòa khí vợ chồng trước mọi sóng gió: cả hai cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và luôn động viên nhau bằng lời nói ấm áp.",
+    "tags": ["gia_dao", "tinh_duyen", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daihung_03",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Tạm gác lại mọi lịch trình quá tải: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để bác sĩ tư vấn chế độ dinh dưỡng và sinh hoạt phù hợp.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ct_lk_daihung_04",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Không tự tạo gánh nặng tâm lý trong đêm khuya; hãy nhớ rằng gia đình bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để giữ gìn nền tảng sức khỏe bền vững.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_hg_hung_01",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Cầu Tự: Dành 5 phút tại Hội Thiền 432Hz tập thở sâu để giải phóng áp lực tâm lý; thiết lập lại giấc ngủ sớm trước 23h, ăn uống ấm nóng và đặt lịch khám sức khỏe định kỳ cho cả hai vợ chồng.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_hung_02",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Cầu Tự: Thắp Hoa Đăng Cầu An hồi hướng phúc lành cho trẻ nhỏ và gia đạo; cùng người bạn đời đi bộ thư giãn 20 phút mỗi ngày trong không gian xanh mát, không bàn chuyện áp lực.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_hung_03",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Cầu Tự: Dọn dẹp phòng ốc sạch sẽ, đón nắng sớm vào nhà để tăng dương khí. Thực hành nói lời động viên, biết ơn người bạn đời và tuân thủ lịch khám định kỳ khoa học.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_hung_04",
+    "mon": "cau_tu",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Cầu Tự: Gieo hạt thiện lành bằng việc ủng hộ sách vở, sữa ấm hoặc quỹ thiện nguyện vì trẻ em; khi tâm mở rộng yêu thương không dính mắc, trường năng lượng gia đình sẽ nhẹ nhàng và an lạc.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ct_hg_daihung_01",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Cầu Tự: (1) Tạm ngưng ngay mọi cuộc tranh luận hoặc tự trách móc trong gia đình; (2) Thực hành Hội Thiền 432Hz để làm dịu hệ thần kinh; (3) Chủ động nghỉ phép ngắn ngày để nghỉ ngơi và đi khám sức khỏe định kỳ theo y khoa.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_daihung_02",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Cầu Tự: Phát tâm cúng dường Hòm Công Đức hoặc giúp đỡ các hoàn cảnh neo đơn để bồi phúc; đồng thời thiết lập chế độ nghỉ ngơi nghiêm túc, ngủ đủ 8 tiếng và khám định kỳ tại cơ sở chuyên khoa uy tín.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_daihung_03",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Cầu Tự: Chuyển hóa lo âu bằng chánh niệm — lắng nghe âm thanh Chuông Chánh Niệm 432Hz trước khi ngủ, giữ ấm cơ thể, kiên nhẫn bồi bổ dinh dưỡng và đi khám định kỳ đều đặn.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ct_hg_daihung_04",
+    "mon": "cau_tu",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Cầu Tự: Hai vợ chồng cùng ngồi lại nắm tay nhau, thống nhất đặt sức khỏe và sự bình an của nhau lên trên hết; kiên nhẫn nghỉ ngơi và thăm khám định kỳ với tâm thế bình thản.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  }
+]
+

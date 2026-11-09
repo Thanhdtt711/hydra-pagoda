@@ -1,218 +1,153 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import type { PBRMaterialFactory } from '../materials/PBRMaterialFactory'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
+import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
+import { SlotBatch } from '../style/SlotBatch'
 
 /**
- * SacredBuddhaStatue (Tôn tượng Đức Phật Thích Ca Mâu Ni 3D GLB - Đá Rêu Cổ Truyền):
- * Nạp model 3D điêu khắc thực tế từ /models/the_buddha_statue_in_a_mountain.glb,
- * chuẩn hóa kích thước 4.2m trang nghiêm, đổ bóng thể tích thực tế,
- * kết hợp vầng quang minh đại từ bi (Soft Radial Glow Aura) lan tỏa mờ dịu tự nhiên.
+ * SacredBuddhaStatue (Tôn tượng Đức Phật Thích Ca Mâu Ni, phong cách low-poly phẳng màu):
+ * - Nạp duy nhất một model GLB /models/the_buddha_statue_in_a_mountain.glb (hỗ trợ nén meshopt),
+ *   bỏ toàn bộ texture / PBR gốc và gán vật liệu phẳng màu 'gold' của Palette (tự đổi theo ngày / hoàng hôn / đêm).
+ * - Chuẩn hóa cao 4.2m, đáy chạm y = 0 của gốc `root`.
+ * - Vầng hào quang là một đĩa phẳng cộng sáng (additive), KHÔNG dùng PointLight.
+ * - Có phương án dự phòng procedural low-poly nếu không nạp được GLB.
  */
 export class SacredBuddhaStatue {
   public root: THREE.Group = new THREE.Group()
-  private materials: PBRMaterialFactory
-  public haloMesh: THREE.Mesh | null = null
-  public auraLight: THREE.PointLight | null = null
-  private modelGroup: THREE.Group | null = null
-  public isLoaded: boolean = false
-  private auraTime: number = 0
+  public haloMesh: THREE.Mesh
+  public isLoaded = false
 
-  constructor(materials: PBRMaterialFactory) {
-    this.materials = materials
+  private modelGroup: THREE.Object3D | null = null
+  private fallbackGroup: THREE.Group | null = null
+  private haloMaterial: THREE.MeshBasicMaterial
+  private time = 0
+  private disposed = false
 
-    // 1. Vầng quang minh đại từ bi mềm mại (Soft Radial Glow Aura)
-    this.buildDharmaHalo()
+  constructor() {
+    this.root.name = 'sacred_buddha_statue'
 
-    // 2. Nạp Tôn tượng Đức Phật 3D GLB đá rêu cổ truyền
+    // Vầng quang minh: đĩa tròn 24 cạnh phẳng, cộng sáng nhẹ
+    this.haloMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffd98a,
+      transparent: true,
+      opacity: 0.32,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: false
+    })
+    this.haloMesh = new THREE.Mesh(new THREE.CircleGeometry(1.7, 24), this.haloMaterial)
+    this.haloMesh.name = 'buddha_halo'
+    this.haloMesh.position.set(0, 3.6, -1.25)
+    this.haloMesh.renderOrder = 2
+    this.root.add(this.haloMesh)
+
     this.loadBuddhaGLB()
   }
 
-  /**
-   * Nạp model 3D GLB và tự động chuẩn hóa kích thước, căn chỉnh cao độ
-   */
   private loadBuddhaGLB() {
     const loader = new GLTFLoader()
-    const modelUrl = '/models/the_buddha_statue_in_a_mountain.glb'
+    loader.setMeshoptDecoder(MeshoptDecoder)
 
     loader.load(
-      modelUrl,
+      '/models/the_buddha_statue_in_a_mountain.glb',
       (gltf) => {
+        if (this.disposed) return
         const model = gltf.scene
 
-        // Đo bounding box chính xác của model
+        // Chuẩn hóa chiều cao 4.2m, căn giữa X/Z, đáy chạm y = 0
         const box = new THREE.Box3().setFromObject(model)
         const size = new THREE.Vector3()
-        box.getSize(size)
         const center = new THREE.Vector3()
+        box.getSize(size)
         box.getCenter(center)
+        const scale = 4.2 / (size.y > 0 ? size.y : 1)
+        model.scale.setScalar(scale)
+        model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale)
 
-        // Chuẩn hóa chiều cao Tôn tượng đạt 4.2m (tương xứng với bệ Tam Bảo & Chánh Điện cao 15.5m)
-        const targetHeight = 4.2
-        const currentHeight = size.y > 0 ? size.y : 1
-        const scaleFactor = targetHeight / currentHeight
-
-        model.scale.setScalar(scaleFactor)
-
-        // Căn giữa mặt phẳng X=0, Z=0 và đặt đáy đài sen tiếp xúc chính xác mặt trên bệ đá (Y = 0)
-        model.position.x = -center.x * scaleFactor
-        model.position.y = -box.min.y * scaleFactor
-        model.position.z = -center.z * scaleFactor
-
-        // Cấu hình vật liệu Đá rêu cổ truyền PBR & bật đổ bóng thể tích
+        // Thay mọi vật liệu gốc bằng vật liệu phẳng màu của Palette
+        const goldMat = FlatMaterialFactory.getInstance().get('gold')
+        const oldMaterials = new Set<THREE.Material>()
         model.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh
-            mesh.castShadow = true
-            mesh.receiveShadow = true
-
-            if (mesh.material) {
-              const mat = mesh.material as THREE.MeshStandardMaterial
-              mat.roughness = 0.82
-              mat.metalness = 0.05
-              mat.envMapIntensity = 0.85
-              mat.needsUpdate = true
-            }
-          }
+          const mesh = child as THREE.Mesh
+          if (!mesh.isMesh) return
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+          mats.forEach((m) => m && oldMaterials.add(m))
+          mesh.material = goldMat
+          mesh.castShadow = true
+          mesh.receiveShadow = true
+        })
+        oldMaterials.forEach((m) => {
+          const std = m as THREE.MeshStandardMaterial
+          std.map?.dispose()
+          std.normalMap?.dispose()
+          std.roughnessMap?.dispose()
+          std.metalnessMap?.dispose()
+          std.aoMap?.dispose()
+          std.emissiveMap?.dispose()
+          m.dispose()
         })
 
         this.modelGroup = model
         this.root.add(model)
         this.isLoaded = true
-
-        // Định vị vầng quang minh mềm mại ra hẳn phía sau đầu Tôn tượng (Z <= -1.25m)
-        if (this.haloMesh) {
-          this.haloMesh.position.set(0, 3.60, -1.25)
-        }
-        if (this.auraLight) {
-          this.auraLight.position.set(0, 3.60, -1.40)
-        }
+        this.haloMesh.position.set(0, 3.6, -1.25)
       },
       undefined,
       (error) => {
-        console.warn('[SacredBuddhaStatue] Failed to load GLB model, falling back to procedural:', error)
-        this.buildProceduralFallback()
+        console.warn('[SacredBuddhaStatue] Không nạp được GLB, dùng bản procedural low-poly:', error)
+        if (!this.disposed) this.buildProceduralFallback()
       }
     )
   }
 
-  /**
-   * Phương án dự phòng (fallback) nếu môi trường không nạp được GLB
-   */
+  /** Tượng ngồi thiền low-poly: đài sen 2 tầng, thân, tay, đầu, búi tóc. */
   private buildProceduralFallback() {
-    const stoneMat = this.materials.createGraniteStepMaterial()
-    const goldMat = this.materials.createSacredGoldLeafMaterial()
+    const b = new SlotBatch()
+    // Đài sen
+    b.cylinder('stone', 1.7, 1.9, 0.35, 8, 0, 0.175, 0)
+    b.cylinder('lotus', 1.45, 1.7, 0.3, 8, 0, 0.5, 0)
+    b.cylinder('gold', 1.2, 1.45, 0.25, 8, 0, 0.775, 0)
+    // Thân ngồi kiết già
+    b.cylinder('gold', 1.0, 1.25, 0.55, 8, 0, 1.18, 0)
+    b.cylinder('gold', 0.62, 0.95, 1.2, 8, 0, 1.95, 0)
+    // Hai tay đặt trên gối
+    b.box('gold', 0.7, 0.2, 0.45, 0, 1.55, 0.55)
+    // Vai, cổ, đầu, búi tóc
+    b.cylinder('gold', 0.34, 0.62, 0.35, 8, 0, 2.7, 0)
+    b.cylinder('skin', 0.16, 0.2, 0.2, 8, 0, 2.95, 0)
+    b.sphere('skin', 0.38, 0, 0, 3.3, 0.02)
+    b.cone('gold', 0.2, 0.3, 6, 0, 3.78, 0.02)
 
-    // Bệ đá dự phòng
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.6, 8), stoneMat)
-    base.position.y = 0.3
-    this.root.add(base)
-
-    // Tượng Phật thếp vàng dự phòng
-    const figure = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 2.8, 16), goldMat)
-    figure.position.y = 1.7
-    figure.castShadow = true
-    this.root.add(figure)
+    this.fallbackGroup = b.build({ name: 'buddha_fallback' })
+    this.root.add(this.fallbackGroup)
+    this.isLoaded = true
+    this.haloMesh.position.set(0, 3.3, -0.9)
   }
 
-  /**
-   * Vầng quang minh đại từ bi (Soft Radial Glow Aura):
-   * Ánh sáng hào quang mềm mại lan tỏa mờ dịu từ tâm ra ngoài vô tận (Additive Blending),
-   * hoàn toàn không có đường viền cắt cúp hay vòng tròn thô cứng.
-   */
-  private buildDharmaHalo() {
-    if (typeof document === 'undefined') return
-
-    // 1. Tạo texture gradient quang minh mềm
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 512
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const grad = ctx.createRadialGradient(256, 256, 12, 256, 256, 256)
-    grad.addColorStop(0.0, 'rgba(255, 245, 205, 0.90)') // Tâm sáng quang minh ấm áp
-    grad.addColorStop(0.20, 'rgba(255, 210, 120, 0.60)')
-    grad.addColorStop(0.45, 'rgba(255, 160, 45, 0.28)')
-    grad.addColorStop(0.72, 'rgba(215, 105, 20, 0.08)')
-    grad.addColorStop(1.0, 'rgba(160, 60, 0, 0.0)')      // Mờ dần ra không gian vô cực (0 đường viền)
-
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, 512, 512)
-
-    const glowTex = new THREE.CanvasTexture(canvas)
-
-    // 2. Tấm vầng sáng lớn (Soft Glow Plane)
-    const glowMat = new THREE.MeshBasicMaterial({
-      map: glowTex,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    })
-
-    const glowGeo = new THREE.PlaneGeometry(3.6, 3.6)
-    this.haloMesh = new THREE.Mesh(glowGeo, glowMat)
-    this.haloMesh.position.set(0, 3.60, -1.25)
-    this.root.add(this.haloMesh)
-
-    // 3. Đèn điểm quang minh ấm áp hắt nhẹ sau gáy (sau vị trí vầng sáng)
-    this.auraLight = new THREE.PointLight(0xffb855, 1.3, 7.0, 1.8)
-    this.auraLight.position.set(0, 3.60, -1.40)
-    this.auraLight.castShadow = false
-    this.root.add(this.auraLight)
-  }
-
-  /**
-   * Cập nhật chuyển động thở nhẹ của vầng quang minh (Breathing pulse)
-   */
   public update(delta: number) {
-    this.auraTime += delta
-    if (this.haloMesh) {
-      // Vầng quang minh thở nhẹ nhàng linh thiêng
-      const pulse = 1.0 + Math.sin(this.auraTime * 1.5) * 0.035
-      this.haloMesh.scale.set(pulse, pulse, 1.0)
-    }
+    this.time += delta
+    const pulse = 1 + Math.sin(this.time * 1.5) * 0.035
+    this.haloMesh.scale.setScalar(pulse)
   }
 
-  /**
-   * Giải phóng tài nguyên bộ nhớ sạch sẽ (Zero-leak)
-   */
   public dispose() {
+    this.disposed = true
     if (this.modelGroup) {
       this.modelGroup.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh
-          mesh.geometry?.dispose()
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((m) => {
-              if ('map' in m && m.map) m.map.dispose()
-              m.dispose()
-            })
-          } else if (mesh.material) {
-            const m = mesh.material as any
-            if (m.map) m.map.dispose()
-            m.dispose()
-          }
-        }
+        const mesh = child as THREE.Mesh
+        if (mesh.isMesh && mesh.geometry) mesh.geometry.dispose()
       })
       this.root.remove(this.modelGroup)
       this.modelGroup = null
     }
-
-    if (this.haloMesh) {
-      this.haloMesh.geometry?.dispose()
-      if (this.haloMesh.material) {
-        const mat = this.haloMesh.material as THREE.MeshBasicMaterial
-        mat.map?.dispose()
-        mat.dispose()
-      }
-      this.root.remove(this.haloMesh)
-      this.haloMesh = null
+    if (this.fallbackGroup) {
+      SlotBatch.disposeGeometries(this.fallbackGroup)
+      this.root.remove(this.fallbackGroup)
+      this.fallbackGroup = null
     }
-
-    if (this.auraLight) {
-      this.root.remove(this.auraLight)
-      this.auraLight = null
-    }
+    this.haloMesh.geometry.dispose()
+    this.haloMaterial.dispose()
+    this.root.remove(this.haloMesh)
   }
 }

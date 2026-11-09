@@ -40,6 +40,50 @@ export interface RecentDonationDto {
   createdAt: number
 }
 
+export interface MeditationPlanDto {
+  durationMin: number
+  durationSec: number
+  rewardMc: number
+}
+
+export interface MeditationStatusDto {
+  plans: MeditationPlanDto[]
+  dailyCapMc: number
+  dailyEarnedMc: number
+  remainingDailyMc: number
+  occupiedSlotIds: number[]
+  totalSlots: number
+}
+
+export interface MeditationStartDto {
+  ok: boolean
+  sessionToken: string
+  slotId: number | null
+  durationMin: number
+  durationSec: number
+  rewardMc: number
+  startedAt: number
+  targetEndAt: number
+  dailyCapMc: number
+  dailyEarnedMc: number
+  remainingDailyMc: number
+}
+
+export interface MeditationCompleteDto {
+  ok: boolean
+  sessionToken: string
+  durationMin: number
+  expectedRewardMc: number
+  creditedMc: number
+  dailyCapReached: boolean
+  ledgerId: number | null
+  mcBalance: number
+  dailyEarnedMc: number
+  dailyCapMc: number
+  idempotentReplay: boolean
+  hydra?: { enabled: boolean; status: string; txHash: string | null; snapshotNo: number | null } | null
+}
+
 export function createClientRequestId(prefix = 'req'): string {
   const rand = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
@@ -52,13 +96,13 @@ export const useEconomyStore = defineStore('economy', {
     /** Số dư MC thật trên server (1 ADA = 1.000 MC). Client không bao giờ tự cộng/trừ. */
     meritCoins: 0,
     karmaPoints: 0,
-    globalMeritTotal: 1_084_200,
+    globalMeritTotal: 0,
     globalDonationCount: 0,
     shopCatalog: [] as ShopCatalogItemDto[],
     fortuneTiers: {
-      basic: { id: 'basic', name: 'Sơ Tâm Tùy Duyên', badge: 'Quẻ Cơ Bản', description: 'Quẻ thường, lời khuyên chánh niệm cơ bản', costMc: 10 },
-      auspicious: { id: 'auspicious', name: 'Linh Tự Chiêu Tài', badge: 'Phổ Biến', description: 'Luận giải chi tiết 4 phương diện & phương pháp chuyển hóa', costMc: 50 },
-      golden: { id: 'golden', name: 'Thượng Thượng Hoàng Kim', badge: 'Kim Quyển', description: 'Dấu triện khai quang đỏ, ưu tiên quẻ đại cát & biên nhận sổ cái', costMc: 100 }
+      basic: { id: 'basic', name: 'Thỉnh Quẻ Cầu An', badge: '50 MC / Lượt', description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày', costMc: 50 },
+      auspicious: { id: 'auspicious', name: 'Thỉnh Quẻ Cầu An', badge: '50 MC / Lượt', description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày', costMc: 50 },
+      golden: { id: 'golden', name: 'Thỉnh Quẻ Cầu An', badge: '50 MC / Lượt', description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày', costMc: 50 }
     } as Record<'basic' | 'auspicious' | 'golden', { id: string; name: string; badge: string; description: string; costMc: number }>,
     meritConfig: {
       minMc: 10,
@@ -73,11 +117,35 @@ export const useEconomyStore = defineStore('economy', {
       { itemId: 'card_vn_motcot', category: 'heritage_card', quantity: '1' as unknown as number, unlockedAt: 0 }
     ] as InventoryItemDto[],
     leaderboard: [] as MeritLeaderboardEntry[],
+    lastFortuneHydra: null as null | { enabled: boolean; status: string; txHash: string | null; snapshotNo: number | null; receiptHash: string },
+    lastMeritHydra: null as null | { enabled: boolean; status: string; txHash: string | null; snapshotNo: number | null; receiptHash: string },
+    lastShopHydra: null as null | { enabled: boolean; status: string; txHash: string | null; snapshotNo: number | null },
     recentDonations: [] as RecentDonationDto[],
     fortuneHistory: [] as Array<Record<string, any>>,
     ledgerHistory: [] as Array<Record<string, any>>,
+    dailyFreeUsedByCategory: {
+      stick: 0,
+      love: 0,
+      family: 0,
+      wealth: 0,
+      health: 0,
+      star: 0
+    } as Record<string, number>,
     isLoadingCatalog: false,
     isSpending: false,
+    /** Tọa thiền nhận MC: gói thời lượng, trần ngày & tiến độ do server quyết định (client chỉ hiển thị). */
+    meditation: {
+      plans: [
+        { durationMin: 3, durationSec: 180, rewardMc: 15 },
+        { durationMin: 5, durationSec: 300, rewardMc: 30 },
+        { durationMin: 15, durationSec: 900, rewardMc: 80 },
+        { durationMin: 30, durationSec: 1800, rewardMc: 150 }
+      ] as MeditationPlanDto[],
+      dailyCapMc: 200,
+      dailyEarnedMc: 0,
+      occupiedSlotIds: [] as number[],
+      totalSlots: 0
+    },
     /** Tín hiệu mở modal Ví Cardano ở tab "Mua MC" khi bấm nút "Nạp MC" từ các màn hình khác */
     topUpModalSignal: 0
   }),
@@ -159,8 +227,11 @@ export const useEconomyStore = defineStore('economy', {
           inventory: InventoryItemDto[]
           fortuneHistory: Array<Record<string, any>>
           ledgerHistory: Array<Record<string, any>>
+          dailyFreeUsedByCategory?: Record<string, number>
+          meditation?: MeditationStatusDto
         }>('/api/mc/catalog')
 
+        if (data.meditation) this.applyMeditationStatus(data.meditation)
         if (Array.isArray(data.shopCatalog)) this.shopCatalog = data.shopCatalog
         if (data.fortuneTiers) this.fortuneTiers = data.fortuneTiers
         if (data.meritConfig) this.meritConfig = data.meritConfig
@@ -171,6 +242,12 @@ export const useEconomyStore = defineStore('economy', {
         if (Array.isArray(data.inventory)) this.inventory = data.inventory
         if (Array.isArray(data.fortuneHistory)) this.fortuneHistory = data.fortuneHistory
         if (Array.isArray(data.ledgerHistory)) this.ledgerHistory = data.ledgerHistory
+        if (data.dailyFreeUsedByCategory && typeof data.dailyFreeUsedByCategory === 'object') {
+          this.dailyFreeUsedByCategory = {
+            ...this.dailyFreeUsedByCategory,
+            ...data.dailyFreeUsedByCategory
+          }
+        }
         if (data.account && typeof data.account.mcBalance === 'number') {
           this.syncBalanceFromServer(data.account.mcBalance)
         }
@@ -210,6 +287,7 @@ export const useEconomyStore = defineStore('economy', {
           this.inventory = res.inventory
           this.syncCardsStore()
         }
+        this.lastShopHydra = (res as any).hydra ?? null
         return res
       } finally {
         this.isSpending = false
@@ -220,7 +298,20 @@ export const useEconomyStore = defineStore('economy', {
      * Gieo quẻ Bói Quẻ & Cầu An 6 môn bằng MC trên server.
      * Kết quả sinh tại server qua `POST /api/mc/fortune/draw`.
      */
-    async drawFortune(category: string, tier: 'basic' | 'auspicious' | 'golden', requestId?: string) {
+    async drawFortune(
+      category: string,
+      tier: 'basic' | 'auspicious' | 'golden',
+      requestId?: string,
+      boiOptions?: {
+        mode?: 'quick' | 'preset' | 'profile' | 'custom'
+        questionId?: string
+        customQuestion?: string
+        profile?: Record<string, any> | null
+        partnerProfile?: Record<string, any> | null
+        paymentMode?: 'free_daily' | 'offering_item' | 'mc'
+        offeringItemId?: string
+      }
+    ) {
       const reqId = requestId || createClientRequestId('fortune')
       this.isSpending = true
       try {
@@ -229,25 +320,51 @@ export const useEconomyStore = defineStore('economy', {
           idempotentReplay: boolean
           ledgerId: number
           spentMc: number
+          paymentMode?: 'free_daily' | 'offering_item' | 'mc'
+          offeringItemId?: string | null
           mcBalance: number
           fortune: any
           receiptHash: string
+          inventory?: InventoryItemDto[]
+          dailyFreeUsedByCategory?: Record<string, number>
         }>('/api/mc/fortune/draw', {
           method: 'POST',
-          body: { category, tier, requestId: reqId }
+          body: {
+            category,
+            tier,
+            requestId: reqId,
+            ...(boiOptions || {})
+          }
         })
 
         this.syncBalanceFromServer(res.mcBalance)
+        if (Array.isArray(res.inventory)) {
+          this.inventory = res.inventory
+        }
+        if (res.dailyFreeUsedByCategory && typeof res.dailyFreeUsedByCategory === 'object') {
+          this.dailyFreeUsedByCategory = {
+            ...this.dailyFreeUsedByCategory,
+            ...res.dailyFreeUsedByCategory
+          }
+        }
+        const hy = (res as any).hydra
+        this.lastFortuneHydra = hy ? { ...hy, receiptHash: res.receiptHash } : null
         this.fortuneHistory.unshift({
           id: res.ledgerId,
+          hydra: hy ?? null,
           requestId: reqId,
           category,
           tier,
           costMc: res.spentMc,
+          paymentMode: res.paymentMode || 'mc',
+          offeringItemId: res.offeringItemId || null,
           receiptHash: res.receiptHash,
           createdAt: Date.now(),
           fortune: res.fortune
         })
+        if (this.fortuneHistory.length > 30) {
+          this.fortuneHistory = this.fortuneHistory.slice(0, 30)
+        }
         return res
       } finally {
         this.isSpending = false
@@ -286,6 +403,8 @@ export const useEconomyStore = defineStore('economy', {
         })
 
         this.syncBalanceFromServer(res.mcBalance)
+        const hy = (res as any).hydra
+        this.lastMeritHydra = hy ? { ...hy, receiptHash: res.donation.receiptHash } : null
         this.karmaPoints += Math.max(1, Math.floor(res.spentMc / 10))
         if (typeof res.globalMeritTotal === 'number') this.globalMeritTotal = res.globalMeritTotal
         if (Array.isArray(res.leaderboard)) this.leaderboard = res.leaderboard
@@ -298,6 +417,56 @@ export const useEconomyStore = defineStore('economy', {
       } finally {
         this.isSpending = false
       }
+    },
+
+    /* ======================= TỌA THIỀN NHẬN MC ======================= */
+
+    applyMeditationStatus(status: Partial<MeditationStatusDto>) {
+      const m = this.meditation
+      if (Array.isArray(status.plans) && status.plans.length > 0) m.plans = status.plans
+      if (typeof status.dailyCapMc === 'number') m.dailyCapMc = status.dailyCapMc
+      if (typeof status.dailyEarnedMc === 'number') m.dailyEarnedMc = status.dailyEarnedMc
+      if (Array.isArray(status.occupiedSlotIds)) m.occupiedSlotIds = status.occupiedSlotIds
+      if (typeof status.totalSlots === 'number') m.totalSlots = status.totalSlots
+    },
+
+    /** Tải hạn mức MC thiền trong ngày và danh sách bồ đoàn đang có đồng tu ngồi (khách cũng gọi được). */
+    async loadMeditationStatus() {
+      const data = await $fetch<MeditationStatusDto & { authenticated: boolean }>('/api/mc/meditation/status')
+      this.applyMeditationStatus(data)
+      return data
+    },
+
+    /** Mở phiên tọa thiền trên server (giữ bồ đoàn + bắt đầu đồng hồ chống tua giờ). */
+    async startMeditation(durationMin: number, slotId: number | null) {
+      const res = await $fetch<MeditationStartDto>('/api/mc/meditation/start', {
+        method: 'POST',
+        body: { durationMin, ...(slotId !== null ? { slotId } : {}) }
+      })
+      this.meditation.dailyCapMc = res.dailyCapMc
+      this.meditation.dailyEarnedMc = res.dailyEarnedMc
+      return res
+    },
+
+    /** Nhận thưởng khi hết giờ: số MC do server quyết định, client chỉ đồng bộ lại số dư. */
+    async completeMeditation(sessionToken: string) {
+      const res = await $fetch<MeditationCompleteDto>('/api/mc/meditation/complete', {
+        method: 'POST',
+        body: { sessionToken }
+      })
+      this.syncBalanceFromServer(res.mcBalance)
+      this.meditation.dailyEarnedMc = res.dailyEarnedMc
+      this.meditation.dailyCapMc = res.dailyCapMc
+      if (res.creditedMc > 0) this.karmaPoints += Math.max(1, Math.floor(res.creditedMc / 10))
+      return res
+    },
+
+    /** Xả thiền sớm: server hủy phiên, nhả chỗ ngồi, không cộng MC. */
+    async cancelMeditation(sessionToken: string) {
+      return await $fetch<{ ok: boolean; cancelled: boolean }>('/api/mc/meditation/cancel', {
+        method: 'POST',
+        body: { sessionToken }
+      })
     }
   }
 })

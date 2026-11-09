@@ -11,10 +11,15 @@
  * 4. Idempotency: mỗi yêu cầu tiêu có `requestId` (`refId`); ràng buộc `UNIQUE(reason, ref_id)` trong `mc_ledger`
  *    đảm bảo gửi lặp cùng `requestId` không bao giờ trừ MC hai lần.
  */
-import { createHash, randomInt } from 'node:crypto'
+import { createHash, randomBytes, randomInt } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
+import { resolveLegacyCategory, resolveMonId } from '../../../lib/boi/ContentRepository'
+import { generateFortune } from '../../../lib/boi/FortuneEngine'
+import type { FortuneDrawInput, InputMode, PersonProfile, RecentDrawRef } from '../../../lib/boi/types'
+import { HallLayout } from '../../../lib/world3d/world/HallLayout'
 import { apiError } from './auth'
 import { getDb, withTransaction } from './db'
+import { scheduleHydraRecord } from '../hydra/hydraQueue'
 
 export type SpendReason =
   | 'shop_buy_attire'
@@ -22,6 +27,7 @@ export type SpendReason =
   | 'shop_unlock_card'
   | 'fortune_divination'
   | 'merit_donation'
+  | 'hau_dong_donation'
   | 'custom_service'
 
 export type DivinationCategory = 'stick' | 'love' | 'family' | 'wealth' | 'health' | 'star'
@@ -117,10 +123,10 @@ export const MC_SERVICES_CONFIG: McServiceDefinition[] = [
     id: 'fortune_divination',
     name: 'Bói Quẻ 6 Môn & Cầu An',
     reason: 'fortune_divination',
-    description: 'Gieo quẻ chiêm bốc 6 môn (Xin Xăm, Tình Duyên, Cầu Tự, Tài Lộc, Sức Khỏe, Dâng Sao)',
-    minMc: 10,
-    maxMc: 100,
-    fixedPriceMc: null,
+    description: 'Gieo quẻ chiêm bốc 6 môn (Xin Xăm, Tình Duyên, Cầu Tự, Tài Lộc, Sức Khỏe, Dâng Sao) — 50 MC/lượt thêm',
+    minMc: 50,
+    maxMc: 50,
+    fixedPriceMc: 50,
     enabled: true
   },
   {
@@ -373,28 +379,28 @@ export const SHOP_CATALOG: ShopCatalogItem[] = [
   }
 ]
 
-/** Cấp bậc Bói Quẻ & Cầu An (chỉ dùng đơn vị MC) */
+/** Mức phí Bói Quẻ & Cầu An (đồng giá 50 MC / lượt thêm) */
 export const FORTUNE_TIERS: Record<DivinationTier, FortuneTierConfig> = {
   basic: {
     id: 'basic',
-    name: 'Sơ Tâm Tùy Duyên',
-    badge: 'Quẻ Cơ Bản',
-    description: 'Quẻ thường, lời khuyên chánh niệm cơ bản',
-    costMc: 10
+    name: 'Thỉnh Quẻ Cầu An',
+    badge: '50 MC / Lượt',
+    description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày',
+    costMc: 50
   },
   auspicious: {
     id: 'auspicious',
-    name: 'Linh Tự Chiêu Tài',
-    badge: 'Phổ Biến',
-    description: 'Luận giải chi tiết 4 phương diện & phương pháp chuyển hóa',
+    name: 'Thỉnh Quẻ Cầu An',
+    badge: '50 MC / Lượt',
+    description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày',
     costMc: 50
   },
   golden: {
     id: 'golden',
-    name: 'Thượng Thượng Hoàng Kim',
-    badge: 'Kim Quyển',
-    description: 'Dấu triện khai quang đỏ, ưu tiên quẻ đại cát & biên nhận sổ cái',
-    costMc: 100
+    name: 'Thỉnh Quẻ Cầu An',
+    badge: '50 MC / Lượt',
+    description: 'Luận giải chi tiết 4 khối & phương pháp chuyển hóa theo Seed ngày',
+    costMc: 50
   }
 }
 
@@ -402,7 +408,7 @@ export const MERIT_CONFIG = {
   minMc: 10,
   maxMc: 1_000_000,
   suggestedAmountsMc: [50, 100, 500, 1000] as const,
-  baseGlobalMeritMc: 1_084_200,
+  baseGlobalMeritMc: 0,
   rewardThresholds: [
     { minMc: 500, itemId: 'lotus_lantern', itemName: 'Hoa Đăng Cầu An' }
   ]
@@ -677,7 +683,7 @@ export function spend<TExtra = Record<string, unknown>>(
   const cleanRefId = normalizeRequestId(refId)
   const refType = opts?.refType || reason
 
-  return withTransaction(conn => {
+  const result = withTransaction(conn => {
     // 1. Kiểm tra Idempotency trong mc_ledger theo UNIQUE(reason, ref_id)
     const existing = conn
       .prepare(
@@ -687,13 +693,13 @@ export function spend<TExtra = Record<string, unknown>>(
       )
       .get(reason, cleanRefId) as
       | {
-          id: number
-          account_id: number
-          delta_mc: number
-          balance_after: number
-          metadata_json: string | null
-          created_at: number
-        }
+        id: number
+        account_id: number
+        delta_mc: number
+        balance_after: number
+        metadata_json: string | null
+        created_at: number
+      }
       | undefined
 
     if (existing) {
@@ -705,11 +711,11 @@ export function spend<TExtra = Record<string, unknown>>(
       const currentBalance = acc ? acc.mc_balance : existing.balance_after
       const extra = opts?.onReplay
         ? opts.onReplay(conn, {
-            id: existing.id,
-            balanceAfter: currentBalance,
-            metadataJson: existing.metadata_json,
-            createdAt: existing.created_at
-          })
+          id: existing.id,
+          balanceAfter: currentBalance,
+          metadataJson: existing.metadata_json,
+          createdAt: existing.created_at
+        })
         : ((existing.metadata_json ? JSON.parse(existing.metadata_json) : {}) as TExtra)
 
       return {
@@ -784,6 +790,313 @@ export function spend<TExtra = Record<string, unknown>>(
       extra
     }
   })
+
+  // Hybrid Hydra L2: SAU KHI SQLite đã commit, phản chiếu bút toán lên Hydra Head (không chặn, không ném lỗi).
+  if (!result.idempotentReplay) void scheduleHydraRecord(result.ledgerId)
+  return result
+}
+
+export interface CreditResult {
+  ledgerId: number
+  accountId: number
+  creditedMc: number
+  balanceAfter: number
+  reason: string
+  refId: string
+  idempotentReplay: boolean
+  createdAt: number
+}
+
+/**
+ * Cộng MC nguyên tử (ví dụ `meditation_reward`): cập nhật `accounts.mc_balance` + ghi `mc_ledger` dương trong
+ * CÙNG một transaction, idempotent theo UNIQUE(reason, ref_id). Sau commit, bút toán được phản chiếu lên Hydra L2.
+ */
+export function credit(
+  accountId: number,
+  amount: number,
+  reason: string,
+  opts: { refType?: string; refId: string; metadata?: Record<string, unknown> }
+): CreditResult {
+  if (!Number.isSafeInteger(accountId) || accountId <= 0) {
+    apiError(401, 'unauthorized', 'Tài khoản không hợp lệ')
+  }
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    apiError(400, 'invalid_amount', 'Số lượng MC cần cộng phải là số nguyên dương')
+  }
+  const refId = normalizeRequestId(opts.refId)
+  const result = withTransaction((conn): CreditResult => {
+    const existing = conn
+      .prepare('SELECT id, account_id, delta_mc, balance_after, created_at FROM mc_ledger WHERE reason = ? AND ref_id = ?')
+      .get(reason, refId) as { id: number; account_id: number; delta_mc: number; balance_after: number; created_at: number } | undefined
+    if (existing) {
+      if (existing.account_id !== accountId) {
+        apiError(409, 'request_id_conflict', 'Mã tham chiếu đã được sử dụng bởi một giao dịch khác')
+      }
+      return {
+        ledgerId: existing.id,
+        accountId,
+        creditedMc: Math.abs(existing.delta_mc),
+        balanceAfter: existing.balance_after,
+        reason,
+        refId,
+        idempotentReplay: true,
+        createdAt: existing.created_at
+      }
+    }
+    const upd = conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(amount, accountId)
+    if (Number(upd.changes) === 0) apiError(404, 'account_not_found', 'Không tìm thấy tài khoản người chơi')
+    const row = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
+    const now = Date.now()
+    const ins = conn
+      .prepare(
+        `INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`
+      )
+      .run(accountId, amount, row.mc_balance, reason, opts.refType || reason, refId, opts.metadata ? JSON.stringify(opts.metadata) : null, now)
+    return {
+      ledgerId: Number(ins.lastInsertRowid),
+      accountId,
+      creditedMc: amount,
+      balanceAfter: row.mc_balance,
+      reason,
+      refId,
+      idempotentReplay: false,
+      createdAt: now
+    }
+  })
+  if (!result.idempotentReplay) void scheduleHydraRecord(result.ledgerId)
+  return result
+}
+
+/* ============================================================================
+ * 2b. TỌA THIỀN NHẬN MC (MEDITATE-TO-EARN) — server giữ đồng hồ & hạn mức ngày
+ * ========================================================================== */
+
+export interface MeditationPlan {
+  durationMin: number
+  durationSec: number
+  rewardMc: number
+}
+
+/** Gói thời lượng & phần thưởng cố định ở server (client không được tự quyết định số MC). */
+export const MEDITATION_PLANS: readonly MeditationPlan[] = [
+  { durationMin: 3, durationSec: 180, rewardMc: 15 },
+  { durationMin: 5, durationSec: 300, rewardMc: 30 },
+  { durationMin: 15, durationSec: 900, rewardMc: 80 },
+  { durationMin: 30, durationSec: 1800, rewardMc: 150 }
+]
+
+/** Trần MC nhận từ tọa thiền mỗi ngày (giờ Việt Nam UTC+7) cho mỗi tài khoản. */
+export const DAILY_MEDITATION_CAP_MC = 200
+/** Dung sai trễ mạng khi kiểm tra đủ thời gian (giây). */
+const MEDITATION_EARLY_TOLERANCE_SEC = 3
+/** Sau khi hết giờ, chỗ ngồi vẫn được giữ thêm một khoảng ngắn để client kịp gọi hoàn thành. */
+const MEDITATION_SLOT_GRACE_MS = 60_000
+
+function getVietnamDayKey(now = Date.now()): string {
+  return new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10)
+}
+
+function getMeditationEarnedToday(conn: DatabaseSync, accountId: number, dayKey: string): number {
+  const row = conn
+    .prepare(
+      `SELECT COALESCE(SUM(credited_mc), 0) AS total
+         FROM meditation_sessions
+        WHERE account_id = ? AND day_key = ? AND status = 'completed'`
+    )
+    .get(accountId, dayKey) as { total: number }
+  return Number(row.total || 0)
+}
+
+/** Các mã bồ đoàn đang có phiên thiền còn hiệu lực (của bất kỳ tài khoản nào), tùy chọn loại trừ một tài khoản. */
+function getMeditationOccupiedSlotIds(conn: DatabaseSync, now: number, excludeAccountId?: number): number[] {
+  const rows = conn
+    .prepare(
+      `SELECT slot_id, account_id, started_at, duration_sec
+         FROM meditation_sessions
+        WHERE status = 'active' AND slot_id IS NOT NULL`
+    )
+    .all() as Array<{ slot_id: number; account_id: number; started_at: number; duration_sec: number }>
+  const ids = new Set<number>()
+  for (const r of rows) {
+    if (excludeAccountId !== undefined && r.account_id === excludeAccountId) continue
+    if (now <= r.started_at + r.duration_sec * 1000 + MEDITATION_SLOT_GRACE_MS) ids.add(Number(r.slot_id))
+  }
+  return Array.from(ids).sort((a, b) => a - b)
+}
+
+export function getMeditationStatus(accountId: number | null) {
+  const conn = getDb()
+  const now = Date.now()
+  const dayKey = getVietnamDayKey(now)
+  const dailyEarnedMc = accountId ? getMeditationEarnedToday(conn, accountId, dayKey) : 0
+  return {
+    plans: MEDITATION_PLANS,
+    dailyCapMc: DAILY_MEDITATION_CAP_MC,
+    dailyEarnedMc,
+    remainingDailyMc: Math.max(0, DAILY_MEDITATION_CAP_MC - dailyEarnedMc),
+    occupiedSlotIds: getMeditationOccupiedSlotIds(conn, now),
+    totalSlots: HallLayout.getTotalSlotCount()
+  }
+}
+
+export function startMeditationSession(accountId: number, durationMinRaw: unknown, slotIdRaw?: unknown) {
+  const durationMin = Number(durationMinRaw)
+  const plan = MEDITATION_PLANS.find(p => p.durationMin === durationMin)
+  if (!plan) {
+    apiError(400, 'invalid_duration', 'Thời lượng tọa thiền không hợp lệ (chỉ nhận 3, 5, 15 hoặc 30 phút)')
+  }
+
+  let slotId: number | null = null
+  if (slotIdRaw !== undefined && slotIdRaw !== null && slotIdRaw !== '') {
+    const n = Number(slotIdRaw)
+    if (!Number.isInteger(n) || n < 0 || n >= HallLayout.getTotalSlotCount()) {
+      apiError(400, 'invalid_slot', 'Mã bồ đoàn không hợp lệ')
+    }
+    slotId = n
+  }
+
+  return withTransaction(conn => {
+    const now = Date.now()
+    // Một tài khoản chỉ có một phiên đang chạy: phiên cũ bị hủy (đồng thời nhả chỗ ngồi cũ).
+    conn
+      .prepare(`UPDATE meditation_sessions SET status = 'cancelled', completed_at = ? WHERE account_id = ? AND status = 'active'`)
+      .run(now, accountId)
+
+    if (slotId !== null && getMeditationOccupiedSlotIds(conn, now, accountId).includes(slotId)) {
+      apiError(409, 'slot_taken', 'Bồ đoàn này vừa có đồng tu ngồi trước. Xin chọn chỗ khác.')
+    }
+
+    const dayKey = getVietnamDayKey(now)
+    const earned = getMeditationEarnedToday(conn, accountId, dayKey)
+    const sessionToken = `med_${randomBytes(12).toString('hex')}`
+    conn
+      .prepare(
+        `INSERT INTO meditation_sessions
+           (session_token, account_id, slot_id, duration_min, duration_sec, expected_reward_mc, status, day_key, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+      )
+      .run(sessionToken, accountId, slotId, plan.durationMin, plan.durationSec, plan.rewardMc, dayKey, now)
+
+    return {
+      sessionToken,
+      slotId,
+      durationMin: plan.durationMin,
+      durationSec: plan.durationSec,
+      rewardMc: plan.rewardMc,
+      startedAt: now,
+      targetEndAt: now + plan.durationSec * 1000,
+      dailyCapMc: DAILY_MEDITATION_CAP_MC,
+      dailyEarnedMc: earned,
+      remainingDailyMc: Math.max(0, DAILY_MEDITATION_CAP_MC - earned)
+    }
+  })
+}
+
+interface MeditationSessionRow {
+  id: number
+  session_token: string
+  account_id: number
+  slot_id: number | null
+  duration_min: number
+  duration_sec: number
+  expected_reward_mc: number
+  credited_mc: number
+  status: 'active' | 'completed' | 'cancelled'
+  day_key: string
+  started_at: number
+  completed_at: number | null
+  ledger_id: number | null
+}
+
+function loadMeditationSession(conn: DatabaseSync, accountId: number, sessionTokenRaw: unknown): MeditationSessionRow {
+  const token = typeof sessionTokenRaw === 'string' ? sessionTokenRaw.trim() : ''
+  if (token.length < 8 || token.length > 64 || !/^[a-zA-Z0-9_]+$/.test(token)) {
+    apiError(400, 'invalid_session_token', 'Mã phiên thiền không hợp lệ')
+  }
+  const row = conn
+    .prepare('SELECT * FROM meditation_sessions WHERE session_token = ? AND account_id = ?')
+    .get(token, accountId) as unknown as MeditationSessionRow | undefined
+  if (!row) apiError(404, 'session_not_found', 'Không tìm thấy phiên tọa thiền của bạn')
+  return row
+}
+
+export function completeMeditationSession(accountId: number, sessionTokenRaw: unknown) {
+  const conn = getDb()
+  const row = loadMeditationSession(conn, accountId, sessionTokenRaw)
+  const balanceOf = () =>
+    (conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }).mc_balance
+
+  const buildResult = (creditedMc: number, ledgerId: number | null, idempotentReplay: boolean) => ({
+    sessionToken: row.session_token,
+    durationMin: row.duration_min,
+    expectedRewardMc: row.expected_reward_mc,
+    creditedMc,
+    dailyCapReached: creditedMc < row.expected_reward_mc,
+    ledgerId,
+    mcBalance: balanceOf(),
+    dailyEarnedMc: getMeditationEarnedToday(conn, accountId, row.day_key),
+    dailyCapMc: DAILY_MEDITATION_CAP_MC,
+    idempotentReplay
+  })
+
+  if (row.status === 'completed') return buildResult(row.credited_mc, row.ledger_id, true)
+  if (row.status === 'cancelled') {
+    apiError(409, 'session_cancelled', 'Phiên tọa thiền này đã bị hủy nên không thể nhận thưởng')
+  }
+
+  const now = Date.now()
+  const minElapsedMs = (row.duration_sec - MEDITATION_EARLY_TOLERANCE_SEC) * 1000
+  const elapsedMs = now - row.started_at
+  if (elapsedMs < minElapsedMs) {
+    const remainSec = Math.ceil((row.duration_sec * 1000 - elapsedMs) / 1000)
+    apiError(400, 'meditation_incomplete', `Chưa đủ thời gian tọa thiền, còn khoảng ${remainSec} giây nữa`)
+  }
+
+  // Nếu lần gọi trước đã ghi sổ cái nhưng chưa kịp đánh dấu hoàn thành (sự cố giữa chừng) thì dùng lại bút toán đó.
+  const existingLedger = conn
+    .prepare("SELECT id, delta_mc FROM mc_ledger WHERE reason = 'meditation_reward' AND ref_id = ?")
+    .get(row.session_token) as { id: number; delta_mc: number } | undefined
+
+  let creditedMc = 0
+  let ledgerId: number | null = null
+  if (existingLedger) {
+    creditedMc = Number(existingLedger.delta_mc)
+    ledgerId = existingLedger.id
+  } else {
+    const earned = getMeditationEarnedToday(conn, accountId, row.day_key)
+    creditedMc = Math.min(row.expected_reward_mc, Math.max(0, DAILY_MEDITATION_CAP_MC - earned))
+    if (creditedMc > 0) {
+      const res = credit(accountId, creditedMc, 'meditation_reward', {
+        refType: 'meditation',
+        refId: row.session_token,
+        metadata: { durationMin: row.duration_min, sessionToken: row.session_token, slotId: row.slot_id }
+      })
+      creditedMc = res.creditedMc
+      ledgerId = res.ledgerId
+    }
+  }
+
+  conn
+    .prepare(
+      `UPDATE meditation_sessions
+          SET status = 'completed', credited_mc = ?, completed_at = ?, ledger_id = ?
+        WHERE id = ? AND status = 'active'`
+    )
+    .run(creditedMc, now, ledgerId, row.id)
+
+  return buildResult(creditedMc, ledgerId, false)
+}
+
+/** Xả thiền sớm: hủy phiên đang chạy (nhả chỗ ngồi), không nhận MC. */
+export function cancelMeditationSession(accountId: number, sessionTokenRaw: unknown) {
+  const conn = getDb()
+  const row = loadMeditationSession(conn, accountId, sessionTokenRaw)
+  if (row.status !== 'active') return { cancelled: false, status: row.status }
+  conn
+    .prepare(`UPDATE meditation_sessions SET status = 'cancelled', completed_at = ? WHERE id = ? AND status = 'active'`)
+    .run(Date.now(), row.id)
+  return { cancelled: true, status: 'cancelled' as const }
 }
 
 /* ============================================================================
@@ -907,50 +1220,260 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
   })
 }
 
+function getStartOfVietnamDayMs(now = Date.now()): number {
+  const vnOffsetMs = 7 * 3600 * 1000
+  const vnNow = now + vnOffsetMs
+  const startOfVnDay = Math.floor(vnNow / 86_400_000) * 86_400_000
+  return startOfVnDay - vnOffsetMs
+}
+
+function getAccountDailyFreeUsedMap(conn: DatabaseSync, accountId: number, now = Date.now()): Record<string, number> {
+  const startMs = getStartOfVietnamDayMs(now)
+  const rows = conn
+    .prepare(
+      `SELECT category, COUNT(*) AS cnt
+         FROM fortune_records
+        WHERE account_id = ? AND created_at >= ? AND tier = 'free_daily'
+        GROUP BY category`
+    )
+    .all(accountId, startMs) as Array<{ category: string; cnt: number }>
+
+  const out: Record<string, number> = {
+    stick: 0,
+    love: 0,
+    family: 0,
+    wealth: 0,
+    health: 0,
+    star: 0
+  }
+  for (const r of rows) {
+    out[r.category] = Number(r.cnt || 0)
+  }
+  return out
+}
+
+function loadRecentDrawsForAccount(conn: DatabaseSync, accountId: number, fallbackMon: string): RecentDrawRef[] {
+  const recentRows = conn
+    .prepare(
+      `SELECT fortune_json
+         FROM fortune_records
+        WHERE account_id = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 3`
+    )
+    .all(accountId) as Array<{ fortune_json: string }>
+
+  const recentDraws: RecentDrawRef[] = []
+  for (const r of recentRows) {
+    try {
+      const parsed = JSON.parse(r.fortune_json)
+      recentDraws.push({
+        mon: parsed.mon || fallbackMon,
+        muc: parsed.muc,
+        thoId: parsed.blocks?.tho?.id || parsed.id,
+        luangiaiId: parsed.blocks?.luangiai?.id,
+        loikhuyenId: parsed.blocks?.loikhuyen?.id,
+        hoagiaiId: parsed.blocks?.hoagiai?.id || null
+      })
+    } catch {
+      // Bỏ qua bản ghi cũ
+    }
+  }
+  return recentDraws
+}
+
 /**
  * Gieo quẻ Bói Quẻ & Cầu An 6 môn:
- * - Giá lấy từ `FORTUNE_TIERS[tier].costMc` phía server.
- * - Kết quả quẻ sinh bằng CSPRNG (`crypto.randomInt`) trên server và lưu vào `fortune_records`.
- * - Gửi lặp cùng `requestId` trả về đúng quẻ đã gieo mà không trừ tiền lần 2.
+ * - Hỗ trợ 3 phương thức thanh toán lượt (`paymentMode`):
+ *   1. `'free_daily'`: Miễn phí 1 lượt/môn/ngày (`0 MC`).
+ *   2. `'offering_item'`: Dùng 1 vật phẩm Lễ Phẩm trong túi đồ (`incense_quang`, `lotus_lantern`...) để thêm lượt (`0 MC`).
+ *   3. `'mc'` (mặc định): Tiêu MC theo `FORTUNE_TIERS[tier].costMc` (`10 / 50 / 100 MC`).
+ * - Kết quả quẻ sinh bằng `FortuneEngine` (PRNG có seed nhất quán theo ngày + tránh trùng 3 lần gần nhất) trên server và lưu vào `fortune_records`.
+ * - Gửi lặp cùng `requestId` trả về đúng quẻ đã gieo mà không trừ tiền/vật phẩm lần 2.
  */
 export function drawFortuneWithMc(
   accountId: number,
   categoryRaw: string,
   tierRaw: string,
-  requestId: string
+  requestId: string,
+  boiOptions?: {
+    mode?: InputMode
+    questionId?: string
+    customQuestion?: string
+    profile?: PersonProfile | null
+    partnerProfile?: PersonProfile | null
+    dateStr?: string
+    paymentMode?: 'free_daily' | 'offering_item' | 'mc'
+    offeringItemId?: string
+  }
 ) {
-  const category = String(categoryRaw || 'stick').trim() as DivinationCategory
-  if (!(category in FORTUNE_CORPUS)) {
+  const validCategories = new Set([
+    'stick', 'love', 'family', 'wealth', 'health', 'star',
+    'xin_xam', 'to_duyen', 'cau_tu', 'chieu_tai', 'duoc_su', 'dang_sao'
+  ])
+  const rawCatKey = String(categoryRaw || 'stick').trim().toLowerCase()
+  if (!validCategories.has(rawCatKey)) {
     apiError(400, 'invalid_category', 'Môn bói quẻ không hợp lệ')
   }
+  const mon = resolveMonId(rawCatKey)
+  const category = resolveLegacyCategory(mon) as DivinationCategory
+
+  const paymentMode = boiOptions?.paymentMode || 'mc'
+  const cleanReqId = normalizeRequestId(requestId)
+
+  // Trường hợp 1: Dùng lượt miễn phí mỗi ngày (1 lượt/môn/ngày) hoặc dùng Vật phẩm Lễ Phẩm
+  if (paymentMode === 'free_daily' || paymentMode === 'offering_item') {
+    return withTransaction((conn) => {
+      const existingRec = conn
+        .prepare('SELECT id, cost_mc, fortune_json, receipt_hash FROM fortune_records WHERE request_id = ? AND account_id = ?')
+        .get(cleanReqId, accountId) as { id: number; cost_mc: number; fortune_json: string; receipt_hash: string } | undefined
+
+      const accRow = conn
+        .prepare('SELECT mc_balance FROM accounts WHERE id = ?')
+        .get(accountId) as { mc_balance: number } | undefined
+      const currentBalance = Number(accRow?.mc_balance || 0)
+
+      if (existingRec) {
+        return {
+          idempotentReplay: true,
+          ledgerId: existingRec.id,
+          spentMc: existingRec.cost_mc,
+          balanceBefore: currentBalance,
+          balanceAfter: currentBalance,
+          extra: {
+            fortune: JSON.parse(existingRec.fortune_json),
+            receiptHash: existingRec.receipt_hash,
+            paymentMode,
+            inventory: getAccountInventory(accountId),
+            dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId)
+          }
+        }
+      }
+
+      const now = Date.now()
+      let tierLabel = 'Lượt Miễn Phí Trong Ngày'
+      let tierCode = 'free_daily'
+
+      if (paymentMode === 'free_daily') {
+        const usedMap = getAccountDailyFreeUsedMap(conn, accountId, now)
+        if ((usedMap[category] || 0) >= 1) {
+          apiError(
+            400,
+            'daily_free_exhausted',
+            'Bạn đã dùng hết 1 lượt miễn phí hôm nay cho môn này. Hãy dùng Lễ Phẩm (Nhang Trầm / Hoa Đăng) hoặc MC Coin để thỉnh thêm lượt!'
+          )
+        }
+      } else {
+        const itemId = String(boiOptions?.offeringItemId || 'incense_quang').trim()
+        const catalogItem = SHOP_CATALOG.find(i => i.id === itemId && i.category === 'offering')
+        if (!catalogItem) {
+          apiError(400, 'invalid_offering_item', 'Vật phẩm lễ phẩm không hợp lệ')
+        }
+        const decRes = conn
+          .prepare(
+            `UPDATE account_inventory
+                SET quantity = quantity - 1, updated_at = ?
+              WHERE account_id = ? AND item_id = ? AND quantity >= 1`
+          )
+          .run(now, accountId, itemId)
+        if (Number(decRes.changes || 0) === 0) {
+          apiError(
+            400,
+            'insufficient_offering_item',
+            `Bạn không còn "${catalogItem.name}" trong túi đồ. Hãy thỉnh thêm ở Cửa Hàng hoặc dùng MC Coin!`
+          )
+        }
+        tierLabel = `Dâng Lễ Phẩm (${catalogItem.name})`
+        tierCode = `offering_${itemId}`
+      }
+
+      const recentDraws = loadRecentDrawsForAccount(conn, accountId, mon)
+      const generated = generateFortune({
+        mon,
+        mode: boiOptions?.mode || 'quick',
+        questionId: boiOptions?.questionId,
+        customQuestion: boiOptions?.customQuestion,
+        profile: boiOptions?.profile || null,
+        partnerProfile: boiOptions?.partnerProfile || null,
+        dateStr: boiOptions?.dateStr,
+        recentDraws
+      })
+
+      const receiptHash = 'mc_fortune_' + createHash('sha256')
+        .update(`${accountId}:${cleanReqId}:${tierCode}:${now}`)
+        .digest('hex')
+        .slice(0, 24)
+
+      const fortunePayload = {
+        id: generated.blocks.tho.id,
+        ...generated,
+        tier: tierCode,
+        tierName: tierLabel,
+        paymentMode,
+        costMc: 0,
+        receiptHash,
+        createdAt: now
+      }
+
+      const ins = conn
+        .prepare(
+          `INSERT INTO fortune_records (account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at)
+           VALUES (?, ?, ?, ?, 0, ?, ?, ?)`
+        )
+        .run(accountId, cleanReqId, category, tierCode, JSON.stringify(fortunePayload), receiptHash, now)
+
+      return {
+        idempotentReplay: false,
+        ledgerId: Number(ins.lastInsertRowid || 0),
+        spentMc: 0,
+        balanceBefore: currentBalance,
+        balanceAfter: currentBalance,
+        extra: {
+          fortune: fortunePayload,
+          receiptHash,
+          paymentMode,
+          inventory: getAccountInventory(accountId),
+          dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId, now)
+        }
+      }
+    })
+  }
+
+  // Trường hợp 2: Tiêu MC Coin theo cấp độ (10 / 50 / 100 MC)
   const tier = String(tierRaw || 'auspicious').trim() as DivinationTier
   const tierCfg = FORTUNE_TIERS[tier]
   if (!tierCfg) {
     apiError(400, 'invalid_tier', 'Cấp độ thỉnh quẻ không hợp lệ')
   }
 
-  const cleanReqId = normalizeRequestId(requestId)
-
   return spend(accountId, tierCfg.costMc, 'fortune_divination', cleanReqId, {
     refType: 'fortune',
-    metadata: { category, tier, costMc: tierCfg.costMc },
+    metadata: { category, mon, tier, mode: boiOptions?.mode || 'quick', costMc: tierCfg.costMc },
     onSpent: (conn, { ledgerId, now }) => {
-      const pool = FORTUNE_CORPUS[category]
-      // Với gói Hoàng Kim ('golden'), ưu tiên quẻ đầu tiên (Thượng Thượng / Đại Cát) với xác suất 75%
-      let idx = randomInt(0, pool.length)
-      if (tier === 'golden' && pool.length > 1 && randomInt(0, 100) < 75) {
-        idx = 0
-      }
-      const chosen = pool[idx]!
+      const recentDraws = loadRecentDrawsForAccount(conn, accountId, mon)
+
+      const generated = generateFortune({
+        mon,
+        mode: boiOptions?.mode || 'quick',
+        questionId: boiOptions?.questionId,
+        customQuestion: boiOptions?.customQuestion,
+        profile: boiOptions?.profile || null,
+        partnerProfile: boiOptions?.partnerProfile || null,
+        dateStr: boiOptions?.dateStr,
+        recentDraws
+      })
+
       const receiptHash = 'mc_fortune_' + createHash('sha256')
         .update(`${accountId}:${cleanReqId}:${ledgerId}:${now}`)
         .digest('hex')
         .slice(0, 24)
 
       const fortunePayload = {
-        ...chosen,
+        id: generated.blocks.tho.id,
+        ...generated,
         tier: tierCfg.id,
         tierName: tierCfg.name,
+        paymentMode: 'mc',
         costMc: tierCfg.costMc,
         receiptHash,
         createdAt: now
@@ -965,7 +1488,10 @@ export function drawFortuneWithMc(
 
       return {
         fortune: fortunePayload,
-        receiptHash
+        receiptHash,
+        paymentMode: 'mc',
+        inventory: getAccountInventory(accountId),
+        dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId, now)
       }
     },
     onReplay: (conn) => {
@@ -977,7 +1503,10 @@ export function drawFortuneWithMc(
       }
       return {
         fortune: JSON.parse(rec.fortune_json),
-        receiptHash: rec.receipt_hash
+        receiptHash: rec.receipt_hash,
+        paymentMode: 'mc',
+        inventory: getAccountInventory(accountId),
+        dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId)
       }
     }
   })
@@ -1050,7 +1579,7 @@ export function donateMeritWithMc(
         receiptHash,
         rewardItemId,
         rewardItemName,
-        globalMeritTotal: MERIT_CONFIG.baseGlobalMeritMc + Number(totalRow.total || 0),
+        globalMeritTotal: Number(totalRow.total || 0),
         blessing: 'Nguyện đem công đức này, hồi hướng khắp tất cả, đệ tử và chúng sanh, đều trọn thành Phật đạo.'
       }
     },
@@ -1073,7 +1602,7 @@ export function donateMeritWithMc(
         receiptHash: row?.receipt_hash ?? '',
         rewardItemId: row?.reward_item_id ?? null,
         rewardItemName: row?.reward_item_id === 'lotus_lantern' ? 'Hoa Đăng Cầu An' : null,
-        globalMeritTotal: MERIT_CONFIG.baseGlobalMeritMc + Number(totalRow.total || 0),
+        globalMeritTotal: Number(totalRow.total || 0),
         blessing: 'Nguyện đem công đức này, hồi hướng khắp tất cả, đệ tử và chúng sanh, đều trọn thành Phật đạo.'
       }
     }
@@ -1113,18 +1642,30 @@ export function getMcOverviewAndHistory(accountId: number | null) {
   let inventory: InventoryItemRecord[] = []
   let fortuneHistory: Array<Record<string, unknown>> = []
   let ledgerHistory: Array<Record<string, unknown>> = []
+  let dailyFreeUsedByCategory: Record<string, number> = {
+    stick: 0,
+    love: 0,
+    family: 0,
+    wealth: 0,
+    health: 0,
+    star: 0
+  }
 
   if (accountId) {
     inventory = getAccountInventory(accountId)
+    dailyFreeUsedByCategory = getAccountDailyFreeUsedMap(db, accountId)
 
     const fRows = db
       .prepare(
         `SELECT id, request_id AS requestId, category, tier, cost_mc AS costMc,
-                fortune_json AS fortuneJson, receipt_hash AS receiptHash, created_at AS createdAt
+                fortune_json AS fortuneJson, receipt_hash AS receiptHash, created_at AS createdAt,
+             (SELECT l.hydra_status FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraStatus,
+             (SELECT l.hydra_tx_hash FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraTxHash,
+             (SELECT l.hydra_snapshot_no FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraSnapshotNo
            FROM fortune_records
           WHERE account_id = ?
           ORDER BY created_at DESC
-          LIMIT 20`
+          LIMIT 30`
       )
       .all(accountId) as Array<{
         id: number
@@ -1135,6 +1676,9 @@ export function getMcOverviewAndHistory(accountId: number | null) {
         fortuneJson: string
         receiptHash: string
         createdAt: number
+        hydraStatus: string | null
+        hydraTxHash: string | null
+        hydraSnapshotNo: number | null
       }>
 
     fortuneHistory = fRows.map(r => ({
@@ -1145,13 +1689,23 @@ export function getMcOverviewAndHistory(accountId: number | null) {
       costMc: r.costMc,
       receiptHash: r.receiptHash,
       createdAt: r.createdAt,
+      // Lượt miễn phí (0 MC) không tạo bút toán nên không có trạng thái sổ cái để hiển thị.
+      hydra: (r.hydraStatus || r.costMc > 0)
+        ? {
+          enabled: true,
+          status: r.hydraStatus || 'offchain',
+          txHash: r.hydraTxHash || null,
+          snapshotNo: r.hydraSnapshotNo ?? null
+        }
+        : null,
       fortune: JSON.parse(r.fortuneJson)
     }))
 
     ledgerHistory = db
       .prepare(
         `SELECT id, delta_mc AS deltaMc, balance_after AS balanceAfter, reason, ref_type AS refType,
-                ref_id AS refId, tx_hash AS txHash, metadata_json AS metadataJson, created_at AS createdAt
+                ref_id AS refId, tx_hash AS txHash, metadata_json AS metadataJson, created_at AS createdAt,
+                hydra_tx_hash AS hydraTxHash, hydra_snapshot_no AS hydraSnapshotNo, hydra_status AS hydraStatus
            FROM mc_ledger
           WHERE account_id = ?
           ORDER BY id DESC
@@ -1173,13 +1727,15 @@ export function getMcOverviewAndHistory(accountId: number | null) {
     shopCatalog: SHOP_CATALOG,
     fortuneTiers: FORTUNE_TIERS,
     meritConfig: MERIT_CONFIG,
-    globalMeritTotal: MERIT_CONFIG.baseGlobalMeritMc + Number(totalRow.total || 0),
+    globalMeritTotal: Number(totalRow.total || 0),
     globalDonationCount: Number(totalRow.count || 0),
     leaderboard,
     recentDonations,
     inventory,
     fortuneHistory,
-    ledgerHistory
+    ledgerHistory,
+    dailyFreeUsedByCategory,
+    meditation: getMeditationStatus(accountId)
   }
 }
 

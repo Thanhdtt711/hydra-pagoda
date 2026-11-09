@@ -33,6 +33,13 @@ export default defineNuxtConfig({
   // Chỉ `public.*` được gửi xuống trình duyệt; phần còn lại là bí mật/vận hành phía server.
   runtimeConfig: {
     dbPath: './.data/pagoda.sqlite', // NUXT_DB_PATH
+    // Hydra L2 (Hybrid, mặc định TẮT; xem .env.example). Cũng đọc trực tiếp HYDRA_L2_ENABLED / HYDRA_NODE_WS_URL.
+    hydraL2Enabled: false, // NUXT_HYDRA_L2_ENABLED
+    hydraNodeWsUrl: 'ws://127.0.0.1:4001', // NUXT_HYDRA_NODE_WS_URL
+    hydraSessionSecret: '', // NUXT_HYDRA_SESSION_SECRET (để trống: tự sinh & lưu trong bảng hydra_kv)
+    hydraStateLovelace: 2000000, // NUXT_HYDRA_STATE_LOVELACE
+    hydraFuelTarget: 10, // NUXT_HYDRA_FUEL_TARGET
+    hydraSubmitTimeoutMs: 8000, // NUXT_HYDRA_SUBMIT_TIMEOUT_MS
     sessionTtlHours: 168, // NUXT_SESSION_TTL_HOURS (7 ngày)
     trustProxy: false, // NUXT_TRUST_PROXY: chỉ bật khi chạy sau reverse proxy tin cậy
     treasuryAddress: '', // NUXT_TREASURY_ADDRESS (hoặc biến môi trường TREASURY_ADDRESS)
@@ -49,6 +56,18 @@ export default defineNuxtConfig({
   modules: [
     '@pinia/nuxt'
   ],
+  app: {
+    head: {
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,600&display=swap'
+        }
+      ]
+    }
+  },
   devServer: {
     host: '127.0.0.1',
     port: 3012

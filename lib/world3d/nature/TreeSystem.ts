@@ -1,54 +1,254 @@
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { WindSystem } from './WindSystem'
 import { MapLayout } from '../world/MapLayout'
 import {
-  type TreeSpeciesType,
+  TREE_SPECIES_LIST,
+  TREE_SPECIES_PROFILES,
+  getMapleLeafColor,
   type TreeSpawnData,
-  TREE_SPECIES_PROFILES
+  type TreeSpeciesType
 } from './TreeSpecies'
 import { CylinderCollider } from '../collision/Collider'
 import { CollisionWorld } from '../collision/CollisionWorld'
 import { TerrainSystem } from '../world/TerrainSystem'
+import { LowPolyBuilder, type ColoredPart } from '../style/LowPolyBuilder'
+import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
+import { Palette, type TimeOfDayMode } from '../style/Palette'
 
 /**
- * TreeSystem (Hệ Thống Cây Cối & Môi Trường Đa Loài Tối Ưu):
- * - Implements 6 distinct Asian sacred temple tree species:
- *   1. Bodhi (Bồ Đề Bát Nhã) - Sacred ancient tree with buttress roots & umbrella canopy
- *   2. Banyan (Đa Cổ Thụ) - Massive trunk with hanging aerial roots (rễ phụ)
- *   3. Bamboo (Trúc Thiền Tông) - Slender segmented culms with delicate leaf sprays
- *   4. Pine (Thông Cổ Tự) - Sinuous bonsai trunk with tiered horizontal needle cloud boughs
- *   5. Cherry / Maple (Phong Đỏ / Anh Đào) - Graceful branching with country-adaptive foliage
- *   6. Palm (Cau Cảnh Nam Á) - Tall ringed trunk with fountain frond starburst
- * - Renders entire island (>70 trees) in exactly 12 GPU draw calls via InstancedMesh.
- * - Foliage & trunk sway synchronized globally with WindSystem via onBeforeCompile vertex shader.
- * - Automatically registers CylinderColliders into CollisionWorld directly from MapLayout.getTreeSpawns().
+ * TreeSystem (Low-poly Minimalist):
+ * - 6 loài cây dựng bằng khối facet (trụ, nón, cầu ít mặt có jitter), màu "nướng" dạng sắc độ xám vào vertex color.
+ * - Màu thật = màu loài (TREE_SPECIES_PROFILES) nhân tỉ lệ Palette(mode)/Palette(day) nên tự tối/ấm theo giờ.
+ * - Mỗi loài 2 InstancedMesh (thân + tán) => tối đa 12 draw call cho toàn bộ cây.
+ * - Gió từ WindSystem qua onBeforeCompile (nhún ngọn, rung nhẹ tán), pha riêng theo vị trí từng cây.
+ * - Collider thân cây sinh từ MapLayout.getTreeSpawns() nên hình ảnh và va chạm luôn khớp nhau.
  */
+
+// ---------- Sắc độ xám nướng vào vertex color ----------
+const LIGHT = 0xffffff
+const MID = 0xe4e4e4
+const DARK = 0xc4c4c4
+
+type Vec3 = [number, number, number]
+
+const _up = new THREE.Vector3(0, 1, 0)
+const _q = new THREE.Quaternion()
+const _eu = new THREE.Euler()
+const _d = new THREE.Vector3()
+
+function orient(dir: THREE.Vector3): Vec3 {
+  _q.setFromUnitVectors(_up, dir)
+  _eu.setFromQuaternion(_q, 'XYZ')
+  return [_eu.x, _eu.y, _eu.z]
+}
+
+/** Khối trụ đi từ điểm `from` đến `to` (bán kính rFrom ở đầu `from`, rTo ở đầu `to`). */
+function limb(parts: ColoredPart[], from: Vec3, to: Vec3, rFrom: number, rTo: number, seg: number, shade: number) {
+  _d.set(to[0] - from[0], to[1] - from[1], to[2] - from[2])
+  const len = _d.length()
+  if (len < 1e-4) return
+  _d.normalize()
+  parts.push({
+    geometry: LowPolyBuilder.cylinder(rTo, rFrom, len, seg),
+    color: shade,
+    transform: {
+      position: [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2],
+      rotation: orient(_d)
+    }
+  })
+}
+
+/** Nón mọc từ `base` theo hướng `dir` (đơn vị), dùng cho tán thông, tàu cau, lá trúc. */
+function coneDir(
+  parts: ColoredPart[],
+  base: Vec3,
+  dir: Vec3,
+  r: number,
+  len: number,
+  seg: number,
+  shade: number,
+  flat = 1
+) {
+  _d.set(dir[0], dir[1], dir[2]).normalize()
+  parts.push({
+    geometry: LowPolyBuilder.cone(r, len, seg),
+    color: shade,
+    transform: {
+      position: [base[0] + _d.x * len * 0.5, base[1] + _d.y * len * 0.5, base[2] + _d.z * len * 0.5],
+      rotation: orient(_d),
+      scale: [1, 1, flat]
+    }
+  })
+}
+
+/** Cụm tán dạng cầu dẹt facet có làm lệch đỉnh nhẹ. */
+function blob(
+  parts: ColoredPart[],
+  x: number,
+  y: number,
+  z: number,
+  rx: number,
+  ry: number,
+  rz: number,
+  shade: number,
+  seed: number
+) {
+  parts.push({
+    geometry: LowPolyBuilder.jitter(LowPolyBuilder.sphere(1, 1), 0.14, seed),
+    color: shade,
+    transform: { position: [x, y, z], scale: [rx, ry, rz] }
+  })
+}
+
+interface SpeciesGeometry {
+  trunk: THREE.BufferGeometry
+  foliage: THREE.BufferGeometry
+}
+
+function buildSpeciesGeometry(species: TreeSpeciesType): SpeciesGeometry {
+  const trunk: ColoredPart[] = []
+  const foliage: ColoredPart[] = []
+
+  switch (species) {
+    case 'bodhi': {
+      limb(trunk, [0, 0, 0], [0.1, 7.2, 0], 1.05, 0.62, 7, LIGHT)
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2 + 0.3
+        limb(trunk, [Math.cos(a) * 1.5, 0, Math.sin(a) * 1.5], [Math.cos(a) * 0.5, 2.0, Math.sin(a) * 0.5], 0.32, 0.12, 5, DARK)
+      }
+      for (const a of [0.4, 2.5, 4.6]) {
+        limb(trunk, [0, 5.6, 0], [Math.cos(a) * 2.8, 7.4, Math.sin(a) * 2.8], 0.42, 0.2, 6, MID)
+      }
+      blob(foliage, 0, 8.7, 0, 3.8, 1.9, 3.8, LIGHT, 11)
+      blob(foliage, 2.7, 7.6, 1.2, 2.7, 1.4, 2.7, MID, 12)
+      blob(foliage, -2.5, 7.4, 1.6, 2.6, 1.3, 2.6, DARK, 13)
+      blob(foliage, 0.4, 7.2, -2.7, 2.8, 1.4, 2.8, MID, 14)
+      blob(foliage, 0, 10.2, 0, 2.2, 1.2, 2.2, LIGHT, 15)
+      break
+    }
+    case 'banyan': {
+      limb(trunk, [0, 0, 0], [0, 8.0, 0], 1.5, 0.95, 7, LIGHT)
+      for (const a of [0.2, 1.7, 3.3, 4.9]) {
+        limb(trunk, [0, 6.0, 0], [Math.cos(a) * 4.0, 7.6, Math.sin(a) * 4.0], 0.62, 0.3, 6, MID)
+      }
+      // Rễ phụ rủ từ cành xuống đất
+      const roots: Array<[number, number]> = [
+        [2.9, 1.2],
+        [-2.7, 1.6],
+        [0.8, -3.1],
+        [-1.4, -2.9],
+        [3.4, -1.4],
+        [-3.2, -0.9]
+      ]
+      for (const [rx, rz] of roots) {
+        limb(trunk, [rx, 6.8, rz], [rx * 1.02, 0, rz * 1.02], 0.1, 0.17, 4, DARK)
+      }
+      blob(foliage, 0, 8.4, 0, 4.8, 1.8, 4.8, LIGHT, 21)
+      blob(foliage, 3.0, 7.4, 1.6, 3.3, 1.5, 3.3, MID, 22)
+      blob(foliage, -3.1, 7.2, 1.7, 3.1, 1.4, 3.1, DARK, 23)
+      blob(foliage, 1.1, 7.1, -3.2, 3.4, 1.5, 3.4, MID, 24)
+      blob(foliage, -1.6, 7.0, -3.0, 3.1, 1.4, 3.1, DARK, 25)
+      blob(foliage, 0, 9.8, 0, 2.5, 1.2, 2.5, LIGHT, 26)
+      break
+    }
+    case 'bamboo': {
+      const culms: Array<[number, number, number, number, number]> = [
+        [0.0, 0.0, 7.4, 0.04, -0.05],
+        [0.4, 0.3, 7.0, 0.1, 0.08],
+        [-0.38, 0.32, 7.2, -0.08, 0.1],
+        [0.46, -0.34, 6.7, 0.12, -0.08],
+        [-0.42, -0.36, 6.9, -0.1, -0.06]
+      ]
+      culms.forEach(([x, z, h, tx, tz], i) => {
+        const top: Vec3 = [x + tx * h, h, z + tz * h]
+        limb(trunk, [x, 0, z], top, 0.1, 0.06, 5, i % 2 ? MID : LIGHT)
+        // Vài chùm lá nón nhọn tỏa ra ở phần ngọn
+        for (let k = 0; k < 3; k++) {
+          const a = k * 2.1 + i
+          const y = h - 0.4 - k * 0.7
+          const base: Vec3 = [x + tx * y, y, z + tz * y]
+          coneDir(foliage, base, [Math.cos(a) * 0.9, 0.35, Math.sin(a) * 0.9], 0.28, 1.5, 4, k === 0 ? LIGHT : MID, 0.45)
+        }
+      })
+      break
+    }
+    case 'pine': {
+      limb(trunk, [0, 0, 0], [-0.2, 3.0, 0.1], 0.65, 0.46, 6, LIGHT)
+      limb(trunk, [-0.2, 3.0, 0.1], [0.12, 5.8, 0], 0.46, 0.32, 6, MID)
+      limb(trunk, [0.12, 5.8, 0], [0, 8.0, 0], 0.32, 0.16, 6, LIGHT)
+      const tiers: Array<[number, number, number, number, number]> = [
+        [0.6, 3.2, 0.2, 3.0, 2.3],
+        [-0.4, 4.7, 0.2, 2.5, 2.2],
+        [0.3, 6.1, -0.2, 1.9, 2.0],
+        [-0.1, 7.4, 0, 1.3, 1.8],
+        [0, 8.6, 0, 0.75, 1.5]
+      ]
+      tiers.forEach(([x, y, z, r, h], i) => {
+        foliage.push({
+          geometry: LowPolyBuilder.cone(r, h, 7),
+          color: i % 2 ? MID : LIGHT,
+          transform: { position: [x, y, z], rotation: [0, i * 0.5, 0] }
+        })
+      })
+      break
+    }
+    case 'cherry_maple': {
+      limb(trunk, [0, 0, 0], [-0.2, 3.6, 0], 0.46, 0.32, 6, LIGHT)
+      limb(trunk, [-0.2, 3.6, 0], [-1.5, 5.4, 0.3], 0.3, 0.16, 5, MID)
+      limb(trunk, [-0.2, 3.6, 0], [1.3, 5.6, -0.3], 0.28, 0.15, 5, MID)
+      blob(foliage, -1.7, 5.9, 0.4, 1.9, 1.3, 1.9, MID, 31)
+      blob(foliage, 1.6, 6.1, -0.3, 1.8, 1.2, 1.8, DARK, 32)
+      blob(foliage, 0, 7.1, 0, 2.1, 1.4, 2.1, LIGHT, 33)
+      blob(foliage, -0.5, 5.3, -0.9, 1.5, 1.0, 1.5, DARK, 34)
+      break
+    }
+    case 'palm': {
+      const crown: Vec3 = [0.4, 7.2, 0]
+      limb(trunk, [0, 0, 0], crown, 0.3, 0.2, 6, LIGHT)
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.2
+        coneDir(foliage, crown, [Math.cos(a) * 0.85, 0.5 - (i % 2) * 0.18, Math.sin(a) * 0.85], 0.42, 3.0, 4, i % 2 ? MID : LIGHT, 0.4)
+      }
+      break
+    }
+  }
+
+  return {
+    trunk: LowPolyBuilder.mergeColored(trunk),
+    foliage: LowPolyBuilder.mergeColored(foliage)
+  }
+}
+
 export class TreeSystem {
   public root: THREE.Group
   private windSystem: WindSystem
-  private trunkMeshes: Map<TreeSpeciesType, THREE.InstancedMesh> = new Map()
-  private foliageMeshes: Map<TreeSpeciesType, THREE.InstancedMesh> = new Map()
+  private mode: TimeOfDayMode
+  private trunkMeshes = new Map<TreeSpeciesType, THREE.InstancedMesh>()
+  private foliageMeshes = new Map<TreeSpeciesType, THREE.InstancedMesh>()
+  private trunkMats = new Map<TreeSpeciesType, THREE.MeshLambertMaterial>()
+  private foliageMats = new Map<TreeSpeciesType, THREE.MeshLambertMaterial>()
+  private leafBase = {} as Record<TreeSpeciesType, number>
   private geometries: THREE.BufferGeometry[] = []
-  private materials: THREE.Material[] = []
-  private mapleMaterial: THREE.MeshStandardMaterial | null = null
 
   constructor(scene?: THREE.Scene, windSystem?: WindSystem) {
     this.root = new THREE.Group()
     this.root.name = 'TreeSystem'
     this.windSystem = windSystem || WindSystem.getInstance()
+    this.mode = FlatMaterialFactory.getInstance().currentMode
 
-    // Khởi tạo các loài cây và gộp nhóm instanced
-    this.buildAllSpecies()
-
-    if (scene) {
-      scene.add(this.root)
+    for (const sp of TREE_SPECIES_LIST) {
+      this.leafBase[sp] = TREE_SPECIES_PROFILES[sp].leafColor
     }
+
+    this.buildAllSpecies()
+    this.applyColors()
+
+    if (scene) scene.add(this.root)
   }
 
   /**
-   * Tự động đăng ký CylinderCollider cho toàn bộ thân cây từ MapLayout.getTreeSpawns()
-   * Đảm bảo hình ảnh và vùng va chạm 100% đồng bộ, không bao giờ lệch vị trí.
+   * Tự động đăng ký CylinderCollider cho toàn bộ thân cây từ MapLayout.getTreeSpawns().
+   * Hình ảnh và vùng va chạm lấy chung một nguồn nên không bao giờ lệch vị trí.
    */
   public registerColliders(collisionWorld: CollisionWorld): number {
     const spawns = MapLayout.getTreeSpawns()
@@ -77,494 +277,163 @@ export class TreeSystem {
     return registeredCount
   }
 
-  /**
-   * Khởi tạo hình học và InstancedMesh cho toàn bộ 6 loài cây
-   */
   private buildAllSpecies() {
     const spawns = MapLayout.getTreeSpawns()
+    const bySpecies = new Map<TreeSpeciesType, TreeSpawnData[]>()
+    for (const sp of TREE_SPECIES_LIST) bySpecies.set(sp, [])
+    for (const s of spawns) bySpecies.get(s.species)?.push(s)
 
-    // Phân nhóm danh sách spawn theo từng loài cây
-    const speciesMap = new Map<TreeSpeciesType, TreeSpawnData[]>()
-    const speciesList: TreeSpeciesType[] = ['bodhi', 'banyan', 'bamboo', 'pine', 'cherry_maple', 'palm']
-    for (const sp of speciesList) {
-      speciesMap.set(sp, [])
-    }
-    for (const s of spawns) {
-      const list = speciesMap.get(s.species)
-      if (list) list.push(s)
-    }
+    const dummy = new THREE.Object3D()
+    const tone = new THREE.Color()
 
-    // Xây dựng từng loài
-    for (const sp of speciesList) {
-      const spawnList = speciesMap.get(sp) || []
-      if (spawnList.length === 0) continue
-
-      const { trunkGeo, foliageGeo } = this.createSpeciesGeometries(sp)
-      this.geometries.push(trunkGeo, foliageGeo)
+    for (const sp of TREE_SPECIES_LIST) {
+      const list = bySpecies.get(sp) ?? []
+      if (list.length === 0) continue
 
       const profile = TREE_SPECIES_PROFILES[sp]
+      const geo = buildSpeciesGeometry(sp)
+      this.geometries.push(geo.trunk, geo.foliage)
 
-      // 1. Vật liệu thân cây PBR có nhún gió ngọn
-      const trunkMat = new THREE.MeshStandardMaterial({
-        color: profile.barkColor,
-        roughness: 0.92,
-        metalness: 0.05
-      })
-      this.attachWindSway(trunkMat, 0.45, false)
-      this.materials.push(trunkMat)
+      const trunkMat = this.createWindMaterial(false, profile.sway * 0.45)
+      const foliageMat = this.createWindMaterial(true, profile.sway)
+      this.trunkMats.set(sp, trunkMat)
+      this.foliageMats.set(sp, foliageMat)
 
-      // 2. Vật liệu tán lá PBR có lay động cành & rung rinh phiến lá
-      const foliageMat = new THREE.MeshStandardMaterial({
-        color: profile.leafColor,
-        roughness: 0.78,
-        metalness: 0.02,
-        side: THREE.DoubleSide
-      })
-      if (sp === 'cherry_maple') {
-        this.mapleMaterial = foliageMat
+      const trunkMesh = new THREE.InstancedMesh(geo.trunk, trunkMat, list.length)
+      const foliageMesh = new THREE.InstancedMesh(geo.foliage, foliageMat, list.length)
+      trunkMesh.name = `trees_${sp}_trunk`
+      foliageMesh.name = `trees_${sp}_foliage`
+      for (const m of [trunkMesh, foliageMesh]) {
+        m.castShadow = true
+        m.receiveShadow = true
       }
-      this.attachWindSway(foliageMat, 1.0, true)
-      this.materials.push(foliageMat)
 
-      // 3. Tạo InstancedMesh cho thân và tán lá (mỗi loài = 2 draw calls)
-      const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, spawnList.length)
-      const foliageMesh = new THREE.InstancedMesh(foliageGeo, foliageMat, spawnList.length)
-
-      trunkMesh.castShadow = true
-      trunkMesh.receiveShadow = true
-      foliageMesh.castShadow = true
-      foliageMesh.receiveShadow = true
-
-      const dummy = new THREE.Object3D()
-      for (let i = 0; i < spawnList.length; i++) {
-        const item = spawnList[i]
+      list.forEach((item, i) => {
         const s = item.scale || 1.0
         const elev = TerrainSystem.computeElevation(item.x, item.z)
         dummy.position.set(item.x, elev, item.z)
-        dummy.rotation.set(0, item.rotY || 0, 0)
+        dummy.rotation.set(0, item.rotY ?? 0, 0)
         dummy.scale.set(s, s, s)
         dummy.updateMatrix()
-
         trunkMesh.setMatrixAt(i, dummy.matrix)
         foliageMesh.setMatrixAt(i, dummy.matrix)
-      }
 
+        // Biến thiên sắc độ nhẹ giữa các cây cùng loài (không tạo vật liệu mới)
+        const seed = item.seed ?? i
+        const v = 0.9 + (((seed * 9301 + 49297) % 233280) / 233280) * 0.2
+        tone.setRGB(v, v, v)
+        trunkMesh.setColorAt(i, tone)
+        foliageMesh.setColorAt(i, tone)
+      })
       trunkMesh.instanceMatrix.needsUpdate = true
       foliageMesh.instanceMatrix.needsUpdate = true
+      if (trunkMesh.instanceColor) trunkMesh.instanceColor.needsUpdate = true
+      if (foliageMesh.instanceColor) foliageMesh.instanceColor.needsUpdate = true
 
       this.trunkMeshes.set(sp, trunkMesh)
       this.foliageMeshes.set(sp, foliageMesh)
-
       this.root.add(trunkMesh)
       this.root.add(foliageMesh)
     }
   }
 
-  /**
-   * Tạo hình học chi tiết đặc trưng cho từng loài
-   */
-  private createSpeciesGeometries(species: TreeSpeciesType): {
-    trunkGeo: THREE.BufferGeometry
-    foliageGeo: THREE.BufferGeometry
-  } {
-    switch (species) {
-      case 'bodhi':
-        return this.generateBodhiGeometries()
-      case 'banyan':
-        return this.generateBanyanGeometries()
-      case 'bamboo':
-        return this.generateBambooGeometries()
-      case 'pine':
-        return this.generatePineGeometries()
-      case 'cherry_maple':
-        return this.generateCherryMapleGeometries()
-      case 'palm':
-        return this.generatePalmGeometries()
-    }
-  }
+  /** Vật liệu Lambert phẳng + gió từ WindSystem. Hai chương trình shader (thân / tán) dùng chung cho mọi loài. */
+  private createWindMaterial(isFoliage: boolean, sway: number): THREE.MeshLambertMaterial {
+    const mat = new THREE.MeshLambertMaterial({
+      flatShading: true,
+      vertexColors: true,
+      side: isFoliage ? THREE.DoubleSide : THREE.FrontSide
+    })
+    const uTreeSway = { value: sway }
 
-  // ==========================================
-  // 1. CÂY BỒ ĐỀ BÁT NHÃ (BODHI TREE)
-  // Gốc xòe rễ bạnh vững chãi, 3 cành chính vươn ngang, tán vòm xòe rộng che chở
-  // ==========================================
-  private generateBodhiGeometries() {
-    const trunkParts: THREE.BufferGeometry[] = []
-
-    // Thân chính hình côn thon dần
-    const mainTrunk = new THREE.CylinderGeometry(0.68, 1.15, 7.8, 14)
-    mainTrunk.translate(0, 3.9, 0)
-    trunkParts.push(mainTrunk)
-
-    // 4 rễ bạnh (buttress roots) tỏa ra 4 hướng cắm sâu xuống đất
-    for (let i = 0; i < 4; i++) {
-      const angle = (i * Math.PI) / 2 + 0.3
-      const root = new THREE.CylinderGeometry(0.18, 0.42, 2.4, 8)
-      root.rotateZ(0.42)
-      root.rotateY(angle)
-      root.translate(Math.cos(angle) * 0.95, 0.9, Math.sin(angle) * 0.95)
-      trunkParts.push(root)
-    }
-
-    // 3 cành lớn phân nhánh ở độ cao 5.0 - 6.5m
-    const branchAngles = [0.4, 2.5, 4.6]
-    for (const ba of branchAngles) {
-      const b = new THREE.CylinderGeometry(0.22, 0.44, 3.2, 8)
-      b.rotateZ(0.55)
-      b.rotateY(ba)
-      b.translate(Math.cos(ba) * 1.35, 5.8, Math.sin(ba) * 1.35)
-      trunkParts.push(b)
-    }
-
-    // Tán lá: 5 khối vòm phẳng hữu cơ xếp tầng đan xen che bóng
-    const foliageParts: THREE.BufferGeometry[] = []
-    const folClusters = [
-      { x: 0.0, y: 7.8, z: 0.0, rx: 3.6, ry: 1.6, rz: 3.6 },
-      { x: 1.8, y: 6.8, z: 1.2, rx: 2.6, ry: 1.3, rz: 2.6 },
-      { x: -1.9, y: 6.6, z: 1.4, rx: 2.5, ry: 1.2, rz: 2.5 },
-      { x: 0.2, y: 6.4, z: -2.2, rx: 2.8, ry: 1.3, rz: 2.8 },
-      { x: 0.0, y: 9.0, z: 0.0, rx: 2.0, ry: 1.1, rz: 2.0 }
-    ]
-
-    for (const c of folClusters) {
-      const fol = new THREE.SphereGeometry(1.0, 14, 10)
-      fol.scale(c.rx, c.ry, c.rz)
-      fol.translate(c.x, c.y, c.z)
-      foliageParts.push(fol)
-    }
-
-    return {
-      trunkGeo: mergeGeometries(trunkParts),
-      foliageGeo: mergeGeometries(foliageParts)
-    }
-  }
-
-  // ==========================================
-  // 2. CÂY ĐA CỔ THỤ RỄ PHỤ (BANYAN TREE)
-  // Thân đại thụ cuồn cuộn, 6 rễ phụ rủ thẳng từ cành xuống mặt đất
-  // ==========================================
-  private generateBanyanGeometries() {
-    const trunkParts: THREE.BufferGeometry[] = []
-
-    // Thân đại thụ đồ sộ
-    const mainTrunk = new THREE.CylinderGeometry(0.95, 1.45, 8.2, 16)
-    mainTrunk.translate(0, 4.1, 0)
-    trunkParts.push(mainTrunk)
-
-    // 4 cành bàng bè ngang dài vươn xa
-    const bAngles = [0.2, 1.7, 3.3, 4.9]
-    for (const a of bAngles) {
-      const b = new THREE.CylinderGeometry(0.28, 0.58, 4.2, 8)
-      b.rotateZ(0.75)
-      b.rotateY(a)
-      b.translate(Math.cos(a) * 1.8, 6.2, Math.sin(a) * 1.8)
-      trunkParts.push(b)
-    }
-
-    // 6 rễ phụ rủ từ cành xuống đất (đặc trưng không thể nhầm lẫn của cây Đa)
-    const aerialRootCoords = [
-      { x: 2.6, z: 1.2, h: 5.8 },
-      { x: -2.4, z: 1.4, h: 5.6 },
-      { x: 0.8, z: -2.7, h: 5.7 },
-      { x: -1.2, z: -2.5, h: 5.5 },
-      { x: 3.1, z: -1.1, h: 5.9 },
-      { x: -2.9, z: -0.8, h: 5.8 }
-    ]
-    for (const ar of aerialRootCoords) {
-      const root = new THREE.CylinderGeometry(0.12, 0.16, ar.h, 6)
-      root.translate(ar.x, ar.h * 0.5, ar.z)
-      trunkParts.push(root)
-    }
-
-    // Tán lá đại thụ xòe rộng ngang che mát một vùng lớn
-    const foliageParts: THREE.BufferGeometry[] = []
-    const folClusters = [
-      { x: 0.0, y: 8.2, z: 0.0, rx: 4.8, ry: 1.7, rz: 4.8 },
-      { x: 2.8, y: 7.2, z: 1.5, rx: 3.2, ry: 1.4, rz: 3.2 },
-      { x: -2.9, y: 7.0, z: 1.6, rx: 3.0, ry: 1.3, rz: 3.0 },
-      { x: 1.0, y: 6.9, z: -3.0, rx: 3.4, ry: 1.4, rz: 3.4 },
-      { x: -1.5, y: 6.8, z: -2.8, rx: 3.1, ry: 1.3, rz: 3.1 },
-      { x: 0.0, y: 9.6, z: 0.0, rx: 2.5, ry: 1.2, rz: 2.5 }
-    ]
-    for (const c of folClusters) {
-      const fol = new THREE.SphereGeometry(1.0, 14, 10)
-      fol.scale(c.rx, c.ry, c.rz)
-      fol.translate(c.x, c.y, c.z)
-      foliageParts.push(fol)
-    }
-
-    return {
-      trunkGeo: mergeGeometries(trunkParts),
-      foliageGeo: mergeGeometries(foliageParts)
-    }
-  }
-
-  // ==========================================
-  // 3. CỤM TRÚC THIỀN TÔNG (BAMBOO GROVE)
-  // Cụm 7 thân trúc xanh ngọc thanh mảnh có mắt trúc, lá trúc mềm mại
-  // ==========================================
-  private generateBambooGeometries() {
-    const culmParts: THREE.BufferGeometry[] = []
-    const leafParts: THREE.BufferGeometry[] = []
-
-    // Tọa độ 7 thân trúc trong một cụm
-    const culmOffsets = [
-      { x: 0.0, z: 0.0, h: 7.4, tiltX: 0.02, tiltZ: -0.03 },
-      { x: 0.35, z: 0.25, h: 7.0, tiltX: 0.04, tiltZ: 0.02 },
-      { x: -0.32, z: 0.28, h: 7.2, tiltX: -0.03, tiltZ: 0.04 },
-      { x: 0.42, z: -0.30, h: 6.7, tiltX: 0.05, tiltZ: -0.04 },
-      { x: -0.38, z: -0.32, h: 6.9, tiltX: -0.04, tiltZ: -0.02 },
-      { x: 0.05, z: 0.55, h: 6.5, tiltX: 0.02, tiltZ: 0.05 },
-      { x: -0.15, z: -0.58, h: 6.6, tiltX: -0.02, tiltZ: -0.05 }
-    ]
-
-    for (const c of culmOffsets) {
-      // Thân trúc gồm các lóng trúc hình trụ
-      const culm = new THREE.CylinderGeometry(0.065, 0.085, c.h, 7)
-      culm.rotateX(c.tiltX)
-      culm.rotateZ(c.tiltZ)
-      culm.translate(c.x, c.h * 0.5, c.z)
-      culmParts.push(culm)
-
-      // Các mắt trúc (đốt trúc) vòng quanh thân
-      const nodeCount = 7
-      for (let n = 1; n < nodeCount; n++) {
-        const ny = (c.h / nodeCount) * n
-        const nodeRing = new THREE.CylinderGeometry(0.095, 0.095, 0.08, 7)
-        nodeRing.translate(c.x + c.tiltZ * ny, ny, c.z + c.tiltX * ny)
-        culmParts.push(nodeRing)
-      }
-
-      // Nhánh lá trúc tỏa ra ở các tầng trên (y > 3.5m)
-      for (let l = 0; l < 4; l++) {
-        const ly = 4.2 + l * 0.75
-        const lAngle = l * 1.57 + c.x * 3.0
-        const leafSpray = new THREE.ConeGeometry(0.45, 1.4, 4)
-        leafSpray.rotateX(Math.PI * 0.45)
-        leafSpray.rotateY(lAngle)
-        leafSpray.translate(
-          c.x + Math.cos(lAngle) * 0.45,
-          ly,
-          c.z + Math.sin(lAngle) * 0.45
-        )
-        leafParts.push(leafSpray)
-      }
-    }
-
-    return {
-      trunkGeo: mergeGeometries(culmParts),
-      foliageGeo: mergeGeometries(leafParts)
-    }
-  }
-
-  // ==========================================
-  // 4. THÔNG CỔ TỰ (PINE TREE)
-  // Thân uốn chữ S phong cách Bonsai thiền tông, 4 tầng mây lá thông xếp lớp
-  // ==========================================
-  private generatePineGeometries() {
-    const trunkParts: THREE.BufferGeometry[] = []
-
-    // Thân thông uốn lượn chữ S qua 3 đoạn nối
-    const seg1 = new THREE.CylinderGeometry(0.48, 0.65, 3.0, 10)
-    seg1.rotateZ(0.14)
-    seg1.translate(-0.25, 1.5, 0)
-    trunkParts.push(seg1)
-
-    const seg2 = new THREE.CylinderGeometry(0.36, 0.48, 2.8, 10)
-    seg2.rotateZ(-0.16)
-    seg2.translate(0.15, 4.2, 0)
-    trunkParts.push(seg2)
-
-    const seg3 = new THREE.CylinderGeometry(0.24, 0.36, 2.4, 8)
-    seg3.rotateZ(0.08)
-    seg3.translate(-0.05, 6.6, 0)
-    trunkParts.push(seg3)
-
-    // Tán lá thông: 4 tầng dĩa phẳng dạng mây tùng (layered_pine cloud boughs)
-    const foliageParts: THREE.BufferGeometry[] = []
-    const tiers = [
-      { y: 3.8, r: 2.8, h: 0.65, x: 0.8, z: 0.2 },
-      { y: 5.2, r: 2.3, h: 0.55, x: -0.6, z: 0.3 },
-      { y: 6.5, r: 1.8, h: 0.45, x: 0.4, z: -0.3 },
-      { y: 7.7, r: 1.2, h: 0.40, x: -0.1, z: 0.0 }
-    ]
-
-    for (const t of tiers) {
-      // Dĩa mây tùng hình nón cụt/vòm dẹt
-      const pad = new THREE.CylinderGeometry(t.r * 0.4, t.r, t.h, 12)
-      pad.translate(t.x, t.y, t.z)
-      foliageParts.push(pad)
-    }
-
-    return {
-      trunkGeo: mergeGeometries(trunkParts),
-      foliageGeo: mergeGeometries(foliageParts)
-    }
-  }
-
-  // ==========================================
-  // 5. CÂY PHONG ĐỎ / ANH ĐÀO (CHERRY MAPLE)
-  // Thân thanh thoát uốn cong, 2 nhánh duyên dáng nâng đỡ các đám mây hoa/lá đỏ
-  // ==========================================
-  private generateCherryMapleGeometries() {
-    const trunkParts: THREE.BufferGeometry[] = []
-
-    // Thân gốc uốn lượn nhẹ
-    const lowerTrunk = new THREE.CylinderGeometry(0.32, 0.45, 3.6, 10)
-    lowerTrunk.rotateZ(0.12)
-    lowerTrunk.translate(-0.2, 1.8, 0)
-    trunkParts.push(lowerTrunk)
-
-    // Nhánh trái vươn xa
-    const bLeft = new THREE.CylinderGeometry(0.18, 0.32, 3.2, 8)
-    bLeft.rotateZ(0.52)
-    bLeft.translate(-0.95, 4.6, 0.2)
-    trunkParts.push(bLeft)
-
-    // Nhánh phải vươn cao
-    const bRight = new THREE.CylinderGeometry(0.16, 0.28, 3.0, 8)
-    bRight.rotateZ(-0.42)
-    bRight.translate(0.85, 4.7, -0.2)
-    trunkParts.push(bRight)
-
-    // Tán lá: 4 cụm bông bồng bềnh thanh tao
-    const foliageParts: THREE.BufferGeometry[] = []
-    const folClouds = [
-      { x: -1.6, y: 5.6, z: 0.4, rx: 1.8, ry: 1.2, rz: 1.8 },
-      { x: 1.5, y: 5.8, z: -0.3, rx: 1.7, ry: 1.1, rz: 1.7 },
-      { x: 0.0, y: 6.8, z: 0.0, rx: 1.9, ry: 1.3, rz: 1.9 },
-      { x: -0.4, y: 5.1, z: -0.8, rx: 1.4, ry: 0.9, rz: 1.4 }
-    ]
-
-    for (const c of folClouds) {
-      const fol = new THREE.SphereGeometry(1.0, 12, 10)
-      fol.scale(c.rx, c.ry, c.rz)
-      fol.translate(c.x, c.y, c.z)
-      foliageParts.push(fol)
-    }
-
-    return {
-      trunkGeo: mergeGeometries(trunkParts),
-      foliageGeo: mergeGeometries(foliageParts)
-    }
-  }
-
-  // ==========================================
-  // 6. HÀNG CAU CẢNH NAM Á / CỌ THIỀN (PALM)
-  // Thân thon cao đốt vòng nhịp nhàng, chùm 10 tàu cau uốn cong xòe nan quạt
-  // ==========================================
-  private generatePalmGeometries() {
-    const trunkParts: THREE.BufferGeometry[] = []
-
-    // Thân cau thon cao, hơi cong nhẹ tự nhiên
-    const trunk = new THREE.CylinderGeometry(0.16, 0.24, 7.5, 10)
-    trunk.rotateZ(0.04)
-    trunk.translate(0.15, 3.75, 0)
-    trunkParts.push(trunk)
-
-    // Cổ họng bẹ cau xanh mướt ở đỉnh thân
-    const crownShaft = new THREE.CylinderGeometry(0.18, 0.16, 1.1, 8)
-    crownShaft.translate(0.28, 7.2, 0)
-    trunkParts.push(crownShaft)
-
-    // 10 tàu lá cau xòe tròn như đài phun nước rủ xuống
-    const frondParts: THREE.BufferGeometry[] = []
-    const frondCount = 10
-
-    for (let i = 0; i < frondCount; i++) {
-      const angle = (i / frondCount) * Math.PI * 2
-      // Tàu lá cong hình vòng cung mềm mại
-      const frond = new THREE.ConeGeometry(0.48, 2.6, 4)
-      frond.rotateX(Math.PI * 0.42) // Uốn rủ xuống
-      frond.rotateY(angle)
-      frond.translate(
-        0.28 + Math.cos(angle) * 1.1,
-        7.4,
-        Math.sin(angle) * 1.1
-      )
-      frondParts.push(frond)
-    }
-
-    return {
-      trunkGeo: mergeGeometries(trunkParts),
-      foliageGeo: mergeGeometries(frondParts)
-    }
-  }
-
-  /**
-   * Cài đặt shader lay động gió đồng bộ toàn cầu qua onBeforeCompile
-   */
-  private attachWindSway(material: THREE.MeshStandardMaterial, swayScale = 1.0, isFoliage = false) {
-    material.onBeforeCompile = (shader) => {
+    mat.onBeforeCompile = (shader) => {
       shader.uniforms.uWindTime = this.windSystem.uniforms.uWindTime
       shader.uniforms.uWindDirection = this.windSystem.uniforms.uWindDirection
       shader.uniforms.uWindStrength = this.windSystem.uniforms.uWindStrength
       shader.uniforms.uWindGust = this.windSystem.uniforms.uWindGust
+      shader.uniforms.uTreeSway = uTreeSway
 
-      shader.vertexShader = `
-        uniform float uWindTime;
-        uniform vec2 uWindDirection;
-        uniform float uWindStrength;
-        uniform float uWindGust;
-      ` + shader.vertexShader
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#include <common>',
+          `#include <common>
+uniform float uWindTime;
+uniform vec2 uWindDirection;
+uniform float uWindStrength;
+uniform float uWindGust;
+uniform float uTreeSway;`
+        )
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+{
+  #ifdef USE_INSTANCING
+  vec2 treeP = instanceMatrix[3].xz;
+  #else
+  vec2 treeP = vec2(0.0);
+  #endif
+  float hf = clamp(transformed.y / 8.0, 0.0, 1.6);
+  float hs = hf * hf;
+  float ph = dot(treeP, vec2(0.23, 0.19));
+  float gust = 1.0 + uWindGust * 0.8;
+  float sw = sin(uWindTime * 1.7 + ph) * 0.65 + sin(uWindTime * 2.9 + ph * 1.7) * 0.35 + 0.35;
+  float disp = sw * uWindStrength * gust * uTreeSway * hs * 1.6;
+  transformed.x += uWindDirection.x * disp;
+  transformed.z += uWindDirection.y * disp;
+  ${isFoliage ? 'transformed.y += sin(uWindTime * 3.2 + transformed.x * 1.3 + ph) * 0.05 * hf * uWindStrength * uTreeSway;' : ''}
+}`
+        )
+    }
+    mat.customProgramCacheKey = () => (isFoliage ? 'tree-wind-foliage' : 'tree-wind-trunk')
+    return mat
+  }
 
-      const swayChunk = isFoliage
-        ? `
-          // Tán lá: lay động cành theo gió + rung rinh phiến lá tự nhiên
-          float heightFactor = clamp(transformed.y / 7.2, 0.0, 1.8);
-          float hSq = heightFactor * heightFactor;
-          
-          float spatial = transformed.x * 0.35 + transformed.z * 0.35;
-          float branchSway = sin(uWindTime * 1.9 + spatial) * 0.18 * hSq * uWindStrength * ${swayScale.toFixed(2)};
-          float leafFlutter = sin(uWindTime * 5.5 + transformed.x * 4.0 + transformed.y * 3.5) * 0.045 * (1.0 + uWindGust * 0.7) * heightFactor;
+  /** Màu loài nhân tỉ lệ Palette(mode)/Palette(day) theo từng kênh. */
+  private tint(base: number, slot: 'leaf' | 'trunk'): THREE.Color {
+    const c = new THREE.Color(base)
+    const cur = new THREE.Color(Palette.slot(this.mode, slot))
+    const ref = new THREE.Color(Palette.slot('day', slot))
+    c.r *= cur.r / Math.max(ref.r, 0.001)
+    c.g *= cur.g / Math.max(ref.g, 0.001)
+    c.b *= cur.b / Math.max(ref.b, 0.001)
+    return c
+  }
 
-          transformed.x += uWindDirection.x * branchSway + leafFlutter;
-          transformed.z += uWindDirection.y * branchSway + leafFlutter;
-        `
-        : `
-          // Thân cây: cố định 100% tại gốc (y = 0), uốn dẻo tăng dần theo độ cao
-          float heightFactor = clamp(transformed.y / 8.5, 0.0, 1.0);
-          float hSq = heightFactor * heightFactor;
-          float trunkSway = sin(uWindTime * 1.4 + transformed.x * 0.2) * 0.065 * hSq * uWindStrength * ${swayScale.toFixed(2)};
-
-          transformed.x += uWindDirection.x * trunkSway;
-          transformed.z += uWindDirection.y * trunkSway;
-        `
-
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\n${swayChunk}`
-      )
+  private applyColors() {
+    for (const sp of TREE_SPECIES_LIST) {
+      const profile = TREE_SPECIES_PROFILES[sp]
+      this.trunkMats.get(sp)?.color.copy(this.tint(profile.trunkColor, 'trunk'))
+      this.foliageMats.get(sp)?.color.copy(this.tint(this.leafBase[sp], 'leaf'))
     }
   }
 
-  /**
-   * Điều chỉnh màu sắc tán lá theo quốc gia (Nhật/Hàn = Hoa Anh Đào hồng phấn, còn lại = Phong đỏ)
-   */
+  /** Đổi bảng màu theo thời điểm trong ngày (không tạo lại vật liệu). */
+  public setPalette(mode: TimeOfDayMode) {
+    this.mode = mode
+    this.applyColors()
+  }
+
+  /** Nhật/Hàn = anh đào hồng phấn, còn lại = phong đỏ. */
   public setCountry(countryCode: string) {
-    if (!this.mapleMaterial) return
-
-    if (countryCode === 'japan' || countryCode === 'korea') {
-      this.mapleMaterial.color.setHex(0xf5b7b1) // Hoa anh đào hồng phấn tao nhã
-    } else {
-      this.mapleMaterial.color.setHex(0xa8201a) // Phong đỏ rực rỡ
-    }
+    this.leafBase.cherry_maple = getMapleLeafColor(countryCode)
+    this.applyColors()
   }
 
-  public update(delta: number) {
-    // Wind uniforms are updated automatically by WindSystem
+  public update(_delta: number) {
+    // Uniform gió được WindSystem cập nhật dùng chung
   }
 
   public dispose() {
-    for (const geo of this.geometries) {
-      geo.dispose()
-    }
-    for (const mat of this.materials) {
-      mat.dispose()
-    }
+    for (const geo of this.geometries) geo.dispose()
+    this.trunkMats.forEach((m) => m.dispose())
+    this.foliageMats.forEach((m) => m.dispose())
+    this.trunkMeshes.forEach((m) => m.dispose())
+    this.foliageMeshes.forEach((m) => m.dispose())
     this.geometries = []
-    this.materials = []
+    this.trunkMats.clear()
+    this.foliageMats.clear()
     this.trunkMeshes.clear()
     this.foliageMeshes.clear()
+    this.root.parent?.remove(this.root)
   }
 }
-

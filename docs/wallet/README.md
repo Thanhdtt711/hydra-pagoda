@@ -28,10 +28,15 @@ Bộ tài liệu này mô tả đầy đủ kiến trúc, bảo mật, hướng 
    - Mua MC Coin bằng ADA (`1 ADA = 1.000 MC`, gói tối thiểu `2 ADA`, phí mạng `~0.2 ADA`, kiểm tra giao dịch trên Cardanoscan).
    - Sử dụng MC Coin trong chùa: Cửa Hàng Cổ Phục & Lễ Vật, Thẻ Bài Di Sản 3D, Bói Quẻ 6 Môn, Hòm Công Đức.
    - Câu hỏi thường gặp (FAQ) & Lưu ý pháp lý/kinh tế.
-5. **[`TEST_REPORT.md`](./TEST_REPORT.md) — Báo cáo Kiểm thử & Nghiệm thu (Bước 2 → Bước 5)**
-   - Kết quả chạy tự động `test-auth.mjs` (`19/19 PASS`), `test-deposit.mjs` (`19/19 PASS`), `test-spend.mjs` (`14/14 PASS`).
+5. **[`TEST_REPORT.md`](./TEST_REPORT.md) — Báo cáo Kiểm thử & Nghiệm thu (Bước 2 → Bước 6)**
+- Kết quả chạy tự động `test-auth.mjs` (`19/19 PASS`), `test-deposit.mjs` (`19/19 PASS`), `test-spend.mjs` (`14/14 PASS`).
+- Bước 6: bộ test Hybrid Hydra L2 `test-hydra-l2.mjs` (`11/11 PASS`) và kết quả xác minh trên hydra-node thật.
    - Bằng chứng nghiệm thu giao dịch thật trên mạng **Cardano Preprod** (`100 ADA -> +100.000 MC`, tiêu `-300 MC` gieo quẻ, đối soát `reconcile.mjs` khớp 100%).
-6. **[`CHANGELOG.md`](./CHANGELOG.md) — Nhật ký Thay đổi theo từng bước (Bước 1 → Bước 5)**
+6. **[`CHANGELOG.md`](./CHANGELOG.md) — Nhật ký Thay đổi theo từng bước (Bước 1 → Bước 6)**
+7. **[`CO_CHE_MC_VA_HYDRA_L2.md`](./CO_CHE_MC_VA_HYDRA_L2.md) — Giải thích Cơ chế MC Coin, Kế hoạch Tọa Thiền Nhận MC, Phân tích Đưa MC lên Cardano Hydra L2 và Thiết kế Hybrid Hydra L2 ĐÃ TRIỂN KHAI (Phần 4: khóa server, Fuel Pool, State UTxO, trạng thái giao dịch, giao diện `HydraBadge`, cấu hình & kiểm thử)**
+   - Giải thích chi tiết luồng Mua MC (L1) & Tiêu MC (Off-chain).
+   - Thiết kế tính năng **Tọa Thiền 432Hz nhận thưởng MC** (có chống gian lận & giới hạn trần mỗi ngày).
+   - Phân tích tác dụng, lợi ích và tác động kỹ thuật khi đưa MC Coin thành tài sản giao dịch thực trên **Cardano Hydra Head (L2)**.
 
 ---
 

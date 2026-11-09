@@ -1,0 +1,583 @@
+[
+  {
+    "id": "sao_tho_daicat_01",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 01 · Thượng Thượng · Thái Dương Chiếu Mệnh",
+    "text": "Nhật quang rực rỡ giữa tầng không,\nThái Dương chiếu mệnh vạn sự thông,\nQuý nhân dẫn lối đường quang đãng,\nPhúc lộc song toàn rạng Tổ Tông.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_tho_daicat_02",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 09 · Thượng Thượng · Thái Âm Phúc Tinh",
+    "text": "Ánh trăng Thái Âm dịu bốn bề,\nHỷ sự lâm môn trọn ước thề,\nTài bảo hanh thông nhà êm ấm,\nBình an đi sớm lại về quê.",
+    "tags": ["tong_quan", "gia_dao", "tai_loc", "tinh_duyen"]
+  },
+  {
+    "id": "sao_tho_daicat_03",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 18 · Thượng Thượng · Mộc Đức Triều Nguyên",
+    "text": "Sao lành Mộc Đức chiếu hiên nhà,\nBốn mùa cây đức nở ngàn hoa,\nCông danh khoa cử đều đắc ý,\nTâm thiện trời thương phúc hải hà.",
+    "tags": ["tong_quan", "su_nghiep", "thi_cu", "gia_dao"]
+  },
+  {
+    "id": "sao_tho_daicat_04",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 27 · Thượng Thượng · Bắc Đẩu Hộ Trì",
+    "text": "Thất tinh Bắc Đẩu sáng đêm thanh,\nNgọn đèn tâm nguyện gửi lòng thành,\nTai ương tiêu tán thành mây khói,\nBốn phương tám hướng bước an lành.",
+    "tags": ["tong_quan", "xuat_hanh", "suc_khoe", "gia_dao"]
+  },
+
+  {
+    "id": "sao_tho_cat_01",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 15 · Thượng Cát · Thủy Diệu Tài Tinh",
+    "text": "Thủy Diệu sao lành mang lộc xa,\nTin vui đưa tới tận hiên nhà,\nGiữ lời hòa nhã khi giao tiếp,\nTài lộc dồi dào phúc nở hoa.",
+    "tags": ["tong_quan", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "sao_tho_cat_02",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 24 · Thượng Cát · Cát Tinh Phù Trợ",
+    "text": "Sao sáng soi đường giữa tối tăm,\nLòng ngay giữ đạo suốt quanh năm,\nGặp hung hóa cát nhờ tu đức,\nGia đình thuận thảo dạ yên nằm.",
+    "tags": ["tong_quan", "gia_dao", "su_nghiep"]
+  },
+  {
+    "id": "sao_tho_cat_03",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 36 · Thượng Cát · Đăng Minh Khai Vận",
+    "text": "Ngọn nến đàn tràng tỏa ánh vàng,\nThành tâm khấn nguyện trước Tam Bảo,\nNút thắt năm xưa dần tháo gỡ,\nĐường đời rộng mở bước thênh thang.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_tho_cat_04",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 45 · Thượng Cát · Thiên Giải Trừ Tai",
+    "text": "Sao Giải chiếu về xóa nỗi lo,\nQua sông thuận gió vững tay đò,\nLàm lành lánh dữ tâm trong sáng,\nPhước lộc tự nhiên trời đất cho.",
+    "tags": ["tong_quan", "xuat_hanh", "suc_khoe"]
+  },
+
+  {
+    "id": "sao_tho_binh_01",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 54 · Trung Bình · Thổ Tú Bình Tinh",
+    "text": "Thổ Tú chiếu năm nhắc giữ mình,\nĐiềm đạm khiêm nhường trọn nghĩa tình,\nĐừng nghe lời khích mà xao động,\nGiữ vững nếp nhà hưởng thái bình.",
+    "tags": ["tong_quan", "gia_dao", "su_nghiep"]
+  },
+  {
+    "id": "sao_tho_binh_02",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 62 · Trung Bình · Vân Hán Thủ Thường",
+    "text": "Vân Hán sao trung tính thuộc Hỏa,\nMọi việc năm nay giữ ôn hòa,\nTránh nơi tranh chấp lời hơn thiệt,\nCẩn trọng làm ăn vững cửa nhà.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep"]
+  },
+  {
+    "id": "sao_tho_binh_03",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 69 · Trung Bình · Tinh Hà Chuyển Vận",
+    "text": "Chòm sao xoay chuyển giữa đêm trường,\nCó nắng có mưa lẽ bình thường,\nTâm định như sơn không sợ hãi,\nĐi qua bốn quý vẫn an khương.",
+    "tags": ["tong_quan", "xuat_hanh", "suc_khoe"]
+  },
+  {
+    "id": "sao_tho_binh_04",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 75 · Trung Bình · Tu Nhân Đãi Phúc",
+    "text": "Sao chiếu trên đầu đức tại tâm,\nThiện lương bồi đắp mỗi âm thầm,\nKhông cầu may rủi không mê tín,\nChánh niệm soi đường khỏi lạc lầm.",
+    "tags": ["tong_quan", "gia_dao", "tai_loc"]
+  },
+
+  {
+    "id": "sao_tho_hung_01",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 80 · Hạ Quẻ · La Hầu Khẩu Thiệt",
+    "text": "La Hầu tinh chiếu nhắc lời ăn,\nNóng giận buông lời dễ khó khăn,\nTháng Giêng tháng Bảy thêm cẩn trọng,\nNhường nhịn ba phần phúc vạn năm.",
+    "tags": ["tong_quan", "su_nghiep", "xuat_hanh"]
+  },
+  {
+    "id": "sao_tho_hung_02",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 84 · Hạ Quẻ · Kế Đô Ám Tinh",
+    "text": "Kế Đô chiếu mạng dễ buồn vương,\nNửa đêm suy nghĩ chuyện trăm đường,\nHãy thắp đèn tâm năng hành thiện,\nHóa giải u sầu đón ánh dương.",
+    "tags": ["tong_quan", "gia_dao", "tinh_duyen"]
+  },
+  {
+    "id": "sao_tho_hung_03",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 88 · Hạ Quẻ · Lưu Niên Tiểu Hạn",
+    "text": "Vận năm có lúc gặp mây mờ,\nĐường đi nước bước chớ thờ ơ,\nTiền bạc giấy tờ xem kỹ lưỡng,\nTu tâm tích đức đổi vận cơ.",
+    "tags": ["tong_quan", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "sao_tho_hung_04",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 91 · Hạ Quẻ · Tinh Viên Cảnh Tỉnh",
+    "text": "Ánh sao mờ tỏ dưới sương khuya,\nNhắc người cẩn trọng lúc đi về,\nBớt chuyện thị phi chăm việc thiện,\nTâm bình tai ách tự xa lìa.",
+    "tags": ["tong_quan", "xuat_hanh", "suc_khoe"]
+  },
+
+  {
+    "id": "sao_tho_daihung_01",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 95 · Hạ Hạ · Thái Bạch Hao Tài",
+    "text": "Thái Bạch kim tinh thử thách nhiều,\nGiữ gìn ngân khố chớ phung tiêu,\nKhông tham lợi lớn không tranh chấp,\nLấy đức hóa giải vượt hiểm nghèo.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep"]
+  },
+  {
+    "id": "sao_tho_daihung_02",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 97 · Hạ Hạ · Hung Tinh Hội Chiếu",
+    "text": "Sao hạn năm nay nhắc tĩnh tâm,\nĐừng vì nôn nóng bước sai lầm,\nTháng Kỵ giữ mình chăm việc thiện,\nĐức dày tự khắc thắng thiên âm.",
+    "tags": ["tong_quan", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "sao_tho_daihung_03",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 99 · Hạ Hạ · Nghịch Vận Tu Thân",
+    "text": "Gió ngược mưa dông thử lòng người,\nThu mình phòng thủ chớ buông lơi,\nPhát tâm công đức gieo duyên phước,\nMây đen tan hết sáng chân trời.",
+    "tags": ["tong_quan", "gia_dao", "tai_loc"]
+  },
+  {
+    "id": "sao_tho_daihung_04",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dâng Sao 100 · Hạ Hạ · Tịnh Đàn Giải Hạn",
+    "text": "Vận hạn nặng nề bởi chủ quan,\nQuay về chánh niệm giữ bình an,\nDừng ngay mạo hiểm cùng tranh đấu,\nThiện tâm hộ mạng vượt muôn ngàn.",
+    "tags": ["tong_quan", "su_nghiep", "xuat_hanh"]
+  },
+
+  {
+    "id": "sao_lg_daicat_01",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Vận niên của bạn đang được Cát Tinh (Thái Dương / Thái Âm / Mộc Đức) chiếu rọi rực rỡ. Công việc, danh vọng và tài lộc trong năm có bước tiến lớn, đi tới đâu cũng dễ gặp người hiền giúp sức, những khó khăn tồn đọng từ năm cũ đều được hóa giải êm đẹp.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_lg_daicat_02",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Phúc tinh hộ trì giúp gia đạo đón nhận nhiều tin vui bình an và hỷ sự. Các chuyến xuất hành đi xa, mở rộng giao thương hay học tập thi cử trong năm đều gặp thiên thời địa lợi.",
+    "tags": ["gia_dao", "xuat_hanh", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_daicat_03",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Ánh sáng cát tường giúp tinh thần bạn luôn minh mẫn, quyết đoán. Những hạt giống thiện lành bạn đã gieo trồng nay hội đủ duyên lành để trổ quả phúc lộc dồi dào.",
+    "tags": ["tong_quan", "tai_loc", "suc_khoe"]
+  },
+  {
+    "id": "sao_lg_daicat_04",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Cửu Diệu niên vận mở ra cơ hội thăng tiến và củng cố cơ nghiệp vững chắc. Sự kết hợp giữa năng lực thực tế và uy tín đạo đức giúp bạn tạo dựng vị thế bền vững.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lg_cat_01",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Sao chiếu mệnh năm nay mang lại luồng sinh khí thuận lợi cho công việc và tài chính (nhất là các tháng giữa năm và cuối năm). Dù có chút bận rộn nhưng càng vận động, đi lại hợp lý càng thu được kết quả tốt.",
+    "tags": ["tong_quan", "tai_loc", "xuat_hanh"]
+  },
+  {
+    "id": "sao_lg_cat_02",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Nhờ giữ tâm thiện lương và lối sống chừng mực, các vận hạn nhỏ trong năm đều tự động giảm nhẹ ('phùng hung hóa cát'). Gia đạo giữ được sự hòa thuận và ấm áp.",
+    "tags": ["gia_dao", "tong_quan", "suc_khoe"]
+  },
+  {
+    "id": "sao_lg_cat_03",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Vận trình công danh và học tập có quý nhân âm thầm trợ lực. Chỉ cần giữ lời ăn tiếng nói khiêm tốn, hòa nhã thì mọi kế hoạch trong năm đều về đích đúng hạn.",
+    "tags": ["su_nghiep", "thi_cu", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_cat_04",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Tài vận và nhân duyên xã hội khởi sắc. Những mối quan hệ thiện lành mới kết giao trong năm nay sẽ mang lại sự hỗ trợ lâu dài cho sự nghiệp của bạn.",
+    "tags": ["tai_loc", "tinh_duyen", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lg_binh_01",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Niên vận nằm dưới ảnh hưởng của nhóm Bình Tinh (như Thổ Tú hoặc Vân Hán): mọi việc trong năm ở mức trung bình, nửa đầu năm có thể hơi chững lại để thử thách lòng kiên trì, từ giữa năm trở đi sẽ dần ổn định.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_lg_binh_02",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Trong năm không có biến cố lớn nhưng cần đề phòng những lời bàn tán nhỏ nhặt gây phân tâm. Cứ chuyên tâm làm tốt bổn phận của mình và giữ hòa khí trong nhà là vạn sự bình yên.",
+    "tags": ["gia_dao", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_binh_03",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Về mặt đi lại và xuất hành, nên ưu tiên các lịch trình đã lên kế hoạch kỹ từ trước. Tài chính duy trì ở mức thu chi cân đối, phù hợp để củng cố nền tảng hơn là mạo hiểm.",
+    "tags": ["xuat_hanh", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_binh_04",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Tâm trạng đôi lúc dễ hoài nghi hoặc lo xa không cần thiết. Thực hành chánh niệm và duy trì lối sống điều độ sẽ giúp bạn đi qua năm nay một cách nhẹ nhàng.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lg_hung_01",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Sao chiếu mệnh hoặc lưu niên đang nhắc nhở bạn cẩn trọng về phương diện khẩu thiệt thị phi và giấy tờ pháp lý (nhất là vào tháng 1, tháng 3, tháng 7 và tháng 9 âm lịch). Một lời nói nóng vội lúc thiếu kiềm chế dễ dẫn đến hiểu lầm kéo dài.",
+    "tags": ["tong_quan", "su_nghiep", "xuat_hanh"]
+  },
+  {
+    "id": "sao_lg_hung_02",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Dưới tác động của sao hạn thử thách, tâm lý dễ rơi vào trạng thái tự tạo áp lực, suy nghĩ bi quan về chuyện gia đình hoặc tình cảm. Thực tế khó khăn chỉ có ba phần nhưng sự lo âu đã phóng đại lên bảy phần.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_hung_03",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Phương diện tài chính trong năm cần đề phòng những khoản hao tán bất ngờ do sửa chữa đồ đạc, phạt hành chính hoặc cả nể cho vay. Quản lý ngân sách chặt chẽ sẽ giúp bạn chủ động trước mọi tình huống.",
+    "tags": ["tai_loc", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_hung_04",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Khi di chuyển xa hoặc tham gia giao thông vào chiều tối và những ngày mưa gió, bạn cần tập trung quan sát và kiểm tra kỹ phương tiện để bảo đảm an toàn tuyệt đối.",
+    "tags": ["xuat_hanh", "suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lg_daihung_01",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Niên vận đang đi qua vùng thử thách mạnh của Hung Tinh (như Thái Bạch, La Hầu hoặc Kế Đô ở các tháng xung khắc). Cổ nhân dạy 'Dâng sao giải hạn cốt ở tu tâm': tuyệt đối tránh đầu cơ mạo hiểm, tránh tranh tụng kiện cáo và giữ gìn sức khỏe định kỳ.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep"]
+  },
+  {
+    "id": "sao_lg_daihung_02",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Trong năm dễ gặp sự đố kỵ hoặc tiểu nhân quấy phá nơi công sở nếu bạn phô trương thành quả hay tranh giành phần thắng. Lùi lại một bước, làm việc minh bạch và giữ hồ sơ chứng từ rõ ràng là lá chắn tốt nhất.",
+    "tags": ["su_nghiep", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_daihung_03",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Trường năng lượng cảm xúc dễ bị xáo trộn mạnh vào các tháng kỵ (tháng 2, tháng 5, tháng 8 âm lịch). Không nên đưa ra các quyết định thay đổi cuộc đời như bỏ việc, bán nhà hay chia tay trong lúc tinh thần đang khủng hoảng.",
+    "tags": ["gia_dao", "tinh_duyen", "tong_quan"]
+  },
+  {
+    "id": "sao_lg_daihung_04",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Cần đặc biệt lưu tâm bảo vệ tài sản cá nhân, bảo mật thông tin tài khoản và an toàn khi xuất hành đường thủy, đường xa. Sống khiêm cung, hiếu thuận và năng làm việc thiện chính là phương thuốc giải hạn mạnh mẽ nhất.",
+    "tags": ["xuat_hanh", "tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lk_daicat_01",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Hãy tận dụng năm có Cát Tinh chiếu mệnh để hoàn thành các mục tiêu trọng đại về sự nghiệp và học vấn. Lời nhắc cân bằng: Sao tốt nâng đỡ nhưng không thay thế sự nỗ lực tự thân; càng được lộc lớn càng phải sống khiêm nhường và sẻ chia phước báu.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_lk_daicat_02",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Vun đắp hòa khí gia đình và báo hiếu cha mẹ để nguồn phúc đức thêm dày. Lời nhắc cân bằng: Giữa lúc vạn sự hanh thông, hãy vẫn duy trì quỹ tiết kiệm phòng thân và khám sức khỏe định kỳ.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_daicat_03",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Mở rộng kết giao với những người chính trực, trí tuệ. Lời nhắc cân bằng: Tránh ngủ quên trên chiến thắng hoặc chủ quan trước các quy định pháp luật và an toàn giao thông.",
+    "tags": ["su_nghiep", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_daicat_04",
+    "mon": "dang_sao",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Dành một phần thu nhập trong năm thịnh vượng để làm việc thiện nguyện bền vững. Lời nhắc cân bằng: Giữ tâm bình đẳng, không tự cao tự đại thì ánh sáng phúc tinh sẽ còn chiếu rọi sang cả những năm tiếp theo.",
+    "tags": ["tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lk_cat_01",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Chủ động triển khai kế hoạch công việc theo từng quý rõ ràng. Lời nhắc cân bằng: Ngay cả khi gặp sao tốt như Thủy Diệu, cổ nhân vẫn dặn cần giữ lời ăn tiếng nói hòa ái và cẩn trọng khi qua sông qua đò.",
+    "tags": ["tong_quan", "xuat_hanh", "su_nghiep"]
+  },
+  {
+    "id": "sao_lk_cat_02",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Duy trì thói quen tĩnh tâm mỗi tối để quán chiếu lại hành vi và lời nói trong ngày. Lời nhắc cân bằng: Quản lý chi tiêu có kế hoạch, tránh vung tay quá trán vào dịp lễ Tết.",
+    "tags": ["tai_loc", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_cat_03",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Lắng nghe và tôn trọng ý kiến của tập thể cũng như người bạn đời. Lời nhắc cân bằng: Sức khỏe và sự bình an nội tâm luôn là gốc rễ của mọi vận may.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_cat_04",
+    "mon": "dang_sao",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Gieo duyên thiện lành mỗi đầu tháng để nuôi dưỡng tâm từ bi. Lời nhắc cân bằng: Không ỷ lại vào vận may mà lơ là việc rèn luyện chuyên môn.",
+    "tags": ["su_nghiep", "thi_cu", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lk_binh_01",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Hiểu đúng tinh thần 'Đức năng thắng số': sao chiếu mệnh chỉ là thời tiết của năm, còn chiếc áo ấm và tay lái vững vàng nằm ở chính sự cẩn trọng và đạo đức của bạn.",
+    "tags": ["tong_quan", "su_nghiep"]
+  },
+  {
+    "id": "sao_lk_binh_02",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Giữ nhịp sống ôn hòa, tránh tham gia vào những chuyện thị phi bàn tán không liên quan đến mình nơi công sở và xóm giềng.",
+    "tags": ["gia_dao", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_binh_03",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Chăm sóc tốt sức khỏe khi giao mùa và kiểm tra phương tiện kỹ càng trước mỗi chuyến đi xa.",
+    "tags": ["xuat_hanh", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_binh_04",
+    "mon": "dang_sao",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Tập trung hoàn thiện những mục tiêu vừa sức, tích lũy tài chính đều đặn để giữ tâm thế chủ động.",
+    "tags": ["tai_loc", "tong_quan"]
+  },
+
+  {
+    "id": "sao_lk_hung_01",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Cẩn trọng lời ăn tiếng nói, tránh tranh cãi thắng thua trên mạng xã hội và ngoài đời. Trước mọi văn bản pháp lý hay giao dịch tiền bạc, hãy đọc kỹ hai lần.",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_lk_hung_02",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Khi gặp sao Kế Đô hoặc La Hầu, hãy tránh ngồi một mình suy diễn bi quan; hãy mở cửa đón ánh sáng, trò chuyện cùng người thân tích cực và tập thể dục ngoài trời.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_hung_03",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Tuân thủ nghiêm túc luật giao thông, hạn chế đi lại đêm khuya một mình và luôn giữ khoản tiền dự phòng cho các chi phí đột xuất.",
+    "tags": ["xuat_hanh", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_hung_04",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Không nên mê tín lo sợ thái quá trước tên sao hạn; hãy biến lời nhắc của sao hạn thành kỷ luật sống cẩn trọng, thiện lành và khám sức khỏe định kỳ.",
+    "tags": ["tong_quan", "suc_khoe"]
+  },
+
+  {
+    "id": "sao_lk_daihung_01",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Khi gặp hạn sao Thái Bạch / La Hầu / Kế Đô chiếu nặng: tuyệt đối không đầu tư mạo hiểm, không cho vay lớn, không đứng ra bảo lãnh và tránh mọi cuộc xung đột pháp lý.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep"]
+  },
+  {
+    "id": "sao_lk_daihung_02",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Lấy sự khiêm nhường và nhẫn nhịn làm kim chỉ nam trong suốt năm nay. Dành thời gian chăm sóc sức khỏe, nghỉ ngơi điều độ và đi khám định kỳ.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_daihung_03",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hạn chế tối đa các chuyến đi xa mạo hiểm vào những ngày thời tiết xấu. Giữ tâm chánh niệm sáng suốt để không bị kẻ xấu lợi dụng tâm lý lo sợ trục lợi.",
+    "tags": ["xuat_hanh", "tai_loc", "tong_quan"]
+  },
+  {
+    "id": "sao_lk_daihung_04",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Chuyển hóa nghiệp lực bằng thiện tâm: năng giúp đỡ người già neo đơn, trẻ mồ côi và giữ đạo hiếu trong gia đình để lấy phúc đức hóa giải tai ương.",
+    "tags": ["gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "sao_hg_hung_01",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Sao Hạn: Thực hành nghi thức 'Thắp Đèn Tâm & Tọa Thiền 432Hz' — dành 5 phút điều hòa hơi thở Mandala 4-4-6, phát nguyện nói lời hòa ái (hóa giải La Hầu) và giữ tâm sáng suốt lạc quan (hóa giải Kế Đô).",
+    "tags": ["tong_quan", "su_nghiep", "gia_dao", "xuat_hanh"]
+  },
+  {
+    "id": "sao_hg_hung_02",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Sao Hạn: Thắp Hoa Đăng Cầu An tại chính điện và chủ động trích một khoản nhỏ vào Hòm Công Đức hoặc giúp đỡ người khó khăn (ứng trước việc xuất tài thiện nguyện để hóa giải sao hao tài).",
+    "tags": ["tong_quan", "tai_loc", "gia_dao"]
+  },
+  {
+    "id": "sao_hg_hung_03",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Sao Hạn: Dùng nguyên lý Ngũ Hành Tiết Khí — nếu gặp sao Kim (La Hầu, Thái Bạch) thì tăng hành Thủy (sự mềm mỏng, lắng nghe, bình tĩnh); nếu gặp sao Thổ (Kế Đô, Thổ Tú) thì tăng hành Kim/Thiện (sự minh bạch, kỷ luật và bố thí).",
+    "tags": ["tong_quan", "su_nghiep", "tai_loc"]
+  },
+  {
+    "id": "sao_hg_hung_04",
+    "mon": "dang_sao",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Sao Hạn: Trước mỗi chuyến đi xa hoặc đầu mỗi tháng âm lịch, dành thời gian kiểm tra phương tiện, sức khỏe và thực hiện một việc tốt giúp ích cho cộng đồng.",
+    "tags": ["tong_quan", "xuat_hanh", "suc_khoe"]
+  },
+
+  {
+    "id": "sao_hg_daihung_01",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hạn Cửu Diệu: (1) Thực hành 'Chánh Niệm Giải Hạn' tại Hội Thiền 432Hz để định tâm trước mọi biến động; (2) Phát tâm cúng dường Hòm Công Đức hoặc cứu giúp người ngặt nghèo để bồi đắp phước lực; (3) Tuyệt đối không đầu cơ mạo hiểm và giữ gìn sức khỏe định kỳ.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep", "gia_dao", "xuat_hanh", "suc_khoe"]
+  },
+  {
+    "id": "sao_hg_daihung_02",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hạn Cửu Diệu: Giữ 'Tam Nghiệp Thanh Tịnh' (Thân không làm điều hại người, Khẩu không nói lời chia rẽ nóng giận, Ý không tham lam cưỡng cầu) đặc biệt trong các tháng kỵ của sao hạn (tháng 1, 2, 5, 7, 8, 9 âm lịch).",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep", "gia_dao"]
+  },
+  {
+    "id": "sao_hg_daihung_03",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hạn Cửu Diệu: Thắp Đèn Hoa Đăng Cầu An hồi hướng cho cửu huyền thất tổ và cha mẹ; chủ động đi khám sức khỏe tổng quát, hiến máu nhân đạo hoặc làm từ thiện y tế để chuyển hóa vận hạn thân thể.",
+    "tags": ["tong_quan", "suc_khoe", "gia_dao"]
+  },
+  {
+    "id": "sao_hg_daihung_04",
+    "mon": "dang_sao",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hạn Cửu Diệu: Rà soát lại toàn bộ an toàn tài chính, bảo mật tài sản và giấy tờ pháp lý; sống ẩn nhẫn, khiêm cung và lấy việc tu tập chánh niệm hàng ngày làm hộ thân phù vững chắc nhất.",
+    "tags": ["tong_quan", "tai_loc", "su_nghiep", "xuat_hanh"]
+  }
+]
+

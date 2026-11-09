@@ -1,181 +1,119 @@
 import * as THREE from 'three'
-import { Sky } from 'three/examples/jsm/objects/Sky.js'
-import { LightingConfig, type TimeOfDayMode, type TimePresetConfig } from './LightingConfig'
+import { Palette, type TimeOfDayMode } from '../style/Palette'
+import { SkyDome } from '../style/SkyDome'
+import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
 
 export type { TimeOfDayMode }
 
 /**
- * AtmosphereManager:
- * Physical Preetham Sky, dynamic PMREM Environment Map (IBL reflections for PBR materials),
- * and player-following Cascaded Sun Shadow.
- * Configured via unified LightingConfig.
+ * AtmosphereManager (Low-poly Minimalist):
+ * Vòm trời gradient phẳng + sương mù nhiều lớp + ánh sáng mặt trời/bán cầu + bóng đổ mềm.
+ * Không còn Preetham Sky, không IBL/PMREM. Toàn bộ thông số lấy từ Palette.
  */
 export class AtmosphereManager {
   private scene: THREE.Scene
   private renderer: THREE.WebGLRenderer
-  public sky: Sky
-  private bakerSky: Sky
-  private skyScene: THREE.Scene
+  public skyDome: SkyDome
   public sunVector = new THREE.Vector3()
 
   public keyLight: THREE.DirectionalLight
   public hemiLight: THREE.HemisphereLight
   public rimLight: THREE.DirectionalLight
 
-  private pmremGenerator: THREE.PMREMGenerator
-  private currentEnvRenderTarget: THREE.WebGLRenderTarget | null = null
   public currentMode: TimeOfDayMode = 'day'
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     this.scene = scene
     this.renderer = renderer
-    this.pmremGenerator = new THREE.PMREMGenerator(this.renderer)
-    this.pmremGenerator.compileCubemapShader()
 
-    // 1. Preetham Physical Sky
-    this.sky = new Sky()
-    this.sky.scale.setScalar(450)
-    this.scene.add(this.sky)
+    // Màu thật của vật liệu phẳng được giữ nguyên, không ép tone mapping.
+    this.renderer.toneMapping = THREE.NoToneMapping
+    this.renderer.toneMappingExposure = 1.0
 
-    // Dedicated sky scene for clean PMREM environment map baking
-    this.skyScene = new THREE.Scene()
-    this.bakerSky = new Sky()
-    this.bakerSky.scale.setScalar(450)
-    this.skyScene.add(this.bakerSky)
+    this.skyDome = new SkyDome(scene)
 
-    // 2. Hemisphere Ambient Light
-    this.hemiLight = new THREE.HemisphereLight(0x98c7f0, 0x484236, 0.38)
+    // Ánh sáng bán cầu: nền tảng của vẻ ngoài phẳng, sáng đều
+    this.hemiLight = new THREE.HemisphereLight(0xcfe7f2, 0xb7c6a0, 1.9)
     this.scene.add(this.hemiLight)
 
-    // 3. Key Sunlight (Cascaded Follower Shadow)
-    this.keyLight = new THREE.DirectionalLight(0xfff6ea, 1.10)
+    // Mặt trời / trăng: đổ bóng mềm bám theo người chơi
+    this.keyLight = new THREE.DirectionalLight(0xfff4de, 1.6)
     this.keyLight.castShadow = true
-    this.keyLight.shadow.mapSize.width = 2048
-    this.keyLight.shadow.mapSize.height = 2048
+    this.keyLight.shadow.mapSize.set(2048, 2048)
     this.keyLight.shadow.camera.near = 1.0
-    this.keyLight.shadow.camera.far = 95
-
-    const d = 26
+    this.keyLight.shadow.camera.far = 110
+    const d = 30
     this.keyLight.shadow.camera.left = -d
     this.keyLight.shadow.camera.right = d
     this.keyLight.shadow.camera.top = d
     this.keyLight.shadow.camera.bottom = -d
-    this.keyLight.shadow.bias = -0.0003
-    this.keyLight.shadow.normalBias = 0.032
+    this.keyLight.shadow.bias = -0.0004
+    this.keyLight.shadow.normalBias = 0.04
+    this.keyLight.shadow.radius = 3
     this.scene.add(this.keyLight)
     this.scene.add(this.keyLight.target)
 
-    // 4. Rim light for silhouette definition
-    this.rimLight = new THREE.DirectionalLight(0x78a4c8, 0.20)
+    // Ánh sáng viền nhẹ, giúp tách hình khối khỏi nền
+    this.rimLight = new THREE.DirectionalLight(0xa9d0e0, 0.35)
     this.rimLight.position.set(-18, 24, -28)
     this.scene.add(this.rimLight)
 
-    // Initialize with default daytime
+    // Sương mù tuyến tính, màu sẽ được set theo palette
+    if (!this.scene.fog) this.scene.fog = new THREE.Fog(0xdce8e0, 60, 260)
+    if (!(this.scene.background instanceof THREE.Color)) this.scene.background = new THREE.Color(0xdce8e0)
+
     this.setTimeOfDay('day')
   }
 
-  /**
-   * Set Time of Day: updates Sky uniforms, sun vector, lighting colors, and regenerates IBL PMREM map
-   */
+  /** Đổi thời điểm trong ngày: cập nhật palette vật liệu, trời, sương mù, ánh sáng. */
   public setTimeOfDay(mode: TimeOfDayMode) {
     this.currentMode = mode
-    const cfg = LightingConfig.getPreset(mode)
+    const pal = Palette.get(mode)
 
-    // Compute sun direction from spherical angles
-    const phi = THREE.MathUtils.degToRad(90 - cfg.sun.elevation)
-    const theta = THREE.MathUtils.degToRad(cfg.sun.azimuth)
+    const phi = THREE.MathUtils.degToRad(90 - pal.sun.elevation)
+    const theta = THREE.MathUtils.degToRad(pal.sun.azimuth)
     this.sunVector.setFromSphericalCoords(1, phi, theta)
 
-    // Update Sky Uniforms
-    const uniforms = this.sky.material.uniforms as any
-    uniforms.turbidity.value = cfg.sky.turbidity
-    uniforms.rayleigh.value = cfg.sky.rayleigh
-    uniforms.mieCoefficient.value = cfg.sky.mieCoefficient
-    uniforms.mieDirectionalG.value = cfg.sky.mieDirectionalG
-    uniforms.sunPosition.value.copy(this.sunVector)
+    FlatMaterialFactory.getInstance().setPalette(mode)
+    this.skyDome.setPalette(pal, this.sunVector, mode)
 
-    // Sync baker sky uniforms for PMREM environment map
-    const bakerUniforms = this.bakerSky.material.uniforms as any
-    bakerUniforms.turbidity.value = cfg.sky.turbidity
-    bakerUniforms.rayleigh.value = cfg.sky.rayleigh
-    bakerUniforms.mieCoefficient.value = cfg.sky.mieCoefficient
-    bakerUniforms.mieDirectionalG.value = cfg.sky.mieDirectionalG
-    bakerUniforms.sunPosition.value.copy(this.sunVector)
+    this.renderer.toneMapping = THREE.NoToneMapping
+    this.renderer.toneMappingExposure = pal.exposure.outdoor
 
-    if (mode === 'night') {
-      if (uniforms.cloudCoverage) uniforms.cloudCoverage.value = 0.0
-      if (uniforms.cloudDensity) uniforms.cloudDensity.value = 0.0
-      this.sky.visible = true
-      this.bakerSky.visible = true
-    } else if (mode === 'sunset') {
-      this.sky.visible = true
-      this.bakerSky.visible = true
-      if (uniforms.cloudCoverage) uniforms.cloudCoverage.value = 0.15
-      if (uniforms.cloudDensity) uniforms.cloudDensity.value = 0.20
-    } else {
-      this.sky.visible = true
-      this.bakerSky.visible = true
-      if (uniforms.cloudCoverage) uniforms.cloudCoverage.value = 0.08
-      if (uniforms.cloudDensity) uniforms.cloudDensity.value = 0.12
-    }
+    this.keyLight.color.setHex(pal.sun.color)
+    this.keyLight.intensity = pal.sun.intensity
+      ; (this.keyLight.shadow as any).intensity = pal.shadowStrength
 
-    // Update Tone Mapping & Exposure
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = cfg.exposure.outdoor
+    this.hemiLight.color.setHex(pal.hemi.skyColor)
+    this.hemiLight.groundColor.setHex(pal.hemi.groundColor)
+    this.hemiLight.intensity = pal.hemi.intensity
 
-    // Update Lights
-    this.keyLight.color.setHex(cfg.sun.color)
-    this.keyLight.intensity = cfg.sun.intensity
+    this.rimLight.color.setHex(pal.rim.color)
+    this.rimLight.intensity = pal.rim.intensity
 
-    this.hemiLight.color.setHex(cfg.hemi.skyColor)
-    this.hemiLight.groundColor.setHex(cfg.hemi.groundColor)
-    this.hemiLight.intensity = cfg.hemi.intensity
-
-    this.rimLight.color.setHex(cfg.rim.color)
-    this.rimLight.intensity = cfg.rim.intensity
-
-    // Update Fog
     const fog = this.scene.fog as THREE.Fog
-    if (fog) {
-      fog.color.setHex(cfg.fog.color)
-      fog.near = cfg.fog.near
-      fog.far = cfg.fog.far
-    }
-    this.scene.background = new THREE.Color(cfg.fog.color)
-
-    // Regenerate PMREM IBL environment map with gentle, balanced intensity
-    this.updateEnvironmentMap()
+    fog.color.setHex(pal.fog.color)
+    fog.near = pal.fog.near
+    fog.far = pal.fog.far
+      ; (this.scene.background as THREE.Color).setHex(pal.fog.color)
   }
 
-  /**
-   * Bake the current physical sky into PMREM cubemap for IBL specular reflections on PBR materials
-   */
+  /** Giữ API cũ (không còn IBL). */
   public updateEnvironmentMap() {
-    if (this.currentEnvRenderTarget) {
-      this.currentEnvRenderTarget.dispose()
-      this.currentEnvRenderTarget = null
-    }
-
-    const cfg = LightingConfig.getPreset(this.currentMode)
-
-    try {
-      this.currentEnvRenderTarget = this.pmremGenerator.fromScene(this.skyScene)
-      this.scene.environment = this.currentEnvRenderTarget.texture
-      ;(this.scene as any).environmentIntensity = cfg.ibl.intensity
-    } catch (e) {
-      console.warn('[AtmosphereManager] PMREM IBL generation fallback:', e)
-      this.scene.environment = null
-    }
+    /* no-op: phong cách phẳng không dùng môi trường phản xạ */
   }
 
-  /**
-   * Follower Sun Shadow: keeps shadow camera focused around the player's position
-   */
+  /** Đưa vòm trời bám theo camera. Gọi mỗi khung hình. */
+  public updateSky(cameraPos: THREE.Vector3) {
+    this.skyDome.update(cameraPos)
+  }
+
+  /** Bóng đổ bám theo người chơi. */
   public updateShadowFollower(playerPos: THREE.Vector3) {
-    // Offset direction from sun vector
-    const sunDist = 55
+    const sunDist = 60
+    // Với mặt trời thấp (hoàng hôn), nâng nguồn sáng để bóng không bị cắt cụt
     const posX = playerPos.x + this.sunVector.x * sunDist
-    const posY = Math.max(playerPos.y + this.sunVector.y * sunDist, 25)
+    const posY = Math.max(playerPos.y + this.sunVector.y * sunDist, 22)
     const posZ = playerPos.z + this.sunVector.z * sunDist
 
     this.keyLight.position.set(posX, posY, posZ)
@@ -183,15 +121,25 @@ export class AtmosphereManager {
     this.keyLight.target.updateMatrixWorld()
   }
 
-  public dispose() {
-    if (this.currentEnvRenderTarget) {
-      this.currentEnvRenderTarget.dispose()
-      this.currentEnvRenderTarget = null
+  /**
+   * Chất lượng bóng đổ theo mức đồ họa:
+   * low = tắt bóng (giảm ~1 lượt vẽ cảnh), medium = 1024, high/ultra = 2048.
+   */
+  public setShadowQuality(quality: 'low' | 'medium' | 'high' | 'ultra') {
+    const size = quality === 'high' || quality === 'ultra' ? 2048 : 1024
+    const enabled = quality !== 'low'
+    const shadow = this.keyLight.shadow
+    if (shadow.mapSize.x !== size) {
+      shadow.mapSize.set(size, size)
+      shadow.map?.dispose()
+      shadow.map = null
     }
-    this.pmremGenerator.dispose()
-    this.bakerSky.geometry.dispose()
-    ;(this.bakerSky.material as THREE.Material).dispose()
-    this.sky.geometry.dispose()
-    ;(this.sky.material as THREE.Material).dispose()
+    this.keyLight.castShadow = enabled
+  }
+
+  public dispose() {
+    this.skyDome.dispose()
+    this.scene.remove(this.keyLight, this.keyLight.target, this.hemiLight, this.rimLight)
+    this.keyLight.shadow.map?.dispose()
   }
 }

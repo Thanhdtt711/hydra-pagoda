@@ -45,6 +45,8 @@ export interface WalletConfig {
   isDefaultTestnetTreasury: boolean
   blockfrostApiKey: string
   blockfrostBaseUrl: string
+  /** Tùy chọn Koios Bearer token nếu dùng Koios */
+  koiosApiToken: string
   /** Số xác nhận tối thiểu trên chuỗi trước khi cộng MC (Preprod: 1, Mainnet: 3) */
   confirmationsRequired: number
   /** Thời hạn đơn hàng (ms), mặc định 30 phút */
@@ -92,6 +94,13 @@ export function getWalletConfig(): WalletConfig {
       : 'https://cardano-mainnet.blockfrost.io/api/v0'
   )
 
+  const koiosApiToken = String(
+    process.env.NUXT_KOIOS_API_TOKEN ||
+    process.env.KOIOS_API_TOKEN ||
+    rc.koiosApiToken ||
+    ''
+  ).trim()
+
   const rawConf = Number(process.env.NUXT_CONFIRMATIONS_REQUIRED || rc.confirmationsRequired || 0)
   const confirmationsRequired = rawConf > 0 ? Math.floor(rawConf) : (isTestnet ? 1 : 3)
 
@@ -110,6 +119,7 @@ export function getWalletConfig(): WalletConfig {
     isDefaultTestnetTreasury,
     blockfrostApiKey,
     blockfrostBaseUrl,
+    koiosApiToken,
     confirmationsRequired,
     orderTtlMs: ttlMinutes * 60_000,
     orderMetadataLabel,

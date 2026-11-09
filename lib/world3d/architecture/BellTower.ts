@@ -1,97 +1,41 @@
 import * as THREE from 'three'
-import type { PBRMaterialFactory } from '../materials/PBRMaterialFactory'
 import { CollisionWorld, BoxCollider, CylinderCollider } from '../collision'
 import { MapLayout } from '../world/MapLayout'
+import { LowPolyBuilder } from '../style/LowPolyBuilder'
+import { SlotBatch } from '../style/SlotBatch'
+import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
+import { createCurvedHipRoof } from '../style/RoofBuilder'
 
 /**
- * Sinh hình học mái cong đầu đao truyền thống cho lầu chuông
+ * BellTower (Lầu Chuông low-poly phẳng màu):
+ * - Bệ đá 2 tầng (7.2 m / 6.2 m), 4 bậc lên từ hướng Tây, sàn đi lại được (floorY 0.70).
+ * - 4 cột gỗ, xà ngang, lan can 3 hướng (Bắc, Nam, Đông), mái 2 tầng cong đầu đao + cổ mái + chóp vàng.
+ * - Đại Hồng Chung (bellGroup) và chày gỗ (strikerMesh) lắc nhẹ theo thời gian.
+ * - Phần tĩnh gộp bằng SlotBatch, vật liệu dùng chung FlatMaterialFactory, không PointLight.
  */
-function createCurvedTowerRoofGeometry(
-  baseW: number,
-  baseD: number,
-  height: number,
-  ridgeW: number,
-  ridgeD: number,
-  eaveLift: number
-): THREE.BufferGeometry {
-  const positions: number[] = []
-  const normals: number[] = []
-  const uvs: number[] = []
-  const indices: number[] = []
-  const segments = 6
 
-  const addRoofFace = (
-    bottomLeft: [number, number],
-    bottomRight: [number, number],
-    topLeft: [number, number],
-    topRight: [number, number]
-  ) => {
-    const startIndex = positions.length / 3
-    for (let row = 0; row <= segments; row++) {
-      const t = row / segments
-      const yNorm = Math.pow(t, 1.3)
-      const baseHeightAtRow = yNorm * height
+const COLS: Array<[number, number]> = [
+  [-2.2, -2.2],
+  [2.2, -2.2],
+  [-2.2, 2.2],
+  [2.2, 2.2]
+]
+const COL_H = 4.2
+const COL_Y = 2.7
+const FLOOR_Y = 0.7
+const STEP_COUNT = 4
+const STEP_H = FLOOR_Y / STEP_COUNT
+const STEP_TREAD = 0.35
+const STEP_WIDTH = 2.4
 
-      for (let col = 0; col <= segments; col++) {
-        const s = (col / segments) * 2.0 - 1.0
+const RAILINGS = [
+  { pos: [0, 1.25, -2.2], size: [4.4, 0.8, 0.12] }, // Bắc
+  { pos: [0, 1.25, 2.2], size: [4.4, 0.8, 0.12] }, // Nam
+  { pos: [2.2, 1.25, 0], size: [0.12, 0.8, 4.4] } // Đông
+]
 
-        const leftX = THREE.MathUtils.lerp(bottomLeft[0], topLeft[0], t)
-        const leftZ = THREE.MathUtils.lerp(bottomLeft[1], topLeft[1], t)
-        const rightX = THREE.MathUtils.lerp(bottomRight[0], topRight[0], t)
-        const rightZ = THREE.MathUtils.lerp(bottomRight[1], topRight[1], t)
-
-        const uCol = (s + 1.0) * 0.5
-        const vx = THREE.MathUtils.lerp(leftX, rightX, uCol)
-        const vz = THREE.MathUtils.lerp(leftZ, rightZ, uCol)
-
-        // Độ vểnh cong đầu đao ở 4 góc
-        const cornerFactor = Math.pow(Math.abs(s), 2.0) * Math.pow(1.0 - t, 1.5)
-        const vy = baseHeightAtRow + cornerFactor * eaveLift
-
-        positions.push(vx, vy, vz)
-        uvs.push(uCol * 3, t * 2)
-        normals.push(0, 1, 0)
-      }
-    }
-
-    const colsCount = segments + 1
-    for (let r = 0; r < segments; r++) {
-      for (let c = 0; c < segments; c++) {
-        const i0 = startIndex + r * colsCount + c
-        const i1 = i0 + 1
-        const i2 = startIndex + (r + 1) * colsCount + c
-        const i3 = i2 + 1
-
-        indices.push(i0, i2, i1)
-        indices.push(i1, i2, i3)
-      }
-    }
-  }
-
-  // 4 mặt mái đối xứng
-  addRoofFace([-baseW * 0.5, baseD * 0.5], [baseW * 0.5, baseD * 0.5], [-ridgeW * 0.5, ridgeD * 0.5], [ridgeW * 0.5, ridgeD * 0.5])
-  addRoofFace([baseW * 0.5, -baseD * 0.5], [-baseW * 0.5, -baseD * 0.5], [ridgeW * 0.5, -ridgeD * 0.5], [-ridgeW * 0.5, -ridgeD * 0.5])
-  addRoofFace([-baseW * 0.5, -baseD * 0.5], [-baseW * 0.5, baseD * 0.5], [-ridgeW * 0.5, -ridgeD * 0.5], [-ridgeW * 0.5, ridgeD * 0.5])
-  addRoofFace([baseW * 0.5, baseD * 0.5], [baseW * 0.5, -baseD * 0.5], [ridgeW * 0.5, ridgeD * 0.5], [ridgeW * 0.5, -ridgeD * 0.5])
-
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
-  geo.setIndex(indices)
-  geo.computeVertexNormals()
-  return geo
-}
-
-/**
- * BellTower (Lầu Chuông Cổ Tự & Đại Hồng Chung):
- * Traditional Vietnamese wooden bell tower with 4 ironwood pillars,
- * 2-tier flared eaves, Dougong brackets, and sculpted bronze bell (Đại Hồng Chung).
- * Pedestal is fully walkable (isFloor: true, floorY: 0.70) so players can enter the pavilion.
- */
 export class BellTower {
   public root: THREE.Group = new THREE.Group()
-  private materials: PBRMaterialFactory
   public bellMesh!: THREE.Mesh
   public strikerMesh!: THREE.Mesh
   public bellGroup!: THREE.Group
@@ -101,56 +45,150 @@ export class BellTower {
     MapLayout.LANDMARKS.BELL_TOWER.center.z
   )
 
-  constructor(materials: PBRMaterialFactory, collision: CollisionWorld) {
-    this.materials = materials
+  constructor(collision: CollisionWorld) {
+    this.root.name = 'BellTower'
     this.root.position.copy(this.position)
 
-    // 1. Bệ tam cấp đá hoa cương 2 tầng (Bước lên được, isFloor: true)
-    this.buildStonePedestal(collision)
-
-    // 2. Hệ khung cột gỗ lim & sàn gỗ
-    this.buildTimberFramework(collision)
-
-    // 3. Mái ngói âm dương 2 tầng uốn cong đầu đao (Curved Eaves)
-    this.buildDoubleCurvedRoofs()
-
-    // 4. Đại Hồng Chung bằng đồng cổ tiện hình dáng truyền thống
-    this.buildGreatBronzeBell()
+    this.root.add(this.buildStructure())
+    this.buildBell()
+    this.registerColliders(collision)
   }
 
-  private buildStonePedestal(collision: CollisionWorld) {
-    const graniteMat = this.materials.createGraniteStepMaterial()
+  private stepRelX(i: number): number {
+    return -3.1 - (STEP_COUNT - 1 - i + 0.5) * STEP_TREAD
+  }
 
-    // Tầng thềm đá dưới (7.2m x 7.2m x 0.35m)
-    const baseLow = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.35, 7.2), graniteMat)
-    baseLow.position.y = 0.18
-    baseLow.receiveShadow = true
-    baseLow.castShadow = true
-    this.root.add(baseLow)
+  private buildStructure(): THREE.Group {
+    const b = new SlotBatch()
 
-    // Tầng thềm đá trên (6.2m x 6.2m x 0.35m)
-    const baseHigh = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.35, 6.2), graniteMat)
-    baseHigh.position.y = 0.52
-    baseHigh.receiveShadow = true
-    baseHigh.castShadow = true
-    this.root.add(baseHigh)
+    // --- Bệ đá 2 tầng + sàn gỗ ---
+    b.box('stone', 7.2, 0.35, 7.2, 0, 0.175, 0)
+    b.box('stone', 6.2, 0.35, 6.2, 0, 0.525, 0)
+    b.box('wood', 5.8, 0.06, 5.8, 0, FLOOR_Y + 0.01, 0)
 
-    // Bậc thềm tam cấp chuẩn hóa hướng Tây (4 bậc, mỗi bậc cao 0.175m <= 0.18m)
-    const stepCount = 4
-    const stepH = 0.70 / stepCount // 0.175m
-    const stepTread = 0.35          // 0.35m >= 0.30m
-    const stepWidth = 2.4
-
-    for (let i = 0; i < stepCount; i++) {
-      const y = (i + 0.5) * stepH
-      const relX = -3.1 - (stepCount - 1 - i + 0.5) * stepTread
-      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(stepTread + 0.02, stepH, stepWidth), graniteMat)
-      stepMesh.position.set(relX, y, 0)
-      stepMesh.receiveShadow = true
-      this.root.add(stepMesh)
+    // --- Bậc thềm hướng Tây ---
+    for (let i = 0; i < STEP_COUNT; i++) {
+      const h = (i + 1) * STEP_H
+      b.box('stone', STEP_TREAD + 0.02, h, STEP_WIDTH, this.stepRelX(i), h * 0.5, 0)
     }
 
-    // Đăng ký Collider cho bệ lầu chuông là SÀN ĐI LẠI ĐƯỢC (isFloor: true, floorY: 0.70)
+    // --- 4 cột gỗ + chân tảng ---
+    COLS.forEach(([cx, cz]) => {
+      b.cylinder('stone', 0.34, 0.42, 0.25, 8, cx, 0.82, cz)
+      b.cylinder('woodDark', 0.24, 0.28, COL_H, 8, cx, COL_Y, cz)
+    })
+
+    // --- Xà ngang liên kết 4 cột ---
+    for (const cz of [-2.2, 2.2]) b.box('woodDark', 4.8, 0.24, 0.24, 0, 4.6, cz)
+    for (const cx of [-2.2, 2.2]) b.box('woodDark', 0.24, 0.24, 4.8, cx, 4.6, 0)
+
+    // --- Lan can: thanh ngang trên, dưới và con tiện ---
+    RAILINGS.forEach((r) => {
+      const [px, py, pz] = r.pos as [number, number, number]
+      const [sx, , sz] = r.size as [number, number, number]
+      const alongX = sx > sz
+      const len = alongX ? sx : sz
+      b.box('woodDark', sx, 0.1, sz, px, py + 0.38, pz)
+      b.box('woodDark', sx, 0.08, sz, px, py - 0.34, pz)
+      for (let k = 0; k <= 8; k++) {
+        const o = -len * 0.5 + 0.1 + (k * (len - 0.2)) / 8
+        b.box('wood', alongX ? 0.07 : sx, 0.7, alongX ? sz : 0.07, alongX ? px + o : px, py, alongX ? pz : pz + o)
+      }
+    })
+
+    // --- Mái tầng dưới ---
+    const lowerRoof = createCurvedHipRoof({
+      eaveW: 6.6,
+      eaveD: 6.6,
+      height: 1.6,
+      ridgeW: 2.0,
+      ridgeD: 2.0,
+      lift: 0.9
+    })
+    b.add('roof', lowerRoof, { position: [0, 4.8, 0] }, true)
+
+    // --- Cổ mái giữa hai tầng (khung gỗ + tường nhỏ) ---
+    b.box('wall', 2.8, 0.8, 2.8, 0, 5.8, 0)
+    b.box('woodDark', 3.0, 0.12, 3.0, 0, 5.4, 0)
+    b.box('woodDark', 3.0, 0.12, 3.0, 0, 6.2, 0)
+
+    // --- Mái tầng trên ---
+    const upperRoof = createCurvedHipRoof({
+      eaveW: 4.8,
+      eaveD: 4.8,
+      height: 1.5,
+      ridgeW: 0.5,
+      ridgeD: 0.5,
+      lift: 1.1
+    })
+    b.add('roof', upperRoof, { position: [0, 6.2, 0] }, true)
+
+    // --- Chóp nóc và đầu đao mạ vàng ---
+    b.cone('gold', 0.22, 0.9, 6, 0, 7.8 + 0.1, 0)
+    b.sphere('gold', 0.2, 0, 0, 7.55, 0)
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        b.cone('gold', 0.13, 0.5, 5, sx * 3.15, 4.8 + 0.9 + 0.22, sz * 3.15)
+      }
+    }
+
+    return b.build({ name: 'bell_tower_static', castShadow: true, receiveShadow: true })
+  }
+
+  /** Đại Hồng Chung và chày gỗ: hai phần động nên tách khỏi batch tĩnh. */
+  private buildBell() {
+    const mats = FlatMaterialFactory.getInstance()
+    const gold = mats.get('gold')
+    const wood = mats.get('woodDark')
+
+    this.bellGroup = new THREE.Group()
+    this.bellGroup.name = 'bell_group'
+    this.bellGroup.position.set(0, 3.4, 0)
+
+    // Thân chuông: hình nón cụt 8 mặt, hơi loe ở miệng
+    this.bellMesh = new THREE.Mesh(LowPolyBuilder.cylinder(0.52, 0.88, 1.5, 8), gold)
+    this.bellMesh.name = 'great_bell'
+    this.bellMesh.position.y = -0.1
+    this.bellMesh.castShadow = true
+    this.bellGroup.add(this.bellMesh)
+
+    // Vai chuông (vòm) và quai treo
+    const shoulder = new THREE.Mesh(LowPolyBuilder.cylinder(0.3, 0.52, 0.2, 8), gold)
+    shoulder.position.y = 0.75
+    this.bellGroup.add(shoulder)
+    const hanger = new THREE.Mesh(LowPolyBuilder.cylinder(0.09, 0.09, 0.4, 6), wood)
+    hanger.position.y = 1.05
+    this.bellGroup.add(hanger)
+
+    // Đai chuông và núm
+    const band = new THREE.Mesh(LowPolyBuilder.cylinder(0.84, 0.9, 0.12, 8), wood)
+    band.position.y = -0.74
+    this.bellGroup.add(band)
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4
+      const boss = new THREE.Mesh(LowPolyBuilder.sphere(0.09, 0), gold)
+      boss.position.set(Math.cos(a) * 0.68, 0.25, Math.sin(a) * 0.68)
+      this.bellGroup.add(boss)
+    }
+    this.root.add(this.bellGroup)
+
+    // Chày gỗ treo ngang phía Đông, hai dây treo từ xà
+    this.strikerMesh = new THREE.Mesh(LowPolyBuilder.cylinder(0.1, 0.12, 1.6, 6), wood)
+    this.strikerMesh.name = 'bell_striker'
+    this.strikerMesh.rotation.z = Math.PI / 2
+    this.strikerMesh.position.set(1.5, 3.1, 0)
+    this.strikerMesh.castShadow = true
+    this.root.add(this.strikerMesh)
+
+    for (const rx of [1.1, 1.9]) {
+      const rope = new THREE.Mesh(LowPolyBuilder.cylinder(0.02, 0.02, 1.4, 4), wood)
+      rope.position.set(rx, 3.85, 0)
+      this.root.add(rope)
+    }
+  }
+
+  private registerColliders(collision: CollisionWorld) {
+    // Bệ lầu chuông là SÀN ĐI LẠI ĐƯỢC (isFloor: true, floorY: 0.70)
     collision.add(
       new BoxCollider(
         'bell_tower_base_floor',
@@ -158,99 +196,38 @@ export class BellTower {
         new THREE.Vector3(6.2, 0.7, 6.2),
         false,
         true,
-        0.70
+        FLOOR_Y
       )
     )
 
-    // 4 Bậc thang phía Tây chuẩn hóa collider (leo bằng WASD mượt mà không cần nhảy)
-    for (let i = 0; i < stepCount; i++) {
-      const floorY = (i + 1) * stepH
-      const relX = -3.1 - (stepCount - 1 - i + 0.5) * stepTread
+    // 4 bậc thềm phía Tây (leo bằng WASD không cần nhảy)
+    for (let i = 0; i < STEP_COUNT; i++) {
+      const floorY = (i + 1) * STEP_H
       collision.add(
         new BoxCollider(
           `bell_tower_step_${i}`,
-          new THREE.Vector3(this.position.x + relX, floorY * 0.5, this.position.z),
-          new THREE.Vector3(stepTread + 0.04, floorY, stepWidth),
+          new THREE.Vector3(this.position.x + this.stepRelX(i), floorY * 0.5, this.position.z),
+          new THREE.Vector3(STEP_TREAD + 0.04, floorY, STEP_WIDTH),
           false,
           true,
           floorY
         )
       )
     }
-  }
 
-  private buildTimberFramework(collision: CollisionWorld) {
-    const ironwoodMat = this.materials.createIronwoodMaterial()
-
-    // 4 Cột gỗ lim cái vững chãi (đường kính 0.45m, cao 4.2m)
-    const colCoords = [
-      [-2.2, -2.2],
-      [2.2, -2.2],
-      [-2.2, 2.2],
-      [2.2, 2.2]
-    ]
-
-    colCoords.forEach(([cx, cz], i) => {
-      const col = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.24, 0.28, 4.2, 16),
-        ironwoodMat
-      )
-      col.position.set(cx, 2.7, cz)
-      col.castShadow = true
-      col.receiveShadow = true
-      this.root.add(col)
-
-      // Chân tảng đá kê cột
-      const plinth = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.42, 0.25, 12),
-        this.materials.createGraniteStepMaterial()
-      )
-      plinth.position.set(cx, 0.78, cz)
-      plinth.castShadow = true
-      this.root.add(plinth)
-
-      // Collider cho từng thân cột gỗ
+    COLS.forEach(([cx, cz], i) => {
       collision.add(
         new CylinderCollider(
           `bell_col_${i}`,
-          new THREE.Vector3(this.position.x + cx, 2.7, this.position.z + cz),
+          new THREE.Vector3(this.position.x + cx, COL_Y, this.position.z + cz),
           0.32,
-          4.2,
+          COL_H,
           false
         )
       )
     })
 
-    // Xà ngang liên kết 4 cột
-    const beamGeo = new THREE.BoxGeometry(4.8, 0.22, 0.22)
-    for (const cz of [-2.2, 2.2]) {
-      const beam = new THREE.Mesh(beamGeo, ironwoodMat)
-      beam.position.set(0, 4.6, cz)
-      beam.castShadow = true
-      this.root.add(beam)
-    }
-    const beamSideGeo = new THREE.BoxGeometry(0.22, 0.22, 4.8)
-    for (const cx of [-2.2, 2.2]) {
-      const beam = new THREE.Mesh(beamSideGeo, ironwoodMat)
-      beam.position.set(cx, 4.6, 0)
-      beam.castShadow = true
-      this.root.add(beam)
-    }
-
-    // Lan can gỗ con tiện bao 3 hướng (Bắc, Nam, Đông) - Chừa lối vào hướng Tây
-    const railMat = this.materials.createIronwoodMaterial()
-    const railings = [
-      { pos: [0, 1.25, -2.2], size: [4.4, 0.8, 0.12] }, // Lan can Bắc
-      { pos: [0, 1.25, 2.2], size: [4.4, 0.8, 0.12] },  // Lan can Nam
-      { pos: [2.2, 1.25, 0], size: [0.12, 0.8, 4.4] }   // Lan can Đông
-    ]
-
-    railings.forEach((r, i) => {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(r.size[0], r.size[1], r.size[2]), railMat)
-      rail.position.set(r.pos[0], r.pos[1], r.pos[2])
-      rail.castShadow = true
-      this.root.add(rail)
-
+    RAILINGS.forEach((r, i) => {
       collision.add(
         new BoxCollider(
           `bell_rail_${i}`,
@@ -262,105 +239,16 @@ export class BellTower {
     })
   }
 
-  private buildDoubleCurvedRoofs() {
-    const roofMat = this.materials.createYinYangRoofMaterial()
-
-    // 1. Mái tầng 1 (Mái hạ xòe rộng 6.6m x 6.6m, cao 1.6m, đầu đao cong 0.9m)
-    const lowerRoofGeo = createCurvedTowerRoofGeometry(6.6, 6.6, 1.6, 3.2, 3.2, 0.9)
-    const roofLower = new THREE.Mesh(lowerRoofGeo, roofMat)
-    roofLower.position.y = 4.8
-    roofLower.castShadow = true
-    roofLower.receiveShadow = true
-    this.root.add(roofLower)
-
-    // Cổ diêm / Cổ các ngăn giữa 2 tầng mái (2.8m x 2.8m x 0.8m)
-    const neck = new THREE.Mesh(
-      new THREE.BoxGeometry(2.8, 0.8, 2.8),
-      this.materials.createIronwoodMaterial()
-    )
-    neck.position.y = 5.8
-    neck.castShadow = true
-    this.root.add(neck)
-
-    // 2. Mái tầng 2 (Mái thượng vút cao 4.8m x 4.8m, cao 1.5m, đầu đao cong 1.1m)
-    const upperRoofGeo = createCurvedTowerRoofGeometry(4.8, 4.8, 1.5, 0.4, 0.4, 1.1)
-    const roofUpper = new THREE.Mesh(upperRoofGeo, roofMat)
-    roofUpper.position.y = 6.2
-    roofUpper.castShadow = true
-    roofUpper.receiveShadow = true
-    this.root.add(roofUpper)
-
-    // Đỉnh chóp hồ lô / búp sen đồng vàng
-    const finial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.25, 0.9, 12),
-      this.materials.createSacredGoldLeafMaterial()
-    )
-    finial.position.set(0, 7.8, 0)
-    finial.castShadow = true
-    this.root.add(finial)
+  public swingBell(_delta: number, elapsed: number) {
+    this.bellGroup.rotation.z = Math.sin(elapsed * 1.5) * 0.03
+    this.strikerMesh.rotation.y = Math.sin(elapsed * 1.5 + 0.5) * 0.05
   }
 
-  private buildGreatBronzeBell() {
-    const bronzeMat = this.materials.createAntiqueBronzeMaterial()
-    const bellGroup = new THREE.Group()
-    bellGroup.position.set(0, 3.4, 0)
-
-    // Quai chuông chạm Bồ Lao (Rồng 2 đầu uốn cong)
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.08, 8, 16, Math.PI), bronzeMat)
-    handle.position.y = 0.85
-    handle.castShadow = true
-    bellGroup.add(handle)
-
-    // Thân chuông tiện hình thang cong đặc trưng (Đại Hồng Chung)
-    const points: THREE.Vector2[] = [
-      new THREE.Vector2(0.25, 0.8),
-      new THREE.Vector2(0.45, 0.65),
-      new THREE.Vector2(0.55, 0.35),
-      new THREE.Vector2(0.62, 0.0),
-      new THREE.Vector2(0.72, -0.45),
-      new THREE.Vector2(0.85, -0.75),
-      new THREE.Vector2(0.88, -0.85),
-      new THREE.Vector2(0.72, -0.85) // Vành miệng chuông dày
-    ]
-    const bellGeo = new THREE.LatheGeometry(points, 24)
-    this.bellMesh = new THREE.Mesh(bellGeo, bronzeMat)
-    this.bellMesh.castShadow = true
-    bellGroup.add(this.bellMesh)
-
-    // Núm thỉnh chuông (4 núm tròn tương ứng 4 mùa)
-    for (let i = 0; i < 4; i++) {
-      const angle = (i * Math.PI) / 2
-      const boss = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 8, 8),
-        this.materials.createSacredGoldLeafMaterial()
-      )
-      boss.position.set(Math.cos(angle) * 0.74, -0.52, Math.sin(angle) * 0.74)
-      boss.castShadow = true
-      bellGroup.add(boss)
-    }
-
-    // Chày kình gõ chuông bằng gỗ lim treo nghiêng 1 góc
-    const strikerGroup = new THREE.Group()
-    const strikerMat = this.materials.createIronwoodMaterial()
-    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.8, 12), strikerMat)
-    log.rotation.z = Math.PI * 0.5
-    log.position.set(0.9, 0, 0)
-    log.castShadow = true
-    strikerGroup.add(log)
-
-    bellGroup.add(strikerGroup)
-    this.strikerMesh = log
-    this.bellGroup = bellGroup
-
-    this.root.add(bellGroup)
-  }
-
-  public swingBell(delta: number, elapsed: number) {
-    if (this.bellGroup) {
-      this.bellGroup.rotation.z = Math.sin(elapsed * 1.5) * 0.03
-    }
-    if (this.strikerMesh) {
-      this.strikerMesh.rotation.y = Math.sin(elapsed * 1.5 + 0.5) * 0.05
-    }
+  public dispose() {
+    this.root.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (m.isMesh && m.geometry) m.geometry.dispose()
+    })
+    // Vật liệu Flat dùng chung FlatMaterialFactory nên không dispose ở đây
   }
 }

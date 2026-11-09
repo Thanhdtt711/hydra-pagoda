@@ -1,0 +1,39 @@
+# hydra-node o che do OFFLINE (mot node don le, khong can cardano-node) de dev/test lop Hydra L2.
+# Head mo san (Open) voi UTxO ban dau lay tu .hydra-offline/utxo.json (sinh boi `npm run hydra:prepare`).
+#
+#   npm run hydra:prepare
+#   docker compose -f docker-compose.hydra.yml up -d
+#   pnpm dev
+#
+# Reset trang thai Head ve ban dau: docker compose -f docker-compose.hydra.yml down roi up -d
+# (state nam trong container, khong luu ra o dia nen `down` la sach hoan toan).
+services:
+  hydra-node:
+    # Dung 0.22.4 thay vi ban moi hon: cac ban >= 1.x/2.x bi SIGILL (exit 132) tren CPU khong co AVX2
+    # (vd: Xeon E5 doi Sandy/Ivy Bridge). 0.22.4 chay on tren moi CPU x86-64 va API WebSocket tuong thich.
+    image: ghcr.io/cardano-scaling/hydra-node:0.22.4
+    container_name: hydra-pagoda-offline
+    command:
+      - --node-id
+      - offline-1
+      - --api-host
+      - 0.0.0.0
+      - --api-port
+      - "4001"
+      - --hydra-signing-key
+      - /data/hydra.sk
+      - --offline-head-seed
+      - "0001020304050607"
+      - --initial-utxo
+      - /data/utxo.json
+      - --ledger-protocol-parameters
+      - /data/protocol-parameters.json
+      - --persistence-dir
+      - /state
+    ports:
+      # Cong tren may host (mac dinh 4001). Neu 4001 dang ban (vd: `npm run hydra:mock`)
+      # thi dat HYDRA_API_PORT=4002 va HYDRA_NODE_WS_URL=ws://127.0.0.1:4002 trong .env.
+      - "127.0.0.1:${HYDRA_API_PORT:-4001}:4001"
+    volumes:
+      - ./.hydra-offline:/data:ro
+    restart: unless-stopped

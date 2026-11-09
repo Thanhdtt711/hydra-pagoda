@@ -277,7 +277,7 @@ Hệ thống kế thừa và tái sử dụng trực tiếp các module Web3 & H
   * *Mâm Quả Tươi Ngũ Sắc & Đĩa Bánh Oản Hoàng Cung.*
   * *Đèn Hoa Đăng Cầu Nguyện Nhiều Cánh:* Thả trên hồ nước, tỏa ánh sáng vàng ấm lan tỏa cho toàn server nhìn thấy.
 * **Tủ Đồ Cổ Phục Cao Cấp:**
-  * Mở bán các gói trang phục truyền thống lịch sử cao cấp được tạo tác tỉ mỉ với chất liệu PBR vải lụa, gấm thêu kim tuyến, tà áo bay bổng chân thực.
+  * Mở bán các gói trang phục truyền thống lịch sử cao cấp theo phong cách low-poly tối giản: bảng màu phẳng riêng cho từng quốc gia, họa tiết gấm thêu thể hiện bằng các mảng màu và đường viền khối, tà áo và mũ nón đặc trưng dễ nhận diện từ xa.
 
 ---
 
@@ -376,6 +376,18 @@ Tận dụng kiến trúc `AudioManager` phát triển thành **Spatial Sound Mi
 ---
 
 ## 10. KIẾN TRÚC KỸ THUẬT FRONTEND: NUXT 3 & THREE.JS
+
+### 10.0. Phong cách đồ họa: Low-poly tối giản (Flat-color)
+
+Giao diện 3D theo phong cách low-poly tối giản, tham chiếu thẩm mỹ *Monument Valley* và *Journey*. Phong cách này thay thế hướng PBR/realistic trước đây.
+
+* **Màu sắc:** chỉ dùng màu phẳng, không ảnh texture, không PBR map, không IBL, không GTAO, không viền outline. Bảng màu (`lib/world3d/style/Palette.ts`) có 3 chế độ: ban ngày, hoàng hôn, ban đêm; vật liệu dùng chung qua `FlatMaterialFactory` với gradient theo độ cao.
+* **Ánh sáng & hậu kỳ:** một đèn định hướng đổ bóng mềm duy nhất, tối đa 4 PointLight, sương mù theo lớp, Bloom nhẹ (ngưỡng 1.0) và Vignette nhẹ.
+* **Nhân vật:** khoảng 7 đầu, ghép từ các bộ phận cứng (rigid-part), trang phục khác nhau theo từng quốc gia. Đám đông hiển thị bằng InstancedMesh với 4 mức LOD.
+* **Công trình:** Đại Hùng Bảo Điện 28×22 m (khoảng 256 chỗ thiền), Tam Quan, Lầu Chuông, Hồ Sen đều dựng thủ tục và gộp theo slot màu để giảm draw call.
+* **Tài sản ngoài:** chỉ giữ một tôn tượng Phật GLB duy nhất (đã nén meshopt, bỏ texture, khoảng 0.1 MB), hiển thị bằng vật liệu vàng phẳng, cao 4.2 m.
+* **Quy mô & ngân sách hiệu năng:** bản đồ 400×400 m; khoảng 200 người chơi đồng thời; mục tiêu ≥ 60 FPS ở mức High và ≥ 30 FPS ở mức Low; draw call ≤ 150 (High) và ≤ 80 (Low); tối đa khoảng 600 nghìn tam giác.
+* **Chất lượng đồ họa:** Low / Medium / High / Ultra điều chỉnh pixel ratio, Bloom và độ phân giải bóng (1024 hoặc 2048).
 
 Dự án kế thừa các giải pháp đã tối ưu hóa của `hydra-graveyard/apps/web-client`:
 

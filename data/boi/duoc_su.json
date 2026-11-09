@@ -1,0 +1,583 @@
+[
+  {
+    "id": "ds_tho_daicat_01",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 01 · Thượng Thượng · Lưu Ly Quang Minh",
+    "text": "Ánh sáng Lưu Ly chiếu bốn phương,\nThân tâm an thái bước dặm trường,\nHơi thở điều hòa sinh khí vượng,\nBách niên trường thọ phúc miên trường.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_daicat_02",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 07 · Thượng Thượng · Tùng Bách Trường Thanh",
+    "text": "Tùng xanh vững chãi giữa non ngàn,\nBốn mùa sương gió chẳng suy tàn,\nGiấc ngủ êm đềm tâm thanh tịnh,\nCả nhà khỏe mạnh hưởng bình an.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_daicat_03",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 16 · Thượng Thượng · Cam Lộ Tịnh Tâm",
+    "text": "Giọt nướcành dương rưới mát lòng,\nƯu tư phiền muộn hóa hư không,\nTinh thần sảng khoái tràn năng lượng,\nBước chân nhẹ nhõm dưới nắng hồng.",
+    "tags": ["suc_khoe", "tong_quan", "xuat_hanh"]
+  },
+  {
+    "id": "ds_tho_daicat_04",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 25 · Thượng Thượng · Nhật Nguyệt Giao Huy",
+    "text": "Âm dương điều섭 khí lưu thông,\nDa dẻ hồng hào mắt sáng trong,\nCha mẹ an vui con cháu thảo,\nMột nhà phúc thọ sánh non sông.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_tho_cat_01",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 13 · Thượng Cát · Xuân Phong Phục Nguyên",
+    "text": "Gió xuân ấm áp thổi qua đồi,\nMệt mỏi ngày qua đã dịu rồi,\nĂn uống điều độ chăm rèn luyện,\nSức lực dồi dào nở nụ cười.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_cat_02",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 22 · Thượng Cát · Thanh Trà Dưỡng Tính",
+    "text": "Chén trà thảo mộc ngát hương sen,\nBuông bỏ muộn phiền nhịp sống quen,\nNgủ sớm dậy đều tâm thư thái,\nBình yên khỏe khoắn chẳng bon chen.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_cat_03",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 35 · Thượng Cát · Trúc Lâm Hơi Thở",
+    "text": "Rừng trúc lao xao tiếng gió ngàn,\nThở vào tĩnh lặng thở ra an,\nThân thể dẻo dai nhờ vận động,\nTinh thần minh mẫn vượt gian nan.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_cat_04",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 44 · Thượng Cát · An Hòa Gia Quyến",
+    "text": "Nắng sớm chan hòa khắp mái hiên,\nÔng bà cha mẹ dạ an nhiên,\nChăm lo phòng ngừa theo khoa học,\nSức khỏe bền lâu phúc hiện tiền.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_tho_binh_01",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 53 · Trung Bình · Điềm Đạm Hộ Thân",
+    "text": "Nước chảy khoan thai giữ nhịp đều,\nLàm vừa theo sức chớ làm liều,\nCân bằng công việc cùng nghỉ dưỡng,\nThân tâm ổn định suốt sớm chiều.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_binh_02",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 61 · Trung Bình · Thu Lương Cẩn Tiết",
+    "text": "Giao mùa nắng lạnh đổi thất thường,\nÁo ấm trà gừng giữ mỗi phương,\nChú ý lắng nghe lời cơ thể,\nBình yên khỏe mạnh bước trên đường.",
+    "tags": ["suc_khoe", "xuat_hanh", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_binh_03",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 68 · Trung Bình · Tĩnh Tọa Hồi Nguyên",
+    "text": "Sau giờ bận rộn khép song mành,\nNgồi yên mười phút dưỡng tâm thanh,\nKhông quá lo âu không chủ quan,\nGiữ tròn nhịp sống thật an lành.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_binh_04",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 74 · Trung Bình · Tri Túc Tâm An",
+    "text": "Cơm rau thanh đạm giấc ngủ sâu,\nBớt nghĩ chuyện xa đỡ nặng đầu,\nĐịnh kỳ thăm khám chăm thân thể,\nUng dung tự tại sống dài lâu.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_tho_hung_01",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 79 · Hạ Quẻ · Tâm Thần Quá Tải",
+    "text": "Đèn khuya còn thức bóng đơn côi,\nViệc chồng lên việc sức hao rồi,\nHãy dừng nhịp vội lo nghỉ dưỡng,\nLắng nghe cơ thể lúc đầy vơi.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_hung_02",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 83 · Hạ Quẻ · Phong Hàn Xâm Khí",
+    "text": "Gió chiều se lạnh thổi qua hiên,\nĂn ngủ thất thường dễ mệt thêm,\nKiên nhẫn nghỉ ngơi chăm thăm khám,\nGiữ ấm thân tâm giấc ngủ êm.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_hung_03",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 87 · Hạ Quẻ · Đa Tư Hao Lực",
+    "text": "Trăm mối lo toan chất ở lòng,\nLàm sao giấc ngủ được thong dong,\nGác lại muộn phiền chăm dưỡng sức,\nBình tâm khám xét mới an lòng.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_hung_04",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 90 · Hạ Quẻ · Cung Căng Cần Nghỉ",
+    "text": "Dây đàn căng mãi tiếng kém thanh,\nNgười làm quên nghỉ sức mong manh,\nCần thêm kiên nhẫn và thăm khám,\nDưỡng lại nguyên khí dưới hiên lành.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "ds_tho_daihung_01",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 95 · Hạ Hạ · Tức Tâm Dưỡng Thể",
+    "text": "Mệt mỏi dồn lâu chớ xem thường,\nTạm ngưng bôn tẩu khắp muôn phương,\nKiên nhẫn nghỉ ngơi đi thăm khám,\nQuay về tĩnh dưỡng giữ bình thường.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_daihung_02",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 97 · Hạ Hạ · Bảo Toàn Sinh Lực",
+    "text": "Cây gặp mùa khô lá rụng nhiều,\nCần tưới nước trong mỗi sớm chiều,\nChú ý nghỉ ngơi đừng gắng sức,\nKhám định kỳ đều chớ chủ quan.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_daihung_03",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 99 · Hạ Hạ · Phản Quan Hơi Thở",
+    "text": "Đêm dài thao thức bởi lo âu,\nÁp lực dồn nén suốt canh thâu,\nHãy đặt thân tâm lên trước nhất,\nNghỉ ngơi thăm khám phúc bền lâu.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_tho_daihung_04",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "tho",
+    "title": "Quẻ Dược Sư 100 · Hạ Hạ · Tĩnh Thủy An Thần",
+    "text": "Sóng lòng xao động mệt xác thân,\nBuông bớt việc đời nhẹ vạn phần,\nKiên nhẫn nghỉ ngơi và khám định,\nAn nhiên tĩnh dưỡng đón mùa xuân.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lg_daicat_01",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Sinh khí và năng lượng thân - tâm - trí của bạn đang ở trạng thái sung mãn, hài hòa nhất. Nhờ giữ được tâm thế lạc quan và nhịp sinh hoạt lành mạnh, cơ thể phục hồi rất nhanh sau mỗi ngày làm việc, giấc ngủ sâu và tinh thần luôn sáng suốt.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daicat_02",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Gia đạo đón nhận phúc khí an khang, ông bà cha mẹ và người thân trong nhà đều có tinh thần phấn chấn, vui vẻ. Sự quan tâm chăm sóc lẫn nhau trong từng bữa ăn giấc ngủ tạo nên nguồn năng lượng chữa lành tự nhiên vô cùng quý báu.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daicat_03",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Những thói quen rèn luyện thể chất, tập thở chánh niệm và ăn uống khoa học mà bạn kiên trì áp dụng đang mang lại kết quả rõ rệt. Thể lực dẻo dai giúp bạn hoàn thành xuất sắc mọi mục tiêu công việc mà không bị hụt hơi.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daicat_04",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "luangiai",
+    "text": "Tâm an thì thân khỏe: sự buông xả những phiền muộn cũ đã giúp giải phóng hoàn toàn gánh nặng tinh thần. Bạn cảm nhận rõ sự nhẹ nhõm trong từng bước chân và từng hơi thở hàng ngày.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lg_cat_01",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Trạng thái sức khỏe tinh thần và thể chất đang khởi sắc tốt đẹp. Những mệt mỏi tồn đọng từ tuần trước dần tan biến khi bạn ngủ đủ giấc và dành thời gian thư giãn hợp lý.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_cat_02",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Người thân trong gia đình duy trì được nếp sinh hoạt ổn định, ấm êm. Việc chủ động kiểm tra sức khỏe định kỳ và vận động ngoài trời mỗi sáng giúp cả nhà giữ vững sức đề kháng.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_cat_03",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Bạn đang tìm lại được điểm cân bằng giữa công việc và đời sống cá nhân. Khi biết tắt thiết bị công việc đúng giờ để nghỉ ngơi, chất lượng giấc ngủ và độ tập trung vào sáng hôm sau đều tăng lên rõ rệt.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_cat_04",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "luangiai",
+    "text": "Tinh thần thanh thản nhờ biết chọn lọc thông tin tích cực để tiếp nhận mỗi ngày. Sự an tĩnh nội tâm chính là liều thuốc dưỡng sinh tốt nhất cho cơ thể.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lg_binh_01",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Thể trạng hiện tại ở mức ổn định trung bình, tuy nhiên cơ thể dễ uể oải nhẹ vào buổi chiều nếu ngồi lâu một chỗ hoặc uống thiếu nước. Chỉ cần điều chỉnh lại tư thế làm việc và đứng dậy vận động nhẹ mỗi giờ là sẽ khỏe khoắn.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_binh_02",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Khi thời tiết chuyển mùa, bạn và người thân trong nhà cần lưu ý giữ ấm cổ họng, uống nước ấm và duy trì chế độ dinh dưỡng đa dạng rau xanh, trái cây tươi.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_binh_03",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Giấc ngủ đôi lúc còn chập chờn do thói quen xem điện thoại sát giờ đi ngủ. Hãy dành 15 phút trước khi ngủ để nghe chuông thiền 432Hz và thả lỏng toàn thân.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_binh_04",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "luangiai",
+    "text": "Mọi chỉ số sinh hoạt đang ở mức bình hòa. Hãy tiếp tục duy trì lịch khám sức khỏe tổng quát định kỳ hàng năm để chủ động chăm sóc bản thân một cách khoa học.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lg_hung_01",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Cơ thể đang gửi tín hiệu nhắc nhở bạn đã làm việc căng thẳng liên tục: giai đoạn này bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để theo dõi sức khỏe tổng quát và điều chỉnh lại nhịp sinh hoạt.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_hung_02",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Thói quen thức khuya và suy nghĩ quá nhiều đang làm giảm năng lượng phục hồi tự nhiên: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để được bác sĩ tư vấn chế độ chăm sóc khoa học.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_hung_03",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Đối với sự bình an của bản thân và gia đình, không nên chủ quan bỏ bữa hay làm việc quá sức: mọi người cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để giữ gìn thể trạng ổn định lâu dài.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_hung_04",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "luangiai",
+    "text": "Tâm trí đang chịu áp lực dồn nén khiến giấc ngủ chưa sâu: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và dành thời gian tĩnh dưỡng mỗi ngày.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lg_daihung_01",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Năng lượng thân tâm đang hao hụt do gồng gánh quá nhiều áp lực cùng lúc. Quẻ nhắc nhở nghiêm túc rằng bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ tại cơ sở y tế uy tín và đặt sức khỏe lên ưu tiên hàng đầu.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daihung_02",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Không nên tự ý dùng các phương pháp truyền miệng hay cố sức thức trắng đêm làm việc: lúc này bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để được hướng dẫn chăm sóc sức khỏe đúng đắn.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daihung_03",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Sự căng thẳng kéo dài cần được tháo gỡ ngay bằng việc giảm tải công việc: bạn và người thân cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để bảo vệ nền tảng an khang của cả gia đình.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lg_daihung_04",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "luangiai",
+    "text": "Hãy tạm dừng guồng quay vội vã để lắng nghe cơ thể mình: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và nuôi dưỡng lại sự bình an từ giấc ngủ đến hơi thở.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lk_daicat_01",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Phát huy nếp sống điều độ, tập thể dục đều đặn và giữ tinh thần lạc quan mỗi ngày. Lời nhắc cân bằng: Ngay cả khi thấy cơ thể đang rất khỏe mạnh, bạn vẫn không nên chủ quan thức khuya hay bỏ qua lịch khám sức khỏe định kỳ hàng năm.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daicat_02",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Truyền cảm hứng sống khỏe và an vui cho các thành viên trong gia đình. Lời nhắc cân bằng: Sức khỏe là tài sản cần bảo dưỡng liên tục, hãy ăn uống chừng mực và tránh làm việc quá đà lúc hưng phấn.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daicat_03",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Duy trì thực hành thiền thở 432Hz mỗi ngày để giữ tâm trí luôn trong sáng. Lời nhắc cân bằng: Hãy kết hợp hài hòa giữa dưỡng sinh tinh thần và chăm sóc y tế khoa học, tiêm phòng và kiểm tra định kỳ đầy đủ.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daicat_04",
+    "mon": "duoc_su",
+    "muc": "dai_cat",
+    "khoi": "loikhuyen",
+    "text": "Chia sẻ năng lượng tích cực bằng việc tham gia các hoạt động thiện nguyện hỗ trợ cộng đồng. Lời nhắc cân bằng: Biết tiết chế năng lượng hợp lý sẽ giúp ngọn đèn sinh lực của bạn sáng bền bỉ suốt bốn mùa.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lk_cat_01",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Giữ vững thói quen uống đủ nước ấm, ăn nhiều rau xanh và đi bộ 30 phút mỗi ngày. Lời nhắc cân bằng: Đừng đợi đến khi cơ thể mệt mỏi mới nghỉ ngơi; hãy chủ động nghỉ ngắn 5 phút sau mỗi giờ làm việc tập trung.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_cat_02",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Chăm chút cho không gian phòng ngủ thoáng khí, yên tĩnh và ấm áp. Lời nhắc cân bằng: Dù tinh thần đang tốt, hãy hạn chế dùng đồ uống chứa cồn hoặc chất kích thích vào buổi tối để bảo vệ giấc ngủ sâu.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_cat_03",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Cùng người thân duy trì những bữa cơm gia đình ấm cúng, hạn chế thực phẩm chế biến sẵn. Lời nhắc cân bằng: Luôn lắng nghe chỉ dẫn của bác sĩ chuyên khoa và duy trì khám định kỳ.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_cat_04",
+    "mon": "duoc_su",
+    "muc": "cat",
+    "khoi": "loikhuyen",
+    "text": "Thực hành mỉm cười và thở sâu mỗi sáng khi thức dậy để khởi đầu ngày mới nhẹ nhàng. Lời nhắc cân bằng: Tránh ôm việc của cơ quan về giường ngủ để giữ ranh giới nghỉ ngơi rõ ràng.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lk_binh_01",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Thiết lập lại kỷ luật ngủ trước 23h và khởi động khớp nhẹ nhàng mỗi sáng. Chủ động đi khám sức khỏe định kỳ để nắm rõ thể trạng của mình.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_binh_02",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Giảm thời gian tiếp xúc màn hình điện tử trước khi ngủ 1 tiếng và thay bằng việc nghe âm thanh thiên nhiên hoặc chuông thiền.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_binh_03",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Quan tâm hỏi han sức khỏe của cha mẹ, người lớn tuổi trong nhà và nhắc lịch khám định kỳ đúng hẹn.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_binh_04",
+    "mon": "duoc_su",
+    "muc": "binh",
+    "khoi": "loikhuyen",
+    "text": "Ăn chín uống sôi, ăn đúng giờ và nhai chậm trong chánh niệm để hệ tiêu hóa và cơ thể hấp thu năng lượng tốt nhất.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lk_hung_01",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Trong giai đoạn này bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để kiểm tra sức khỏe khoa học và sắp xếp lại khối lượng công việc vừa sức.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_hung_02",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy dừng ngay thói quen thức khuya làm việc: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và ngủ đủ giấc để cơ thể tái tạo năng lượng.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_hung_03",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Với sức khỏe của bản thân và người thân, cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ tại các cơ sở y tế và giữ tinh thần bình tĩnh, lạc quan.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_hung_04",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "loikhuyen",
+    "text": "Khi thấy mệt mỏi, đừng cố gồng mình quá sức: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và dành thời gian thở thiền thư giãn mỗi tối.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_lk_daihung_01",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Hãy đặt việc chăm sóc thân thể lên trên mọi công việc khác lúc này: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ tại bệnh viện uy tín để được bác sĩ tư vấn.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daihung_02",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Tạm xin nghỉ ngơi vài ngày để cắt đứt chuỗi căng thẳng: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và tuân thủ nghiêm túc chế độ dinh dưỡng, giấc ngủ.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daihung_03",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Không tự tra cứu thông tin gây hoang mang lo lắng: bạn và gia đình cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ để nhận lời khuyên chính xác từ chuyên gia y tế.",
+    "tags": ["gia_dao", "suc_khoe", "tong_quan"]
+  },
+  {
+    "id": "ds_lk_daihung_04",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "loikhuyen",
+    "text": "Buông bỏ bớt những lo toan không cần thiết: bạn cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ và giữ môi trường sống thật yên tĩnh, trong lành.",
+    "tags": ["suc_khoe", "tong_quan"]
+  },
+
+  {
+    "id": "ds_hg_hung_01",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Dược Sư: Thực hành 5 phút Hội Thiền 432Hz (vòng thở Mandala 4-4-6) để điều hòa nhịp tim và làm dịu thần kinh; uống nước ấm, đi ngủ trước 22h30 và đặt lịch đi khám sức khỏe định kỳ.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_hung_02",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Dược Sư: Thắp Trầm Hương hoặc Hoa Đăng Cầu An tại điện Dược Sư để tĩnh tâm; dọn dẹp phòng ngủ sạch thoáng, mở cửa đón ánh nắng ban mai và duy trì khám định kỳ khoa học.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_hung_03",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Dược Sư: Giảm ngay 30% khối lượng việc ngoài giờ trong tuần này; dành thời gian ngâm chân nước ấm trước khi ngủ, kiên nhẫn nghỉ ngơi và kiểm tra sức khỏe định kỳ.",
+    "tags": ["suc_khoe", "su_nghiep", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_hung_04",
+    "mon": "duoc_su",
+    "muc": "hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Dược Sư: Gieo duyên lành bằng việc đóng góp tủ thuốc từ thiện hoặc Hòm Công Đức cầu an; kết hợp ăn uống thanh đạm, nghỉ ngơi đầy đủ và khám định kỳ.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+
+  {
+    "id": "ds_hg_daihung_01",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Dược Sư: (1) Tạm dừng ngay việc thức khuya và làm việc quá tải; (2) Thực hành Hội Thiền 432Hz để giải phóng căng thẳng tích tụ; (3) Chủ động đi khám sức khỏe định kỳ tại bệnh viện uy tín và nghỉ dưỡng trọn vẹn.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_daihung_02",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Dược Sư: Chia sẻ công việc cho đồng nghiệp/người thân để dành thời gian tĩnh dưỡng; nghe âm thanh Chuông Xoay 432Hz thư giãn sâu, kiên nhẫn nghỉ ngơi và tuân thủ lịch khám định kỳ.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_daihung_03",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Dược Sư: Phát tâm thiện nguyện phóng sinh hoặc cúng dường Hòm Công Đức hồi hướng sức khỏe bình an; đồng thời thực hiện chế độ nghỉ ngơi nghiêm ngặt và đi khám định kỳ.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  },
+  {
+    "id": "ds_hg_daihung_04",
+    "mon": "duoc_su",
+    "muc": "dai_hung",
+    "khoi": "hoagiai",
+    "text": "Pháp Hóa Giải Đại Hung Dược Sư: Tắt toàn bộ thông báo công việc sau 20h tối, giữ tâm bình thản không lo nghĩ chuyện được mất, kiên nhẫn nghỉ ngơi bồi dưỡng và đi khám định kỳ theo hướng dẫn y khoa.",
+    "tags": ["suc_khoe", "gia_dao", "tong_quan"]
+  }
+]
+

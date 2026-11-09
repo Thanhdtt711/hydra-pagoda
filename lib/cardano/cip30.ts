@@ -10,6 +10,7 @@ import { decode as cborDecode } from 'cbor2'
 export interface Cip30Api {
   getNetworkId(): Promise<number>
   getUsedAddresses(): Promise<string[]>
+  getUnusedAddresses?(): Promise<string[]>
   getChangeAddress(): Promise<string>
   getBalance(): Promise<string>
   getUtxos?(amount?: string, paginate?: { page: number; limit: number }): Promise<string[] | null>

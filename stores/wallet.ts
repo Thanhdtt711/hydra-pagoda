@@ -151,6 +151,9 @@ export const useWalletStore = defineStore('wallet', {
     isConnected(state): boolean {
       return state.status === 'connected' && !!state.address
     },
+    isAuthenticated(state): boolean {
+      return state.status === 'connected' && !!state.address
+    },
     isTestnet(state): boolean {
       return state.network !== 'mainnet'
     },
@@ -276,50 +279,88 @@ export const useWalletStore = defineStore('wallet', {
       }
     },
 
-    /** Tự kết nối lại khi tải trang: cần phiên server còn hạn VÀ ví vẫn bật cùng tài khoản. */
+    /** Tự kết nối lại khi tải trang: khôi phục ngay phiên từ cookie httpOnly trên server, sau đó đồng bộ CIP-30 nền. */
     async restore() {
       await this.loadNetwork()
       if (this.restored) return
       try {
         const me = await $fetch<{ authenticated: boolean; account?: AuthAccount }>('/api/auth/me')
         if (!me.authenticated || !me.account) return
+
         let key: string | null = null
         try { key = localStorage.getItem(HINT_KEY) } catch { /* bỏ qua */ }
-        const injected = key ? await waitForInjected(key) : null
-        if (!key || !injected) {
-          await this.dropSession('session_lost')
-          return
+        if (!key) {
+          key = 'eternl'
+          try { localStorage.setItem(HINT_KEY, key) } catch { /* bỏ qua */ }
         }
-        // enable() đã được người dùng cấp quyền trước đó sẽ không bật popup; bị khóa/tắt → ném lỗi.
-        const api = await injected.enable()
-        const networkId = await api.getNetworkId()
-        const ok = networkId === this.expectedNetworkId && (await this.walletOwnsAddress(api, me.account.address))
-        if (!ok) {
-          await this.dropSession(networkId !== this.expectedNetworkId ? 'network_changed' : 'account_changed')
-          return
-        }
-        walletApi = api
+
+        // 1. Khôi phục NGAY tài khoản đã xác thực từ phiên server để tải lại trang (F5) không bao giờ mất ví
         this.walletKey = key
-        this.walletName = injected.name || key
-        this.networkId = networkId
+        this.walletName = KNOWN_WALLETS.find(w => w.key === key)?.name || 'Eternl'
         this.applyAccount(me.account)
-        await this.refreshAdaBalance()
         await this.fetchOrders()
         await useEconomyStore().loadCatalog()
         this.startWatchers()
+
+        // 2. Thử kết nối lại CIP-30 extension ở hậu cảnh để đọc số dư ADA và kiểm tra đổi ví/mạng
+        const injected = await waitForInjected(key, 4000)
+        if (!injected) return
+
+        try {
+          const api = await injected.enable()
+          const networkId = await api.getNetworkId()
+          if (networkId !== this.expectedNetworkId) {
+            await this.dropSession('network_changed')
+            return
+          }
+          const ownership = await this.walletOwnsAddress(api, me.account.address)
+          if (ownership === 'mismatch') {
+            await this.dropSession('account_changed')
+            return
+          }
+          walletApi = api
+          this.walletName = injected.name || this.walletName
+          this.networkId = networkId
+          await this.refreshAdaBalance()
+        } catch {
+          // Service worker của Eternl có thể đang ngủ khi vừa F5: giữ nguyên phiên server, sẽ tự gắn lại khi thao tác
+        }
       } catch {
-        await this.dropSession('session_lost')
+        // Lỗi mạng tạm thời khi gọi /api/auth/me: không xóa phiên
       } finally {
         this.restored = true
       }
     },
 
-    /** Địa chỉ của phiên có còn thuộc tài khoản đang bật trong ví? */
-    async walletOwnsAddress(api: Cip30Api, bech32Addr: string): Promise<boolean> {
-      const used = await api.getUsedAddresses()
-      const list = [...(used || [])]
-      try { list.push(await api.getChangeAddress()) } catch { /* bỏ qua */ }
-      return list.some(h => hexToBech32(h) === bech32Addr)
+    /**
+     * Kiểm tra địa chỉ của phiên có còn thuộc tài khoản đang bật trong ví không.
+     * Trả về:
+     * - 'match': tìm thấy địa chỉ khớp
+     * - 'unknown': ví chưa trả danh sách địa chỉ (đang khởi tạo) -> không tự ý đăng xuất
+     * - 'mismatch': ví trả danh sách địa chỉ hợp lệ nhưng thuộc tài khoản khác -> đăng xuất an toàn
+     */
+    async walletOwnsAddress(api: Cip30Api, bech32Addr: string): Promise<'match' | 'unknown' | 'mismatch'> {
+      const hexSet = new Set<string>()
+      try {
+        const used = await api.getUsedAddresses()
+        for (const h of used || []) if (h) hexSet.add(h)
+      } catch { /* bỏ qua */ }
+      try {
+        const unused = await api.getUnusedAddresses?.()
+        for (const h of unused || []) if (h) hexSet.add(h)
+      } catch { /* bỏ qua */ }
+      try {
+        const change = await api.getChangeAddress()
+        if (change) hexSet.add(change)
+      } catch { /* bỏ qua */ }
+
+      if (hexSet.size === 0) return 'unknown'
+      for (const h of hexSet) {
+        try {
+          if (hexToBech32(h) === bech32Addr) return 'match'
+        } catch { /* bỏ qua địa chỉ lỗi định dạng */ }
+      }
+      return 'mismatch'
     },
 
     async refreshAdaBalance() {
@@ -379,8 +420,18 @@ export const useWalletStore = defineStore('wallet', {
      */
     async buyMcWithAda(adaAmount: number): Promise<boolean> {
       this.setError(null)
-      if (!this.isConnected || !walletApi) {
+      if (!this.isConnected) {
         this.setError('session_lost')
+        return false
+      }
+      if (!walletApi) {
+        const injected = getInjected(this.walletKey || 'eternl')
+        if (injected) {
+          try { walletApi = await injected.enable() } catch { /* xử lý bên dưới */ }
+        }
+      }
+      if (!walletApi) {
+        this.setError('wallet_locked')
         return false
       }
       const cleanAda = Math.floor(Number(adaAmount))
@@ -524,19 +575,25 @@ export const useWalletStore = defineStore('wallet', {
       orderPollTimer = null
     },
 
-    /** Poll nhẹ: phát hiện đổi tài khoản/mạng/khóa ví (CIP-30 không có sự kiện chuẩn) + cập nhật số dư MC. */
+    /** Poll nhẹ: phát hiện đổi tài khoản/mạng (CIP-30 không có sự kiện chuẩn) + cập nhật số dư MC. */
     startWatchers() {
       this.stopWatchers()
       const check = async () => {
-        if (!walletApi || !this.address) return
+        if (!this.address) return
         try {
+          if (!walletApi) {
+            const injected = getInjected(this.walletKey || 'eternl')
+            if (injected) walletApi = await injected.enable()
+          }
+          if (!walletApi) return
           const networkId = await walletApi.getNetworkId()
           if (networkId !== this.expectedNetworkId) return void (await this.dropSession('network_changed'))
-          if (!(await this.walletOwnsAddress(walletApi, this.address))) return void (await this.dropSession('account_changed'))
+          const ownership = await this.walletOwnsAddress(walletApi, this.address)
+          if (ownership === 'mismatch') return void (await this.dropSession('account_changed'))
           await this.refreshAdaBalance()
         } catch {
-          // Ví bị khóa/tắt extension: đăng xuất an toàn thay vì giữ phiên "ma".
-          await this.dropSession('session_lost')
+          // Service worker ví tạm nghỉ (MV3 idle): không tự hủy phiên server của người chơi
+          walletApi = null
         }
       }
       watchTimer = setInterval(check, 8000)

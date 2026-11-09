@@ -1,166 +1,203 @@
 import * as THREE from 'three'
 import { SeededPRNG } from '../utils/SeededPRNG'
+import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
+import { Palette, type PaletteSlot, type TimeOfDayMode } from '../style/Palette'
+
+interface MountainLayer {
+  mesh: THREE.Mesh
+  slot: PaletteSlot
+  /** Mỗi đỉnh: [t (0 chân .. 1 đỉnh), jitter mặt]. */
+  params: Float32Array
+}
+
+interface RingConfig {
+  radiusInner: number
+  radiusPeak: number
+  radiusOuter: number
+  segments: number
+  baseHeight: number
+  peakVariation: number
+  seed: number
+  slot: PaletteSlot
+  /** Độ nhọn của đỉnh (răng cưa giữa các đỉnh liền kề). */
+  jaggedness: number
+}
 
 /**
- * DistantMountains (Dãy Núi Thiêng Xa Xăm Mờ Ảo):
- * Replaces disconnected random ConeGeometry cones with a majestic continuous circular mountain range.
- * Uses fixed-seed deterministic PRNG harmonics so the mountain horizon is 100% stable across reloads.
- * Implements aerial perspective depth fog blending seamlessly with AtmosphereManager.
+ * DistantMountains (Dãy núi phẳng nhiều lớp – Low-poly Minimalist):
+ * - 3 lớp núi (gần / giữa / xa) dạng vòng liên tục quanh bản đồ, mặt tam giác phẳng (non-indexed)
+ * - Đường viền đỉnh dùng điều hòa Fourier cố định theo seed -> ổn định giữa các lần tải
+ * - Màu theo slot Palette (mountainNear/Mid/Far), lớp càng xa càng nhạt để hòa vào sương
+ * - setPalette(mode) tô lại màu đỉnh tại chỗ khi đổi ngày / hoàng hôn / đêm
  */
 export class DistantMountains {
   public root: THREE.Group
-  private geometries: THREE.BufferGeometry[] = []
-  private materials: THREE.Material[] = []
+  private layers: MountainLayer[] = []
+  private material: THREE.Material
 
   constructor() {
     this.root = new THREE.Group()
     this.root.name = 'DistantMountains'
+    this.material = FlatMaterialFactory.getInstance().vertexColor()
 
-    // Layer 1: Dãy đồi trung cảnh (Mid Hills) - Phủ bóng cây rừng trầm mặc
-    const midHills = this.createMountainRing({
+    // Lớp gần: đồi thấp bao quanh khuôn viên
+    this.addRing({
       radiusInner: 120,
-      radiusPeak: 145,
-      radiusOuter: 175,
-      segments: 96,
-      baseHeight: 22,
-      peakVariation: 18,
+      radiusPeak: 150,
+      radiusOuter: 185,
+      segments: 56,
+      baseHeight: 20,
+      peakVariation: 14,
       seed: 889911,
-      colorBase: 0x18241c,  // Rừng thông thẫm chân núi
-      colorPeak: 0x2c433b,  // Đỉnh đồi xanh rêu trong sương
-      roughness: 0.95
+      slot: 'mountainNear',
+      jaggedness: 0.35
     })
-    this.root.add(midHills)
 
-    // Layer 2: Dãy núi thiêng viễn cảnh (Distant Majestic Sacred Peaks) - Hùng vĩ trong mây mù
-    const farPeaks = this.createMountainRing({
-      radiusInner: 180,
-      radiusPeak: 225,
-      radiusOuter: 280,
-      segments: 128,
-      baseHeight: 52,
-      peakVariation: 42,
+    // Lớp giữa: núi vừa, đỉnh nhọn hơn
+    this.addRing({
+      radiusInner: 170,
+      radiusPeak: 215,
+      radiusOuter: 260,
+      segments: 48,
+      baseHeight: 38,
+      peakVariation: 26,
       seed: 554433,
-      colorBase: 0x1d2936,  // Chân núi ngập trong sương lam
-      colorPeak: 0x3d546b,  // Đỉnh núi đá xám lam uy nghi
-      roughness: 0.90
+      slot: 'mountainMid',
+      jaggedness: 0.5
     })
-    this.root.add(farPeaks)
+
+    // Lớp xa: dãy núi thiêng hùng vĩ, nhạt hòa vào sương
+    this.addRing({
+      radiusInner: 230,
+      radiusPeak: 290,
+      radiusOuter: 340,
+      segments: 40,
+      baseHeight: 62,
+      peakVariation: 40,
+      seed: 771155,
+      slot: 'mountainFar',
+      jaggedness: 0.6
+    })
+
+    this.setPalette(FlatMaterialFactory.getInstance().currentMode)
   }
 
-  /**
-   * Tạo dải núi dạng vành khăn tròn liên tục khép kín (Continuous Circular Mountain Ring)
-   */
-  private createMountainRing(config: {
-    radiusInner: number
-    radiusPeak: number
-    radiusOuter: number
-    segments: number
-    baseHeight: number
-    peakVariation: number
-    seed: number
-    colorBase: number
-    colorPeak: number
-    roughness: number
-  }): THREE.Mesh {
-    const { radiusInner, radiusPeak, radiusOuter, segments, baseHeight, peakVariation, seed } = config
+  private addRing(config: RingConfig) {
+    const { radiusInner, radiusPeak, radiusOuter, segments, baseHeight, peakVariation, seed, jaggedness } = config
     const prng = new SeededPRNG(seed)
 
-    // Tạo các hệ số sóng Fourier cố định cho đường viền đỉnh núi
+    // Điều hòa cố định cho đường viền
     const harmonics = [
-      { freq: 2, amp: 0.35, phase: prng.range(0, Math.PI * 2) },
-      { freq: 5, amp: 0.28, phase: prng.range(0, Math.PI * 2) },
-      { freq: 9, amp: 0.18, phase: prng.range(0, Math.PI * 2) },
-      { freq: 17, amp: 0.11, phase: prng.range(0, Math.PI * 2) },
-      { freq: 29, amp: 0.08, phase: prng.range(0, Math.PI * 2) }
+      { freq: 2, amp: 0.34, phase: prng.range(0, Math.PI * 2) },
+      { freq: 4, amp: 0.26, phase: prng.range(0, Math.PI * 2) },
+      { freq: 7, amp: 0.2, phase: prng.range(0, Math.PI * 2) },
+      { freq: 13, amp: 0.12, phase: prng.range(0, Math.PI * 2) }
     ]
 
-    const positions: number[] = []
-    const normals: number[] = []
-    const colors: number[] = []
-    const indices: number[] = []
-
-    const cBase = new THREE.Color(config.colorBase)
-    const cPeak = new THREE.Color(config.colorPeak)
-
-    // Mỗi bước góc sinh 3 đỉnh: Inner Base (y=0), Peak Ridge (y=height), Outer Skirt (y=-6)
-    for (let i = 0; i <= segments; i++) {
+    // Điểm dọc theo vòng: chân trong (inner), sống núi (peak), chân ngoài (skirt)
+    const ring: Array<{ inner: THREE.Vector3; peak: THREE.Vector3; outer: THREE.Vector3 }> = []
+    for (let i = 0; i < segments; i++) {
       const theta = (i / segments) * Math.PI * 2
       const cosT = Math.cos(theta)
       const sinT = Math.sin(theta)
 
-      // Tính độ cao đỉnh núi theo các hài hòa đa tần số
       let normH = 0
-      for (const h of harmonics) {
-        normH += Math.sin(theta * h.freq + h.phase) * h.amp
-      }
-      normH = (normH + 1.0) * 0.5 // Chuẩn hóa về [0, 1]
+      for (const h of harmonics) normH += Math.sin(theta * h.freq + h.phase) * h.amp
+      normH = Math.min(1, Math.max(0, normH * 0.5 + 0.5))
 
-      const currentPeakHeight = baseHeight + normH * peakVariation
-      const peakR = radiusPeak + (normH - 0.5) * 16.0
+      // Răng cưa: đỉnh chẵn cao, đỉnh lẻ thấp để tạo silhouette nhọn
+      const zig = i % 2 === 0 ? 1 : 1 - jaggedness
+      const jitter = 0.85 + prng.next() * 0.3
+      const peakH = (baseHeight + normH * peakVariation) * zig * jitter
 
-      // 1. Đỉnh Inner Base (Chân núi phía trong tiếp giáp sân chùa)
-      positions.push(cosT * radiusInner, -0.5, sinT * radiusInner)
-      normals.push(0, 1, 0)
-      colors.push(cBase.r, cBase.g, cBase.b)
-
-      // 2. Đỉnh Peak Ridge (Sống núi nhấp nhô)
-      positions.push(cosT * peakR, currentPeakHeight, sinT * peakR)
-      normals.push(-sinT * 0.4, 0.8, -cosT * 0.4)
-      colors.push(cPeak.r, cPeak.g, cPeak.b)
-
-      // 3. Đỉnh Outer Skirt (Chân núi dốc ra phía ngoài vô cực)
-      positions.push(cosT * radiusOuter, -8.0, sinT * radiusOuter)
-      normals.push(cosT * 0.6, 0.4, sinT * 0.6)
-      colors.push(cBase.r * 0.6, cBase.g * 0.6, cBase.b * 0.6)
+      const peakR = radiusPeak + (prng.next() - 0.5) * 6
+      ring.push({
+        inner: new THREE.Vector3(cosT * radiusInner, -0.5, sinT * radiusInner),
+        peak: new THREE.Vector3(cosT * peakR, peakH, sinT * peakR),
+        outer: new THREE.Vector3(cosT * radiusOuter, -8.0, sinT * radiusOuter)
+      })
     }
 
-    // Kết nối các ô tứ giác thành 2 tam giác
+    const triCount = segments * 4
+    const positions = new Float32Array(triCount * 9)
+    const params = new Float32Array(triCount * 6)
+    const colors = new Float32Array(triCount * 9)
+    let p = 0
+    let q = 0
+
+    const pushTri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, ta: number, tb: number, tc: number) => {
+      const jitter = prng.next() - 0.5
+      for (const [v, t] of [[a, ta], [b, tb], [c, tc]] as Array<[THREE.Vector3, number]>) {
+        positions[p++] = v.x
+        positions[p++] = v.y
+        positions[p++] = v.z
+        params[q++] = t
+        params[q++] = jitter
+      }
+    }
+
     for (let i = 0; i < segments; i++) {
-      const curr = i * 3
-      const next = (i + 1) * 3
+      const cur = ring[i]!
+      const nxt = ring[(i + 1) % segments]!
 
-      // Tam giác dốc mặt trước (Inner Base -> Peak)
-      indices.push(curr + 0, curr + 1, next + 0)
-      indices.push(next + 0, curr + 1, next + 1)
-
-      // Tam giác dốc mặt sau (Peak -> Outer Skirt)
-      indices.push(curr + 1, curr + 2, next + 1)
-      indices.push(next + 1, curr + 2, next + 2)
+      // Sườn trong (hướng về chùa): chân trong -> sống núi
+      pushTri(cur.inner, cur.peak, nxt.inner, 0, 1, 0)
+      pushTri(nxt.inner, cur.peak, nxt.peak, 0, 1, 1)
+      // Sườn ngoài: sống núi -> chân ngoài (mặt sau, che khoảng hở khi nhìn từ xa)
+      pushTri(cur.peak, cur.outer, nxt.peak, 1, 0, 1)
+      pushTri(nxt.peak, cur.outer, nxt.outer, 1, 0, 0)
     }
 
     const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    geometry.setIndex(indices)
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geometry.computeVertexNormals()
+    geometry.computeBoundingSphere()
 
-    this.geometries.push(geometry)
-
-    const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: config.roughness,
-      metalness: 0.05,
-      fog: true,
-      flatShading: false
-    })
-    this.materials.push(material)
-
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.receiveShadow = false
+    const mesh = new THREE.Mesh(geometry, this.material)
+    mesh.name = `MountainRing_${config.slot}`
     mesh.castShadow = false
-    return mesh
+    mesh.receiveShadow = false
+    this.root.add(mesh)
+    this.layers.push({ mesh, slot: config.slot, params })
+  }
+
+  /** Tô lại màu núi theo bảng màu thời điểm trong ngày. */
+  public setPalette(mode: TimeOfDayMode) {
+    const pal = Palette.get(mode)
+    const fogColor = new THREE.Color(pal.fog.color)
+    const grassDark = new THREE.Color(pal.slots.grassDark)
+    const base = new THREE.Color()
+    const peak = new THREE.Color()
+    const tmp = new THREE.Color()
+
+    for (const layer of this.layers) {
+      const slotColor = new THREE.Color(pal.slots[layer.slot])
+      // Chân núi pha chút xanh cỏ tối + sương, đỉnh sáng hơn
+      base.copy(slotColor).lerp(grassDark, layer.slot === 'mountainNear' ? 0.55 : 0.25).lerp(fogColor, 0.1)
+      peak.copy(slotColor).multiplyScalar(1.08)
+
+      const colorAttr = layer.mesh.geometry.getAttribute('color') as THREE.BufferAttribute
+      const arr = colorAttr.array as Float32Array
+      const n = colorAttr.count
+      for (let i = 0; i < n; i++) {
+        const t = layer.params[i * 2]!
+        const jitter = layer.params[i * 2 + 1]!
+        tmp.copy(base).lerp(peak, t)
+        const k = 1.0 + jitter * 0.16
+        arr[i * 3] = tmp.r * k
+        arr[i * 3 + 1] = tmp.g * k
+        arr[i * 3 + 2] = tmp.b * k
+      }
+      colorAttr.needsUpdate = true
+    }
   }
 
   public dispose() {
-    for (const geo of this.geometries) {
-      geo.dispose()
+    for (const layer of this.layers) {
+      layer.mesh.geometry.dispose()
     }
-    for (const mat of this.materials) {
-      mat.dispose()
-    }
-    this.geometries = []
-    this.materials = []
+    this.layers = []
+    // Vật liệu vertexColor dùng chung từ FlatMaterialFactory: không dispose ở đây.
   }
 }
-

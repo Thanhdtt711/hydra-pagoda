@@ -128,5 +128,60 @@
 ========================================================================
 ```
 
+---
+
+## Bước 6 – Hybrid Hydra L2 cho Sổ cái MC Coin (`scripts/wallet/test-hydra-l2.mjs`)
+
+Lệnh chạy: `npm run wallet:test:hydra` (trên Windows PowerShell dùng `npm.cmd run wallet:test:hydra`).
+
+Kết quả: **11/11 PASS**.
+
+### 6.1. Môi trường kiểm thử
+
+| Thành phần | Giá trị |
+|---|---|
+| Blockfrost | Giả lập (mock) |
+| hydra-node | Giả lập bằng `scripts/hydra-mock-server.mjs` |
+| CSDL kiểm thử | `.data/test-hydra-l2.sqlite` (tách riêng, không đụng dữ liệu thật) |
+| Bí mật phiên | `test-hydra-l2-secret-0123456789` |
+| Fuel target | `3` |
+| Cổng | Web `3016`, Blockfrost mock `3096`, hydra-node mock `4011` |
+
+### 6.2. Danh sách 11 ca kiểm thử
+
+| # | Nội dung kiểm tra | Kỳ vọng |
+|---|---|---|
+| 1 | `GET /api/hydra/status` | `enabled`, `connected`, `headStatus = Open`, `mode = hydra_l2` |
+| 2 | Đăng nhập tạo khóa phiên L2 | Tài khoản có `l2_session_vkey` và `l2_address` |
+| 3 | Nạp 2 ADA (+2000 MC) | Bút toán có `hydra_tx_hash`, `hydra_snapshot_no`, trạng thái `snapshot_confirmed` |
+| 4 | Bói quẻ −50 MC (số dư còn 1950) | Bằng chứng `snapshot_confirmed`, `snapshotNo ≥ 2` |
+| 5 | Công đức −50 MC (số dư còn 1900) | Bằng chứng `snapshot_confirmed` |
+| 6 | Gửi lặp cùng `requestId` (idempotent) | Không sinh thêm giao dịch L2 |
+| 7 | State UTxO của tài khoản | Đúng 1 State UTxO, datum `[balance_after, ledger_id, delta_mc, account_id]` khớp SQLite |
+| 8 | Thống kê qua `/api/hydra/status` | `confirmedL2Txs ≥ 3`, `latestSnapshotNo ≥ 3`, không có tx invalid |
+| 9 | Toàn bộ 3 bút toán trong `mc_ledger` | Đều có `hydra_tx_hash` và `snapshot_confirmed` |
+| 10 | Dự phòng: tắt hydra-node rồi mua `thailand` (800 MC) | Mua vẫn thành công, số dư còn 1100, `hydra_status = offchain`, không có tx hash |
+| 11 | Đối soát nội bộ | `SUM(delta_mc)` bằng `accounts.mc_balance` bằng 1100 |
+
+### 6.3. Xác minh thủ công trên hydra-node THẬT (offline mode, Docker image 0.22.4)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Trạng thái Head | `Open` |
+| Nạp +2000 MC | `snapshot_confirmed` |
+| Bói quẻ −50 MC | `snapshot_confirmed` |
+| Công đức −50 MC | `snapshot_confirmed` |
+| Số snapshot | #2 → #4, số tx invalid = 0 |
+| State UTxO | Datum khớp SQLite, ví dụ `[1100, 4, -800, 1]` |
+| Fuel Pool | Tự chia thành 3 UTxO |
+
+Lưu ý: image hydra-node `2.4.2` bị lỗi `SIGILL` (exit 132) trên CPU không có AVX2 nên dùng `0.22.4`. Cách chạy xem `HUONG_DAN_CAI_DAT.md` mục 4.3.
+
+### 6.4. Lưu ý đã biết
+
+- `scripts/wallet/test-spend.mjs` còn kỳ vọng cũ về giá bói quẻ (100 MC), trong khi cấu hình hiện tại là 50 MC. Đây là sai lệch của script test, không phải lỗi nghiệp vụ.
+- Bộ test Hydra L2 dùng hydra-node giả lập. Hành vi trên node thật được xác minh thủ công ở mục 6.3.
+- Giao diện (chỉ báo HUD `hud-ledger-mode`, `hydra-badge`) chưa có test tự động, hiện kiểm tra bằng mắt khi chạy `npm run dev`.
+
 
 

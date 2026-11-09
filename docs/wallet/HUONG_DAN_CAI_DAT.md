@@ -76,7 +76,38 @@ npm.cmd run wallet:test:deposit
 
 # 4. Chạy kiểm thử Bước 4 (Tiêu MC nguyên tử & Chống Race Condition): 14 test cases
 npm.cmd run wallet:test:spend
+
+# 5. Chạy kiểm thử Bước 6 (Hydra L2 với hydra-node giả lập): 11 test cases
+npm.cmd run wallet:test:hydra
+
+# (Tùy chọn) Chạy hydra-node giả lập độc lập khi dev (đặt HYDRA_L2_ENABLED=true, HYDRA_NODE_WS_URL=ws://127.0.0.1:4001)
+npm.cmd run hydra:mock -- --port 4001
 ```
+
+### 4.3. Chạy hydra-node THẬT ở chế độ Offline bằng Docker (không cần cardano-node)
+
+Chế độ offline của hydra-node mở sẵn một Head (`Open`) với UTxO ban đầu do ta cấp (1000 ADA tại địa chỉ Fuel), phí giao dịch = 0. Phù hợp để dev/test lớp Hydra L2 với node thật.
+
+```powershell
+# 1. Sinh .hydra-offline/ (khóa Hydra, utxo.json, protocol-parameters.json) và ghi HYDRA_L2_ENABLED / NUXT_HYDRA_SESSION_SECRET vào .env
+npm.cmd run hydra:prepare
+
+# 2. Khởi động hydra-node (WebSocket API tại ws://127.0.0.1:4001)
+npm.cmd run hydra:up
+
+# 3. Chạy dev server / build+start rồi kiểm tra: GET /api/hydra/status => connected=true, headStatus="Open"
+npm.cmd run dev
+
+# Xem log / dừng (down = reset Head về trạng thái ban đầu)
+npm.cmd run hydra:logs
+npm.cmd run hydra:down
+```
+
+Lưu ý:
+- **Cổng 4001 đang bận** (ví dụ `hydra:mock`): chạy `$env:HYDRA_API_PORT='4002'; npm.cmd run hydra:up` và đặt `HYDRA_NODE_WS_URL=ws://127.0.0.1:4002` trong `.env`.
+- **Phiên bản image:** dùng `ghcr.io/cardano-scaling/hydra-node:0.22.4`. Các bản 1.x/2.x biên dịch cần AVX2; trên CPU cũ (vd: Xeon E5 đời Sandy/Ivy Bridge) container thoát ngay với exit code `132` (SIGILL) và lặp vô hạn log `NodeOptions`/`LoadingTrustedSetup`. Nếu CPU có AVX2, có thể đổi sang bản mới hơn ở `docker-compose.hydra.yml` và `scripts/hydra-prepare.mjs`.
+- **`NUXT_HYDRA_SESSION_SECRET` phải khớp với `.hydra-offline/utxo.json`** (địa chỉ Fuel được dẫn xuất từ secret). Nếu đổi secret, chạy lại `hydra:prepare` rồi `hydra:down` + `hydra:up`, và khởi động lại server.
+- Thư mục `.hydra-offline/` đã nằm trong `.gitignore` (chứa khóa Hydra).
 
 ---
 

@@ -1,5 +1,6 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { donateMeritWithMc, getAccountInventory, getMcOverviewAndHistory } from '../../../utils/wallet/mcService'
+import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 /**
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
     ledgerId: res.ledgerId,
     spentMc: res.spentMc,
     mcBalance: res.balanceAfter,
+    hydra: await getHydraProof(res.ledgerId),
     donation: res.extra,
     globalMeritTotal: overview.globalMeritTotal,
     leaderboard: overview.leaderboard,

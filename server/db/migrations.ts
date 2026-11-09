@@ -180,5 +180,112 @@ CREATE TABLE merit_donations (
 CREATE INDEX merit_donations_account_idx ON merit_donations (account_id, created_at DESC);
 CREATE INDEX merit_donations_created_idx ON merit_donations (created_at DESC);
 `
+  },
+  {
+    version: 4,
+    name: 'hydra_l2_ledger_proof',
+    sql: `
+-- Bằng chứng Hydra L2 cho từng bút toán MC (Hybrid: SQLite vẫn là nguồn sự thật, Hydra là lớp chứng thực UTxO).
+-- hydra_status: 'offchain' (chỉ SQLite) | 'submitted' (đã NewTx) | 'valid' (TxValid) | 'snapshot_confirmed' (SnapshotConfirmed)
+ALTER TABLE mc_ledger ADD COLUMN hydra_tx_hash TEXT;
+ALTER TABLE mc_ledger ADD COLUMN hydra_snapshot_no INTEGER;
+ALTER TABLE mc_ledger ADD COLUMN hydra_status TEXT DEFAULT 'offchain';
+CREATE INDEX mc_ledger_hydra_tx_idx ON mc_ledger (hydra_tx_hash);
+CREATE INDEX mc_ledger_hydra_status_idx ON mc_ledger (hydra_status);
+
+-- Khóa phiên L2 (Session Ephemeral Key): chỉ lưu public key + địa chỉ L2; private key được dẫn xuất tất định
+-- từ bí mật máy chủ (hydra_kv) nên KHÔNG bao giờ nằm trong CSDL hay gửi xuống client.
+ALTER TABLE accounts ADD COLUMN l2_session_vkey TEXT;
+ALTER TABLE accounts ADD COLUMN l2_address TEXT;
+
+-- Kho key-value nhỏ cho module Hydra (bí mật dẫn xuất khóa phiên, ...).
+CREATE TABLE hydra_kv (
+k TEXT PRIMARY KEY,
+v TEXT NOT NULL,
+updated_at INTEGER NOT NULL
+);
+`
+  },
+  {
+    version: 5,
+    name: 'meditation_sessions',
+    sql: `
+-- Phiên Tọa Thiền Nhận MC (Meditate-to-Earn): server giữ đồng hồ để chống tua giờ trình duyệt.
+-- slot_id: mã bồ đoàn (HallLayout) đang giữ, dùng để các người chơi không ngồi trùng một chỗ.
+-- status: 'active' (đang thiền) | 'completed' (đã nhận thưởng) | 'cancelled' (xả thiền sớm / bị thay bởi phiên mới)
+CREATE TABLE meditation_sessions (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_token      TEXT    NOT NULL UNIQUE,
+  account_id         INTEGER NOT NULL REFERENCES accounts(id),
+  slot_id            INTEGER,
+  duration_min       INTEGER NOT NULL CHECK (duration_min > 0),
+  duration_sec       INTEGER NOT NULL CHECK (duration_sec > 0),
+  expected_reward_mc INTEGER NOT NULL CHECK (expected_reward_mc >= 0),
+  credited_mc        INTEGER NOT NULL DEFAULT 0 CHECK (credited_mc >= 0),
+  status             TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+  day_key            TEXT    NOT NULL,
+  started_at         INTEGER NOT NULL,
+  completed_at       INTEGER,
+  ledger_id          INTEGER REFERENCES mc_ledger(id)
+);
+CREATE INDEX meditation_sessions_account_day_idx ON meditation_sessions (account_id, day_key, status);
+CREATE INDEX meditation_sessions_slot_idx ON meditation_sessions (status, slot_id);
+`
+  },
+  {
+    version: 6,
+    name: 'hau_dong_sanctuary_tables',
+    sql: `
+-- Phiên Hầu Đồng (8 phút = 480s, 5 Giá x 96s): Lịch cố định Mồng 1/Rằm Âm lịch, Mở đàn Đặc cách 2,500 MC hoặc Cộng dồn Bách Gia.
+CREATE TABLE hau_dong_sessions (
+  session_id           TEXT    PRIMARY KEY,
+  trigger_type         TEXT    NOT NULL CHECK (trigger_type IN ('scheduled_lunar', 'sponsored_single', 'sponsored_crowdfund', 'inaugural_welcome')),
+  sponsor_account_id   INTEGER REFERENCES accounts(id),
+  sponsor_display_name TEXT    NOT NULL,
+  prayer_text          TEXT    NOT NULL,
+  deities_json         TEXT    NOT NULL,
+  total_pool_mc        INTEGER NOT NULL DEFAULT 1500 CHECK (total_pool_mc >= 0),
+  remaining_pool_mc    INTEGER NOT NULL DEFAULT 1500 CHECK (remaining_pool_mc >= 0),
+  burned_mc            INTEGER NOT NULL DEFAULT 0 CHECK (burned_mc >= 0),
+  reserve_mc           INTEGER NOT NULL DEFAULT 0 CHECK (reserve_mc >= 0),
+  status               TEXT    NOT NULL CHECK (status IN ('queued', 'active', 'completed')),
+  started_at           INTEGER,
+  ends_at              INTEGER,
+  created_at           INTEGER NOT NULL
+);
+CREATE INDEX hau_dong_sessions_status_idx ON hau_dong_sessions (status, created_at ASC);
+
+-- Lịch sử công đức mở đàn Hầu Đồng (Mở đàn riêng >= 2,500 MC hoặc Cộng dồn Bách Gia >= 50 MC).
+CREATE TABLE hau_dong_donations (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id      TEXT    NOT NULL UNIQUE,
+  account_id      INTEGER NOT NULL REFERENCES accounts(id),
+  session_id      TEXT,
+  mode            TEXT    NOT NULL CHECK (mode IN ('single_open', 'crowdfund')),
+  amount_mc       INTEGER NOT NULL CHECK (amount_mc > 0),
+  custom_deity_id TEXT,
+  prayer_text     TEXT    NOT NULL,
+  ledger_id       INTEGER REFERENCES mc_ledger(id),
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX hau_dong_donations_account_idx ON hau_dong_donations (account_id, created_at DESC);
+CREATE INDEX hau_dong_donations_mode_idx ON hau_dong_donations (mode, session_id);
+
+-- Điểm danh hiện diện (Proximity Heartbeat) & Nhận Lộc (Ban Lễ) từng Giá đồng (1..5).
+CREATE TABLE hau_dong_attendance (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id        TEXT    NOT NULL REFERENCES hau_dong_sessions(session_id),
+  gia_index         INTEGER NOT NULL CHECK (gia_index BETWEEN 1 AND 5),
+  account_id        INTEGER NOT NULL REFERENCES accounts(id),
+  watch_seconds     INTEGER NOT NULL DEFAULT 0 CHECK (watch_seconds >= 0),
+  is_bowing         INTEGER NOT NULL DEFAULT 0 CHECK (is_bowing IN (0, 1)),
+  claimed_mc        INTEGER NOT NULL DEFAULT 0 CHECK (claimed_mc >= 0),
+  ledger_id         INTEGER REFERENCES mc_ledger(id),
+  last_heartbeat_at INTEGER NOT NULL,
+  claimed_at        INTEGER,
+  UNIQUE(session_id, gia_index, account_id)
+);
+CREATE INDEX hau_dong_attendance_account_idx ON hau_dong_attendance (account_id, claimed_at DESC);
+`
   }
 ]

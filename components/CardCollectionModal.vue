@@ -4,7 +4,10 @@ import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
 import { zenAudio } from '~/lib/audio/ZenAudio'
 
-const emit = defineEmits(['close'])
+const emit = defineEmits<{
+  (e: 'close'): void
+}>()
+
 const cardsStore = useCardsStore()
 const economy = useEconomyStore()
 const wallet = useWalletStore()
@@ -19,14 +22,25 @@ const filteredCards = computed(() => {
   return cardsStore.allCards.filter(c => c.category === filterCategory.value)
 })
 
-const selectedCard = ref(cardsStore.allCards[0])
+const selectedCard = ref(cardsStore.allCards[0] || {
+  id: '',
+  title: '',
+  subtitle: '',
+  category: 'wisdom',
+  country: '',
+  rarity: 'common',
+  scriptureText: '',
+  meaning: '',
+  lore: ''
+})
 
 const selectedCardPriceMc = computed(() => {
-  const found = economy.cardCatalog.find(i => i.id === selectedCard.value.id)
+  const found = economy.cardCatalog.find(i => i.id === selectedCard.value?.id)
   return found ? found.priceMc : 300
 })
 
 const isSelectedCardOwned = computed(() => {
+  if (!selectedCard.value) return false
   const found = economy.cardCatalog.find(i => i.id === selectedCard.value.id)
   if (found) return economy.isItemUnlocked(found)
   return economy.ownedItemIds.has(selectedCard.value.id)
@@ -68,171 +82,164 @@ async function confirmUnlockCard() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div class="geist-card max-w-4xl w-full h-[85vh] p-6 bg-[#111111] border border-white/15 relative flex flex-col">
-      <!-- Close Button -->
-      <button 
-        @click="emit('close')" 
-        class="absolute top-4 right-4 text-[#737373] hover:text-white text-sm font-mono h-6 w-6 flex items-center justify-center rounded-[4px] hover:bg-white/10 z-10"
-      >
-        ✕
-      </button>
-
-      <!-- Top Header & Filters -->
-      <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
-        <div>
-          <div class="mono-eyebrow text-[#8f8f8f] mb-1">CARDANO ARCHIVE // HERITAGE COLLECTION</div>
-          <h3 class="text-base font-semibold text-white tracking-tight font-display">Thư Viện Thẻ Bài Di Sản</h3>
-          <p class="text-xs text-[#a1a1a1] mt-0.5">Kiến trúc cổ tự và tinh hoa triết lý kinh điển</p>
+  <UiModal
+    :model-value="true"
+    title="Thư Viện Thẻ Bài Di Sản"
+    eyebrow="CARDANO ARCHIVE // HERITAGE COLLECTION"
+    data-testid="card-collection-modal"
+    @update:model-value="emit('close')"
+  >
+    <div class="flex flex-col gap-4 text-xs font-sans">
+      <!-- Balance & Filter Tabs -->
+      <div class="flex items-center justify-between gap-2 border-b border-hairline pb-3">
+        <div class="flex items-center gap-1.5 text-gold font-numbers font-medium text-xs">
+          <ZenIcon name="coin" :size="14" />
+          <span>{{ economy.meritCoins.toLocaleString('vi-VN') }} MC</span>
         </div>
 
-        <div class="flex items-center gap-3 mr-8">
-          <span class="text-xs font-mono text-amber-300 font-semibold">{{ economy.meritCoins.toLocaleString('vi-VN') }} MC</span>
-          <!-- Filter Tabs -->
-          <div class="flex gap-1 bg-[#171717] p-1 rounded-[8px] border border-white/10 text-xs">
-            <button 
-              @click="filterCategory = 'all'"
-              :class="filterCategory === 'all' ? 'bg-white text-black font-semibold' : 'text-[#a1a1a1] hover:text-white'"
-              class="px-2.5 py-1 rounded-[6px] font-medium transition-all"
-            >
-              Tất Cả
-            </button>
-            <button 
-              @click="filterCategory = 'wisdom'"
-              :class="filterCategory = 'wisdom' ? 'bg-white text-black font-semibold' : 'text-[#a1a1a1] hover:text-white'"
-              class="px-2.5 py-1 rounded-[6px] font-medium transition-all"
-            >
-              Triết Lý
-            </button>
-            <button 
-              @click="filterCategory = 'architecture'"
-              :class="filterCategory === 'architecture' ? 'bg-white text-black font-semibold' : 'text-[#a1a1a1] hover:text-white'"
-              class="px-2.5 py-1 rounded-[6px] font-medium transition-all"
-            >
-              Cổ Tự 3D
-            </button>
+        <div class="flex items-center gap-1 bg-surface-elevated p-1 rounded-md border border-hairline text-xs">
+          <button 
+            type="button"
+            @click="filterCategory = 'all'"
+            :class="filterCategory === 'all' ? 'bg-gold text-canvas-dark font-semibold' : 'text-secondary hover:text-white'"
+            class="px-2.5 py-1 rounded text-xs transition-colors"
+          >
+            Tất Cả
+          </button>
+          <button 
+            type="button"
+            @click="filterCategory = 'wisdom'"
+            :class="filterCategory === 'wisdom' ? 'bg-gold text-canvas-dark font-semibold' : 'text-secondary hover:text-white'"
+            class="px-2.5 py-1 rounded text-xs transition-colors"
+          >
+            Triết Lý
+          </button>
+          <button 
+            type="button"
+            @click="filterCategory = 'architecture'"
+            :class="filterCategory === 'architecture' ? 'bg-gold text-canvas-dark font-semibold' : 'text-secondary hover:text-white'"
+            class="px-2.5 py-1 rounded text-xs transition-colors"
+          >
+            Cổ Tự 3D
+          </button>
+        </div>
+      </div>
+
+      <!-- Card Selector List -->
+      <div class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+        <div 
+          v-for="card in filteredCards" 
+          :key="card.id"
+          @click="selectedCard = card; showConfirm = false; mintNotice = null"
+          :class="selectedCard?.id === card.id ? 'border-gold bg-surface-elevated' : 'border-hairline bg-surface-card hover:border-hairline'"
+          class="p-2.5 rounded-md border cursor-pointer transition-colors flex items-center gap-2.5"
+        >
+          <div class="w-8 h-8 rounded bg-surface-elevated border border-hairline flex items-center justify-center text-xs shrink-0 text-gold">
+            <ZenIcon :name="card.category === 'wisdom' ? 'lotus' : 'pagoda'" :size="16" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-medium text-white truncate">{{ card.title }}</div>
+            <div class="text-xs text-secondary font-numbers flex items-center gap-1.5 mt-0.5">
+              <span>{{ card.country }}</span>
+              <span>/</span>
+              <span class="uppercase text-gold">{{ card.rarity }}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Main Content: Left List & Right Detail -->
-      <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
-        <!-- Card Selector List -->
-        <div class="space-y-1.5 overflow-y-auto pr-1 md:col-span-1">
-          <div 
-            v-for="card in filteredCards" 
-            :key="card.id"
-            @click="selectedCard = card; showConfirm = false; mintNotice = null"
-            :class="selectedCard.id === card.id ? 'border-white bg-[#1c1c1c]' : 'border-white/10 bg-[#141414] hover:border-white/20'"
-            class="p-2.5 rounded-[6px] border cursor-pointer transition-all flex items-center gap-2.5"
+      <!-- Selected Card Detail View -->
+      <div v-if="selectedCard" class="bg-surface-card p-4 rounded-md border border-hairline flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-2 border-b border-hairline pb-3">
+          <div>
+            <div class="text-xs text-gold uppercase tracking-wider font-numbers">
+              {{ selectedCard.category === 'wisdom' ? 'CATEGORY // WISDOM' : 'CATEGORY // ARCHITECTURE' }}
+            </div>
+            <h4 class="text-sm font-semibold text-white tracking-tight mt-0.5">{{ selectedCard.title }}</h4>
+            <div class="text-xs text-secondary mt-0.5 font-numbers">{{ selectedCard.subtitle }} · {{ selectedCard.country }}</div>
+          </div>
+          <UiButton 
+            variant="secondary"
+            size="sm"
+            @click="toggleNarration"
           >
-            <div class="w-8 h-8 rounded-[4px] bg-[#1a1a1a] border border-white/10 flex items-center justify-center text-sm shrink-0">
-              <ZenIcon :name="card.category === 'wisdom' ? 'lotus' : 'pagoda'" :size="15" class="text-white/80" />
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="text-xs font-medium text-white truncate">{{ card.title }}</div>
-              <div class="text-[10px] text-[#737373] font-mono flex items-center gap-1.5 mt-0.5">
-                <span>{{ card.country }}</span>
-                <span>/</span>
-                <span class="uppercase text-amber-300">{{ card.rarity }}</span>
-              </div>
-            </div>
+            <ZenIcon :name="isNarrating ? 'bell' : 'bell-off'" :size="14" class="mr-1 text-gold" />
+            <span>{{ isNarrating ? 'BẬT ÂM' : 'TẮT ÂM' }}</span>
+          </UiButton>
+        </div>
+
+        <!-- Scripture Quote -->
+        <div v-if="selectedCard.scriptureText" class="p-3 bg-surface-elevated border border-hairline rounded-md italic text-xs text-primary leading-relaxed text-center">
+          "{{ selectedCard.scriptureText }}"
+        </div>
+
+        <!-- Meaning & Lore -->
+        <div class="space-y-2 text-xs leading-relaxed">
+          <div>
+            <span class="text-xs font-semibold text-secondary uppercase block mb-0.5">Ý NGHĨA CỐT LÕI</span>
+            <p class="text-primary">{{ selectedCard.meaning }}</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold text-secondary uppercase block mb-0.5">ĐIỂN TÍCH & LỊCH SỬ</span>
+            <p class="text-secondary">{{ selectedCard.lore }}</p>
           </div>
         </div>
 
-        <!-- Selected Card Detail View -->
-        <div class="bg-[#141414] p-5 rounded-[8px] border border-white/10 md:col-span-2 overflow-y-auto flex flex-col justify-between">
-          <div>
-            <div class="flex items-start justify-between mb-3 border-b border-white/10 pb-3">
-              <div>
-                <span class="mono-eyebrow text-[#0070f3]">
-                  {{ selectedCard.category === 'wisdom' ? 'CATEGORY // WISDOM' : 'CATEGORY // ARCHITECTURE' }}
-                </span>
-                <h4 class="text-lg font-semibold text-white tracking-tight font-display mt-0.5">{{ selectedCard.title }}</h4>
-                <div class="text-xs text-[#a1a1a1] mt-0.5 font-mono">{{ selectedCard.subtitle }} · {{ selectedCard.country }}</div>
-              </div>
-              <div class="flex items-center gap-2">
-                <button 
-                  @click="toggleNarration"
-                  :class="isNarrating ? 'bg-amber-400 text-black border-amber-400' : 'bg-white/5 text-[#a1a1a1] hover:text-white border-white/10'"
-                  class="px-2.5 py-1 rounded-[4px] border text-xs font-mono flex items-center gap-1.5 transition-colors"
-                >
-                  <ZenIcon :name="isNarrating ? 'bell' : 'bell-off'" :size="12" />
-                  <span>{{ isNarrating ? 'AUDIO ON' : 'AUDIO' }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Scripture Quote -->
-            <div v-if="selectedCard.scriptureText" class="p-3 bg-[#1a1a1a] border border-white/10 rounded-[6px] mb-3.5 italic text-xs text-[#ededed] text-center leading-relaxed">
-              "{{ selectedCard.scriptureText }}"
-            </div>
-
-            <!-- Meaning & Lore -->
-            <div class="space-y-3 text-xs leading-relaxed">
-              <div>
-                <span class="mono-eyebrow block mb-1">Ý NGHĨA CỐT LÕI</span>
-                <p class="text-[#ededed]">{{ selectedCard.meaning }}</p>
-              </div>
-
-              <div>
-                <span class="mono-eyebrow block mb-1">ĐIỂN TÍCH & LỊCH SỬ</span>
-                <p class="text-[#a1a1a1]">{{ selectedCard.lore }}</p>
-              </div>
-            </div>
-
-            <div v-if="showConfirm" class="mt-3 p-3 bg-amber-400/10 border border-amber-400/30 rounded-[6px] flex items-center justify-between gap-2 text-xs">
-              <span class="text-[#ededed]">
-                Xác nhận tiêu <strong class="text-amber-300 font-mono">{{ selectedCardPriceMc.toLocaleString('vi-VN') }} MC</strong> để thỉnh thẻ bài <strong>{{ selectedCard.title }}</strong>?
-              </span>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button
-                  @click="confirmUnlockCard"
-                  :disabled="economy.isSpending"
-                  class="px-3 py-1 rounded-[4px] bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs"
-                >
-                  Xác nhận
-                </button>
-                <button
-                  @click="showConfirm = false"
-                  class="px-2.5 py-1 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-xs"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
-
-            <div v-if="mintNotice" class="mt-3 p-2 rounded-[4px] bg-amber-400/10 border border-amber-400/30 text-xs font-mono text-amber-300 text-center">
-              {{ mintNotice }}
-            </div>
+        <!-- Confirm Spend Box -->
+        <div v-if="showConfirm" class="p-3 bg-surface-elevated border border-gold/40 rounded-md flex flex-col gap-2 text-xs">
+          <span class="text-primary">
+            Xác nhận tiêu <strong class="text-gold font-numbers">{{ selectedCardPriceMc.toLocaleString('vi-VN') }} MC</strong> để thỉnh thẻ bài <strong>{{ selectedCard.title }}</strong>?
+          </span>
+          <div class="flex items-center justify-end gap-2">
+            <UiButton
+              variant="secondary"
+              size="sm"
+              @click="showConfirm = false"
+            >
+              Hủy
+            </UiButton>
+            <UiButton
+              variant="primary"
+              size="sm"
+              :disabled="economy.isSpending"
+              @click="confirmUnlockCard"
+            >
+              Xác nhận
+            </UiButton>
           </div>
+        </div>
 
-          <!-- Bottom Action -->
-          <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-            <span class="font-mono text-[10px] text-[#737373]">SERVER INVENTORY & MC LEDGER</span>
-            <span v-if="isSelectedCardOwned" class="px-3 py-1 rounded-[4px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
-              ✓ Đã sở hữu trong kho đồ
-            </span>
-            <div v-else class="flex items-center gap-2">
-              <button 
-                @click="promptUnlockCard"
-                :disabled="economy.isSpending || !wallet.isAuthenticated || economy.meritCoins < selectedCardPriceMc"
-                class="px-3 py-1.5 rounded-[6px] bg-amber-400 hover:bg-amber-300 text-black text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-40"
-              >
-                <ZenIcon name="coin" :size="13" />
-                <span>Thỉnh Thẻ Bài ({{ selectedCardPriceMc.toLocaleString('vi-VN') }} MC)</span>
-              </button>
-              <button
-                v-if="wallet.isAuthenticated && economy.meritCoins < selectedCardPriceMc"
-                @click="economy.openTopUpModal(); emit('close')"
-                class="px-2.5 py-1.5 rounded-[6px] bg-[#0070f3]/20 text-[#38bdf8] border border-[#0070f3]/40 text-xs font-mono"
-              >
-                + Nạp MC
-              </button>
-            </div>
+        <div v-if="mintNotice" class="p-2 rounded bg-surface-elevated border border-gold/30 text-xs font-numbers text-gold text-center">
+          {{ mintNotice }}
+        </div>
+
+        <!-- Card Ownership / Purchase Action -->
+        <div class="pt-3 border-t border-hairline flex items-center justify-between gap-2">
+          <span class="font-numbers text-xs text-secondary">MC LEDGER</span>
+          <span v-if="isSelectedCardOwned" class="text-trading-up text-xs font-numbers font-medium">
+            Đã sở hữu trong kho đồ
+          </span>
+          <div v-else class="flex items-center gap-2">
+            <UiButton 
+              variant="primary"
+              size="sm"
+              :disabled="economy.isSpending || !wallet.isAuthenticated || economy.meritCoins < selectedCardPriceMc"
+              @click="promptUnlockCard"
+            >
+              <ZenIcon name="coin" :size="14" class="mr-1" />
+              <span>Thỉnh Thẻ (<span class="font-numbers">{{ selectedCardPriceMc.toLocaleString('vi-VN') }}</span> MC)</span>
+            </UiButton>
+            <UiButton
+              v-if="wallet.isAuthenticated && economy.meritCoins < selectedCardPriceMc"
+              variant="secondary"
+              size="sm"
+              @click="economy.openTopUpModal(); emit('close')"
+            >
+              + Nạp MC
+            </UiButton>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </UiModal>
 </template>

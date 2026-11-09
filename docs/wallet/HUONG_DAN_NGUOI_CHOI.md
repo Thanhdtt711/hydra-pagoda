@@ -74,7 +74,28 @@ Bạn có thể bấm các phím tắt **`[1]`**, **`[2]`**, **`[3]`** trên tha
 
 ---
 
-## 6. Câu hỏi Thường gặp (FAQ)
+## 6. Dấu hiệu "Hydra L2" và "SQLite" nghĩa là gì?
+
+Khi bạn mua đồ, gieo quẻ hay dâng công đức, MC Coin của bạn luôn được ghi vào sổ cái của chùa trước (**SQLite**). Nếu hệ thống bật **Hydra L2**, giao dịch đó còn được ghi thêm một bản chứng thực lên mạng Cardano Hydra để minh bạch hơn. Bạn không cần làm gì thêm.
+
+- **Chỉ báo trên thanh trạng thái (HUD)**:
+  - **Hydra L2**: chùa đang ghi sổ cái lên Hydra Head.
+  - **SQLite**: chùa đang chạy bằng sổ cái cục bộ (Hydra tắt hoặc chưa kết nối). Mọi tính năng vẫn dùng bình thường.
+- **Huy hiệu dưới mỗi giao dịch** (sau khi gieo quẻ, dâng công đức, mua vật phẩm/thẻ bài và trong Lịch Sử Quẻ Đã Gieo):
+  - `Hydra L2 · Snapshot #N · Tx abcd…wxyz`: giao dịch đã được xác nhận trên Hydra, bạn có thể dùng mã Tx để đối chiếu.
+  - `Hydra L2 · Đã xác thực`: Hydra đã chấp nhận giao dịch, đang chờ chốt snapshot.
+  - `Hydra L2 · Đang xác nhận`: giao dịch vừa được gửi, vài giây sau sẽ chuyển trạng thái.
+  - `SQLite · Ghi ở sổ cái cục bộ`: giao dịch chỉ được ghi ở sổ cái của chùa.
+- Lượt bói quẻ miễn phí (0 MC) không có huy hiệu vì không phát sinh giao dịch MC.
+
+---
+
+## 7. Câu hỏi Thường gặp (FAQ)
+
+- **Hỏi: Giao dịch của tôi hiện "SQLite" thay vì "Hydra L2", MC của tôi có bị mất không?**
+- **Đáp:** Không. MC của bạn đã được trừ/cộng đúng trong sổ cái của chùa. "SQLite" chỉ có nghĩa là bản chứng thực trên Hydra chưa có (Hydra đang tắt hoặc tạm gặp sự cố). Số dư và vật phẩm của bạn không bị ảnh hưởng.
+- **Hỏi: Dùng Hydra L2 thì Eternl có hiện thêm cửa sổ ký giao dịch không?**
+- **Đáp:** Không. Chữ ký trên Hydra do máy chủ của chùa xử lý, bạn chỉ ký một lần khi đăng nhập và khi nạp ADA như bình thường.
 
 - **Hỏi: Tôi bấm mua hoặc gieo quẻ khi mạng yếu bị bấm đúp 2 lần thì có bị trừ MC 2 lần không?**
   - **Đáp:** Không. Mỗi hộp xác nhận tiêu MC đều gắn một mã `requestId` duy nhất; máy chủ đảm bảo mỗi yêu cầu chỉ trừ MC đúng một lần.

@@ -133,7 +133,7 @@ CSDL mặc định lưu tại `.data/pagoda.sqlite` với `PRAGMA journal_mode =
 
 | # | Bảng | Khóa chính & Ràng buộc | Mục đích |
 |---|---|---|---|
-| 1 | `schema_migrations` | `version PRIMARY KEY` | Lưu lịch sử các bản migration SQL đã chạy (#1, #2, #3). |
+| 1 | `schema_migrations` | `version PRIMARY KEY` | Lưu lịch sử các bản migration SQL đã chạy (#1 → #4, trong đó #4 là migration Hybrid Hydra L2, xem mục 6.2). |
 | 2 | `accounts` | `id PRIMARY KEY AUTOINCREMENT`, `address UNIQUE`, `CHECK (mc_balance >= 0)` | Tài khoản người chơi theo địa chỉ bech32 đã xác thực CIP-8 và số dư `mc_balance` nguyên. |
 | 3 | `auth_nonces` | `nonce PRIMARY KEY` | Nonce đăng nhập dùng 1 lần (hết hạn sau 5 phút, lưu `used_at` chống replay). |
 | 4 | `sessions` | `token_hash PRIMARY KEY` | Phiên đăng nhập (chỉ lưu băm SHA-256 của cookie `pagoda_session`). |
@@ -196,3 +196,67 @@ CSDL mặc định lưu tại `.data/pagoda.sqlite` với `PRAGMA journal_mode =
 | 8 | **Khai khống số ADA hoặc chuyển thiếu ADA (`Underpaid`)** | Server đọc số lovelace thực nhận tại các UTxO đầu ra trả về đúng `treasuryAddress` từ Blockfrost/Koios. Nếu `< expected_lovelace`, đơn bị đánh dấu `underpaid` và cộng `0 MC`. |
 | 9 | **Đua luồng (Race Condition) bấm mua/tiêu MC nhiều lần cùng lúc để làm âm số dư** | Hàm `spend()` chạy trong `BEGIN IMMEDIATE` và dùng `UPDATE accounts SET mc_balance = mc_balance - ? WHERE id = ? AND mc_balance >= ?` kết hợp `CHECK (mc_balance >= 0)`. Đã kiểm chứng bắn đồng thời 10 luồng trong `test-spend.mjs`. |
 | 10 | **Gửi lặp yêu cầu tiêu MC khi mạng chập chờn (Double Spend)** | Client sinh `requestId` cố định cho mỗi lần bấm xác nhận; `mc_ledger` có `UNIQUE(reason, ref_id)` giúp trả lại kết quả cũ (`idempotentReplay: true`) mà không trừ MC lần hai. |
+| 11 | **Lộ khóa riêng L2 của người chơi / khóa Fuel** | Khóa L2 được dẫn xuất trên server bằng `HMAC-SHA256(serverSecret, label)`, chỉ lưu phần công khai (`accounts.l2_session_vkey`, `accounts.l2_address`). Khóa riêng không rời server và không lưu vào DB. Cần bảo vệ `NUXT_HYDRA_SESSION_SECRET` như một khóa quan trọng. |
+| 12 | **Hydra Head lỗi / hydra-node tắt làm treo gameplay** | SQLite ghi trước và là nguồn sự thật. Việc ghi lên L2 chạy nền sau khi commit; mọi lỗi chỉ đưa bút toán về `offchain` và ghi log, không ném lỗi ra API. |
+| 13 | **Hai giao dịch L2 cùng tiêu một UTxO (`BadInputsUTxO`)** | Hàng đợi tuần tự theo từng tài khoản (State UTxO) và Fuel Pool nhiều UTxO để các tài khoản khác nhau chạy song song. Gặp `hydra_tx_invalid` thì làm mới cache và thử lại 1 lần. |
+| 14 | **Ghi trùng một bút toán lên L2 khi người chơi bấm lặp** | Bút toán lặp được chặn từ SQLite bằng `UNIQUE(reason, ref_id)` (trả `idempotentReplay`), nên không sinh thêm giao dịch L2 (đã kiểm thử ở ca số 6 của `test-hydra-l2.mjs`). |
+
+---
+
+## 6. Mở rộng: Hybrid Hydra L2 cho Sổ cái MC Coin
+
+Chi tiết thiết kế xem `CO_CHE_MC_VA_HYDRA_L2.md` (Phần 4). Mục này chỉ tóm tắt phần kiến trúc.
+
+### 6.1. Luồng ghi bút toán lên Hydra Head
+
+```mermaid
+sequenceDiagram
+autonumber
+participant API as Nitro API (/api/mc/*)
+participant Svc as mcService.ts (spend / credit)
+participant DB as SQLite mc_ledger
+participant Q as hydraQueue.ts
+participant H as hydra-node (Head Open)
+
+API->>Svc: spend() hoặc credit()
+Svc->>DB: Ghi bút toán (nguyên tử, idempotent), hydra_status = offchain
+Svc-->>API: Trả kết quả ngay cho người chơi
+Svc->>Q: scheduleHydraRecord(ledgerId)
+Q->>DB: Ghi hydra_tx_hash, hydra_status = submitted
+Q->>H: NewTx (tiêu State UTxO cũ + 1 Fuel UTxO)
+H-->>Q: TxValid
+Q->>DB: hydra_status = valid
+H-->>Q: SnapshotConfirmed
+Q->>DB: hydra_status = snapshot_confirmed, hydra_snapshot_no = N
+API->>Q: getHydraProof(ledgerId, 1500ms)
+Q-->>API: hydra { enabled, status, txHash, snapshotNo }
+```
+
+Nếu bất kỳ bước nào ở L2 lỗi, hàng đợi đưa bút toán về `offchain` (xóa `hydra_tx_hash`) và gameplay không bị ảnh hưởng.
+
+### 6.2. Thay đổi cơ sở dữ liệu (migration #4)
+
+| Bảng | Thay đổi | Mục đích |
+|---|---|---|
+| `mc_ledger` | Thêm `hydra_tx_hash`, `hydra_snapshot_no`, `hydra_status` | Lưu bằng chứng L2 cho từng bút toán. `hydra_status` nhận một trong: `offchain`, `submitted`, `valid`, `snapshot_confirmed` |
+| `accounts` | Thêm `l2_session_vkey`, `l2_address` | Khóa công khai và địa chỉ L2 (enterprise) của tài khoản |
+| `hydra_kv` | Bảng mới (khóa - giá trị) | Lưu `NUXT_HYDRA_SESSION_SECRET` khi để server tự sinh |
+
+### 6.3. API bổ sung
+
+| Phương thức & Đường dẫn | Đầu ra | Ghi chú |
+|---|---|---|
+| `GET /api/hydra/status` | `{ enabled, connected, mode, headStatus, latestSnapshotNo, totalL2Txs, confirmedL2Txs, avgConfirmMs, fuelAddress, ledger }` | `mode` là `hydra_l2` hoặc `local_ledger`. Khi tắt Hydra trả `local_ledger` và `headStatus = Disconnected`. `ledger` gồm `byStatus`, `fuelPoolSize`, `inFlight` |
+| `POST /api/mc/shop/buy`, `POST /api/mc/fortune/draw`, `POST /api/mc/merit/donate` | Thêm trường `hydra: { enabled, status, txHash, snapshotNo }` vào kết quả ở mục 4.3 | Chờ tối đa 1500ms để lấy bằng chứng; chưa kịp thì trả trạng thái hiện tại (ví dụ `submitted` hoặc `offchain`) |
+
+### 6.4. Thành phần mã nguồn
+
+| Tệp | Vai trò |
+|---|---|
+| `server/utils/hydra/config.ts` | Đọc cấu hình (`HYDRA_L2_ENABLED`, `HYDRA_NODE_WS_URL`, ...) |
+| `server/utils/hydra/hydraClient.ts` | Client WebSocket tới hydra-node, tự kết nối lại, phát sự kiện `TxValid` / `TxInvalid` / `SnapshotConfirmed` |
+| `server/utils/hydra/sessionKey.ts` | Dẫn xuất khóa Fuel và khóa phiên theo tài khoản |
+| `server/utils/hydra/l2TxBuilder.ts` | Dựng và ký giao dịch L2 (State UTxO + datum, metadata CIP-20, tách Fuel) |
+| `server/utils/hydra/hydraQueue.ts` | Hàng đợi tuần tự, Fuel Pool, cập nhật trạng thái vào `mc_ledger` |
+| `server/plugins/hydra-l2.ts` | Khởi động client Hydra cùng server Nitro |
+| `stores/hydra.ts`, `components/HydraBadge.vue` | Hiển thị chế độ sổ cái và bằng chứng trên giao diện |

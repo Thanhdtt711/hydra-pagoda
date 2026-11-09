@@ -2,69 +2,49 @@ import * as THREE from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
-import { LightingConfig } from '../environment/LightingConfig'
+import { POST_STYLE } from '../style/Palette'
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra'
 
 /**
- * Custom Cinematic Tone & Color Grading Shader:
- * Warm Asian temple tone mapping, subtle filmic vignette, contrast enhancement, and organic micro-grain.
+ * Vignette nhẹ (tối dần ở rìa khung hình) – chạy trong không gian tuyến tính trước OutputPass.
  */
-export const CinematicToneShader = {
-  name: 'CinematicToneShader',
+export const VignetteShader = {
+  name: 'VignetteShader',
   uniforms: {
-    tDiffuse: { value: null },
-    vignetteIntensity: { value: 0.32 },
-    warmth: { value: 0.08 },
-    contrast: { value: 1.06 },
-    time: { value: 0 }
+    tDiffuse: { value: null as THREE.Texture | null },
+    darkness: { value: POST_STYLE.vignette.darkness },
+    offset: { value: POST_STYLE.vignette.offset }
   },
-  vertexShader: `
+  vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
-  fragmentShader: `
+  fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float vignetteIntensity;
-    uniform float warmth;
-    uniform float contrast;
-    uniform float time;
+    uniform float darkness;
+    uniform float offset;
     varying vec2 vUv;
-
     void main() {
-      vec4 color = texture2D(tDiffuse, vUv);
-      vec3 c = color.rgb;
-
-      // 1. Multiplicative warmth grading: bảo toàn màu đen tuyền tuyệt đối (không bị đục sương trắng)
-      c *= vec3(1.0 + warmth * 0.25, 1.0 + warmth * 0.08, 1.0 - warmth * 0.15);
-
-      // 2. Contrast tinh tế cho cổ tự trầm mặc
-      c = (c - 0.5) * contrast + 0.5;
-
-      // 3. Subtle Vignette góc màn hình
-      vec2 uv = vUv * (1.0 - vUv.yx);
-      float vig = uv.x * uv.y * 15.0;
-      vig = clamp(pow(vig, vignetteIntensity), 0.0, 1.0);
-      c *= vig;
-
-      // 4. Micro Film Grain hữu cơ
-      float grain = (fract(sin(dot(vUv + time * 0.01, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.015;
-      c += grain;
-
-      gl_FragColor = vec4(clamp(c, 0.0, 1.0), color.a);
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 p = (vUv - 0.5) * vec2(1.0, 0.85);
+      float d = length(p) * 1.4142;
+      float v = smoothstep(offset, 0.35, d);
+      c.rgb *= mix(1.0 - darkness, 1.0, v);
+      gl_FragColor = c;
     }
   `
 }
 
 /**
- * PostProcessingManager:
- * Manages RenderPass, UnrealBloomPass, SMAAPass, and OutputPass
- * with synchronized, consistent brightness across Medium, High, and Ultra.
+ * PostProcessingManager (Low-poly Minimalist):
+ * RenderPass (MSAA 4x) → UnrealBloomPass (chỉ nguồn sáng) → Vignette nhẹ → OutputPass.
+ * Không SMAA (đã có MSAA), không SSAO/GTAO, không outline.
  */
 export class PostProcessingManager {
   private renderer: THREE.WebGLRenderer
@@ -74,51 +54,58 @@ export class PostProcessingManager {
 
   private renderPass: RenderPass
   private bloomPass: UnrealBloomPass
-  private smaaPass: SMAAPass
+  private vignettePass: ShaderPass
   private outputPass: OutputPass
 
   public quality: GraphicsQuality = 'high'
   private width = 1280
   private height = 720
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera, width: number, height: number) {
+  constructor(
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    width: number,
+    height: number
+  ) {
     this.renderer = renderer
     this.scene = scene
     this.camera = camera
     this.width = width
     this.height = height
 
-    // WebGL2 Hardware MSAA Multisampled RenderTarget
+    // MSAA phần cứng (WebGL2) trên render target HDR
     const renderTarget = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
       samples: 4
     })
     this.composer = new EffectComposer(this.renderer, renderTarget)
 
-    // 1. Base Scene Pass
     this.renderPass = new RenderPass(this.scene, this.camera)
     this.composer.addPass(this.renderPass)
 
-    // 2. Controlled Bloom Pass (High threshold ensures ONLY genuine light sources bloom, never the environment)
+    // Bloom nhẹ, ngưỡng cao: chỉ đèn lồng / nến / hoa đăng (emissive > 1) phát quầng
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      LightingConfig.BLOOM.strength,
-      LightingConfig.BLOOM.radius,
-      LightingConfig.BLOOM.threshold
+      POST_STYLE.bloom.strength,
+      POST_STYLE.bloom.radius,
+      POST_STYLE.bloom.threshold
     )
     this.composer.addPass(this.bloomPass)
 
-    // 3. Subpixel Morphological Antialiasing (SMAA)
-    this.smaaPass = new SMAAPass()
-    this.smaaPass.setSize(width, height)
-    this.composer.addPass(this.smaaPass)
+    this.vignettePass = new ShaderPass(VignetteShader)
+    this.composer.addPass(this.vignettePass)
 
-    // 4. Output Pass (Chuẩn ACES Filmic Tone Mapping & sRGB Color Space)
     this.outputPass = new OutputPass()
     this.composer.addPass(this.outputPass)
 
-    // Apply default High preset
     this.setQuality('high')
+  }
+
+  private applyBloomParams() {
+    this.bloomPass.strength = POST_STYLE.bloom.strength
+    this.bloomPass.threshold = POST_STYLE.bloom.threshold
+    this.bloomPass.radius = POST_STYLE.bloom.radius
   }
 
   public setQuality(quality: GraphicsQuality) {
@@ -128,37 +115,34 @@ export class PostProcessingManager {
     if (quality === 'low') {
       this.renderer.setPixelRatio(1.0)
       this.bloomPass.enabled = false
-      this.smaaPass.enabled = false
+      this.vignettePass.enabled = true
     } else if (quality === 'medium') {
-      this.renderer.setPixelRatio(1.25)
+      this.renderer.setPixelRatio(Math.min(dpr, 1.25))
       this.bloomPass.enabled = true
-      this.bloomPass.strength = LightingConfig.BLOOM.strength
-      this.bloomPass.threshold = LightingConfig.BLOOM.threshold
-      this.bloomPass.radius = LightingConfig.BLOOM.radius
-      this.smaaPass.enabled = false
+      this.applyBloomParams()
+      this.vignettePass.enabled = true
     } else if (quality === 'high') {
       this.renderer.setPixelRatio(Math.min(dpr, 1.5))
       this.bloomPass.enabled = true
-      this.bloomPass.strength = LightingConfig.BLOOM.strength
-      this.bloomPass.threshold = LightingConfig.BLOOM.threshold
-      this.bloomPass.radius = LightingConfig.BLOOM.radius
-      this.smaaPass.enabled = true
-    } else if (quality === 'ultra') {
+      this.applyBloomParams()
+      this.vignettePass.enabled = true
+    } else {
       this.renderer.setPixelRatio(Math.min(dpr, 2.0))
       this.bloomPass.enabled = true
-      this.bloomPass.strength = LightingConfig.BLOOM.strength
-      this.bloomPass.threshold = LightingConfig.BLOOM.threshold
-      this.bloomPass.radius = LightingConfig.BLOOM.radius
-      this.smaaPass.enabled = true
+      this.applyBloomParams()
+      this.vignettePass.enabled = true
     }
+
+    // pixelRatio đổi → đồng bộ lại kích thước composer
+    this.setSize(this.width, this.height)
   }
 
   public setSize(width: number, height: number) {
     this.width = width
     this.height = height
+    this.composer.setPixelRatio(this.renderer.getPixelRatio())
     this.composer.setSize(width, height)
     this.bloomPass.setSize(width, height)
-    this.smaaPass.setSize(width, height)
   }
 
   public render(delta: number) {
@@ -169,7 +153,7 @@ export class PostProcessingManager {
     this.composer.dispose()
     this.renderPass.dispose()
     this.bloomPass.dispose()
-    this.smaaPass.dispose()
+    this.vignettePass.dispose()
     this.outputPass.dispose()
   }
 }

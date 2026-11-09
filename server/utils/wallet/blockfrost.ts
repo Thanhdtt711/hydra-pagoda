@@ -171,6 +171,9 @@ interface KoiosTxInfoRow {
  */
 export class HttpKoiosClient implements BlockfrostClient {
   private txCache = new Map<string, { at: number; row: KoiosTxInfoRow | null }>()
+  private addressTxCache = new Map<string, { at: number; rows: BfAddressTx[] }>()
+  private tipCache: { at: number; height: number } | null = null
+  private rateLimitCooldownUntil = 0
 
   constructor(
     private readonly baseUrl: string,
@@ -190,67 +193,135 @@ export class HttpKoiosClient implements BlockfrostClient {
 
   private async fetchTxRow(txHash: string): Promise<KoiosTxInfoRow | null> {
     const key = txHash.toLowerCase()
+    const now = Date.now()
     const cached = this.txCache.get(key)
-    if (cached && Date.now() - cached.at < 4_000) {
+    if (cached && now - cached.at < (cached.row ? 30_000 : 8_000)) {
       return cached.row
     }
-    const url = `${this.baseUrl.replace(/\/+$/, '')}/tx_info`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({
-        _tx_hashes: [key],
-        _inputs: true,
-        _metadata: true,
-        _assets: false,
-        _withdrawals: false,
-        _certs: false,
-        _scripts: false,
-        _bytecode: false
-      })
-    })
-    if (!res.ok) {
-      throw new Error(`Koios /tx_info trả HTTP ${res.status}`)
+    if (now < this.rateLimitCooldownUntil) {
+      return cached ? cached.row : null
     }
-    const rows = (await res.json()) as KoiosTxInfoRow[]
-    const found = Array.isArray(rows)
-      ? rows.find(r => String(r.tx_hash || '').toLowerCase() === key) ?? null
-      : null
-    // Chỉ coi là đã lên chuỗi khi đã có block_height
-    const confirmedRow = found && Number(found.block_height ?? found.block_no ?? 0) > 0 ? found : null
-    this.txCache.set(key, { at: Date.now(), row: confirmedRow })
-    return confirmedRow
+
+    const url = `${this.baseUrl.replace(/\/+$/, '')}/tx_info`
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          _tx_hashes: [key],
+          _inputs: true,
+          _metadata: true,
+          _assets: false,
+          _withdrawals: false,
+          _certs: false,
+          _scripts: false,
+          _bytecode: false
+        })
+      })
+      if (res.status === 429) {
+        this.rateLimitCooldownUntil = now + 45_000
+        console.warn('[Koios] HTTP 429 Rate Limit tại /tx_info. Tạm ngưng gọi Koios 45s.')
+        return cached ? cached.row : null
+      }
+      if (!res.ok) {
+        throw new Error(`Koios /tx_info trả HTTP ${res.status}`)
+      }
+      const rows = (await res.json()) as KoiosTxInfoRow[]
+      const found = Array.isArray(rows)
+        ? rows.find(r => String(r.tx_hash || '').toLowerCase() === key) ?? null
+        : null
+      // Chỉ coi là đã lên chuỗi khi đã có block_height
+      const confirmedRow = found && Number(found.block_height ?? found.block_no ?? 0) > 0 ? found : null
+      this.txCache.set(key, { at: now, row: confirmedRow })
+      return confirmedRow
+    } catch (err: any) {
+      if (cached) return cached.row
+      throw err
+    }
   }
 
   async latestBlockHeight(): Promise<number> {
-    const url = `${this.baseUrl.replace(/\/+$/, '')}/tip`
-    const res = await fetch(url, { headers: this.headers() })
-    if (!res.ok) {
-      throw new Error(`Koios /tip trả HTTP ${res.status}`)
+    const now = Date.now()
+    // 1. Dùng cache tip trong 15 giây (Cardano sinh block trung bình mỗi 20s)
+    if (this.tipCache && now - this.tipCache.at < 15_000) {
+      return this.tipCache.height
     }
-    const rows = (await res.json()) as Array<{ block_no?: number; block_height?: number }>
-    const top = Array.isArray(rows) ? rows[0] : null
-    return Number(top?.block_no ?? top?.block_height ?? 0)
+
+    // 2. Nếu đang trong thời gian hạ nhiệt rate-limit 429
+    if (now < this.rateLimitCooldownUntil) {
+      if (this.tipCache && this.tipCache.height > 0) {
+        return this.tipCache.height
+      }
+      return 0
+    }
+
+    const url = `${this.baseUrl.replace(/\/+$/, '')}/tip`
+    try {
+      const res = await fetch(url, { headers: this.headers() })
+      if (res.status === 429) {
+        this.rateLimitCooldownUntil = now + 45_000
+        console.warn('[Koios] HTTP 429 Rate Limit tại /tip. Tự động dùng cache gần nhất và hạ nhiệt polling 45s.')
+        if (this.tipCache && this.tipCache.height > 0) {
+          return this.tipCache.height
+        }
+        return 0
+      }
+      if (!res.ok) {
+        throw new Error(`Koios /tip trả HTTP ${res.status}`)
+      }
+      const rows = (await res.json()) as Array<{ block_no?: number; block_height?: number }>
+      const top = Array.isArray(rows) ? rows[0] : null
+      const height = Number(top?.block_no ?? top?.block_height ?? 0)
+      if (height > 0) {
+        this.tipCache = { at: now, height }
+      }
+      return height
+    } catch (err: any) {
+      if (this.tipCache && this.tipCache.height > 0) {
+        return this.tipCache.height
+      }
+      throw err
+    }
   }
 
   async addressTransactions(
     address: string,
     opts?: { count?: number }
   ): Promise<BfAddressTx[]> {
+    const now = Date.now()
+    const cached = this.addressTxCache.get(address)
+    if (cached && now - cached.at < 15_000) {
+      return cached.rows
+    }
+    if (now < this.rateLimitCooldownUntil) {
+      return cached ? cached.rows : []
+    }
+
     const url = `${this.baseUrl.replace(/\/+$/, '')}/address_txs`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({ _addresses: [address] })
-    })
-    if (!res.ok) return []
-    const rows = (await res.json()) as Array<{ tx_hash: string; block_height?: number; block_time?: number }>
-    const limit = opts?.count ?? 50
-    return (Array.isArray(rows) ? rows : []).slice(0, limit).map(r => ({
-      txHash: String(r.tx_hash),
-      blockHeight: Number(r.block_height ?? 0),
-      blockTime: Number(r.block_time ?? 0)
-    }))
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ _addresses: [address] })
+      })
+      if (res.status === 429) {
+        this.rateLimitCooldownUntil = now + 45_000
+        console.warn('[Koios] HTTP 429 Rate Limit tại /address_txs. Tạm ngưng gọi Koios 45s.')
+        return cached ? cached.rows : []
+      }
+      if (!res.ok) return []
+      const rows = (await res.json()) as Array<{ tx_hash: string; block_height?: number; block_time?: number }>
+      const limit = opts?.count ?? 50
+      const parsed = (Array.isArray(rows) ? rows : []).slice(0, limit).map(r => ({
+        txHash: String(r.tx_hash),
+        blockHeight: Number(r.block_height ?? 0),
+        blockTime: Number(r.block_time ?? 0)
+      }))
+      this.addressTxCache.set(address, { at: now, rows: parsed })
+      return parsed
+    } catch {
+      return cached ? cached.rows : []
+    }
   }
 
   async txInfo(txHash: string): Promise<BfTxInfo | null> {
@@ -317,6 +388,6 @@ export function getBlockfrostClient(): BlockfrostClient {
   const koiosBase = cfg.isTestnet
     ? 'https://preprod.koios.rest/api/v1'
     : 'https://api.koios.rest/api/v1'
-  return new HttpKoiosClient(koiosBase)
+  return new HttpKoiosClient(koiosBase, cfg.koiosApiToken)
 }
 

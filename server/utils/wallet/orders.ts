@@ -10,6 +10,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import { apiError, type PublicAccount } from './auth'
+import { scheduleHydraRecordByRef } from '../hydra/hydraQueue'
 import { getBlockfrostClient, type BlockfrostClient, type BfTxMetadatum } from './blockfrost'
 import {
   getWalletConfig,
@@ -465,7 +466,7 @@ export async function inspectAndSettleTx(
   const now = Date.now()
   const blockTimeMs = info.blockTime > 0 ? info.blockTime * 1000 : now
 
-  return withTransaction(conn => {
+  const settled = withTransaction((conn): SettleResult => {
     const freshOrder = conn.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(order!.order_id) as unknown as OrderRow
     if (freshOrder.status === 'completed') {
       return {
@@ -599,25 +600,42 @@ export async function inspectAndSettleTx(
     console.log(`[wallet:completed] Đơn ${freshOrder.order_id} hoàn tất: +${creditedMc} MC từ ${receivedLovelace} lovelace (tx=${txHash})`)
     return { txHash, orderId: freshOrder.order_id, action: 'completed', confirmations, creditedMc }
   })
+
+  // Hybrid Hydra L2: sau khi SQLite commit bút toán deposit_ada, phản chiếu lên Hydra Head (không chặn, không ném lỗi).
+  if (settled.action === 'completed' && settled.orderId) {
+    void scheduleHydraRecordByRef('deposit_ada', settled.orderId)
+  }
+  return settled
 }
 
 let isPollingChain = false
+let lastChainSyncAt = 0
+const MIN_CHAIN_SYNC_INTERVAL_MS = 8_000 // Tối đa 1 lần quét chuỗi mỗi 8 giây
 
 /**
  * Quét đồng bộ tất cả các đơn đang chờ xác nhận (`submitted`, `confirming`) và các giao dịch mới
- * tại địa chỉ `treasuryAddress` qua Blockfrost.
+ * tại địa chỉ `treasuryAddress` qua Blockfrost/Koios.
  * Hỗ trợ trường hợp người chơi đóng tab ngay sau khi ví submitTx (thậm chí trước khi gửi txHash về server):
  * chỉ cần giao dịch lên chuỗi có metadata `orderId`, hàm quét địa chỉ treasury sẽ tự tìm thấy và cộng MC!
  */
-export async function syncPendingOrdersFromChain(opts?: { client?: BlockfrostClient }): Promise<SettleResult[]> {
+export async function syncPendingOrdersFromChain(opts?: { client?: BlockfrostClient; force?: boolean }): Promise<SettleResult[]> {
   if (isPollingChain) return []
+  const now = Date.now()
+  if (!opts?.force && now - lastChainSyncAt < MIN_CHAIN_SYNC_INTERVAL_MS) {
+    return []
+  }
   isPollingChain = true
+  lastChainSyncAt = now
   try {
     expireStaleOrders()
     const cfg = getWalletConfig()
     const client = opts?.client ?? getBlockfrostClient()
 
     const tip = await client.latestBlockHeight()
+    if (tip <= 0) {
+      // Không đọc được block height từ tip (hoặc đang tạm ngưng do rate limit), bỏ qua nhịp này
+      return []
+    }
     const results: SettleResult[] = []
     const checkedHashes = new Set<string>()
 
@@ -652,7 +670,12 @@ export async function syncPendingOrdersFromChain(opts?: { client?: BlockfrostCli
 
     return results
   } catch (e: any) {
-    console.warn('[wallet:poll] Lỗi khi đồng bộ giao dịch từ Blockfrost:', e?.message || e)
+    const msg = e?.message || String(e)
+    if (msg.includes('429')) {
+      console.warn('[wallet:poll] Tạm dừng quét chuỗi: Nhà cung cấp đang giới hạn tần suất (HTTP 429). Hệ thống sẽ tự hạ nhiệt và thử lại sau.')
+    } else {
+      console.warn('[wallet:poll] Lỗi khi đồng bộ giao dịch từ nhà cung cấp chuỗi:', msg)
+    }
     return []
   } finally {
     isPollingChain = false

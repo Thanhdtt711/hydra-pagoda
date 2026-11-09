@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bộ Sưu Tập Nhân Vật Chibi Low-Poly 9 Quốc Gia — Vạn Cảnh Thiền Tự</title>
+<style>
+  * { box-sizing: border-box; user-select: none; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at 50% 38%, #fbf2dc 0%, #f1dfc0 55%, #e2caa2 100%);
+  }
+  #c {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+  }
+  #c:active { cursor: grabbing; }
+
+  /* Header thông tin nhân vật */
+  #header {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 250, 240, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(180, 140, 80, 0.35);
+    border-radius: 16px;
+    padding: 10px 22px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(90, 60, 20, 0.1);
+    pointer-events: none;
+  }
+  #header h1 {
+    margin: 0;
+    font-size: 18px;
+    color: #3d2810;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+  #header p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: #7a5a32;
+  }
+
+  /* Thanh điều khiển dưới cùng */
+  #ui-wrapper {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    pointer-events: none;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    background: rgba(255, 250, 242, 0.82);
+    backdrop-filter: blur(10px);
+    padding: 8px 12px;
+    border-radius: 18px;
+    border: 1px solid rgba(180, 140, 80, 0.3);
+    box-shadow: 0 8px 24px rgba(80, 50, 15, 0.12);
+    pointer-events: auto;
+    max-width: 96vw;
+  }
+  button {
+    border: 1px solid rgba(160, 120, 60, 0.2);
+    border-radius: 12px;
+    padding: 8px 13px;
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #4a3410;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  button:hover {
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(90, 60, 20, 0.1);
+  }
+  button.on {
+    background: #2e8896;
+    color: #fff;
+    border-color: #216873;
+    box-shadow: 0 4px 12px rgba(46, 136, 150, 0.35);
+  }
+  button.action-btn.on {
+    background: #c88a20;
+    border-color: #9e6b12;
+    box-shadow: 0 4px 12px rgba(200, 138, 32, 0.35);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="header">
+  <h1 id="char-title">Việt Nam — Áo Dài Lam Ngọc &amp; Nón Lá</h1>
+  <p id="char-desc">Cổ tàu cao, dải lụa vàng chéo ngực, tà áo dài xẻ hông, quần lụa trắng &amp; quai nón xanh</p>
+</div>
+
+<div id="ui-wrapper">
+  <!-- Hàng chọn 9 quốc gia -->
+  <div class="bar" id="country-bar">
+    <button data-country="vietnam" class="on">🇻🇳 Việt Nam</button>
+    <button data-country="japan">🇯🇵 Nhật Bản</button>
+    <button data-country="thailand">🇹🇭 Thái Lan</button>
+    <button data-country="korea">🇰🇷 Hàn Quốc</button>
+    <button data-country="taiwan">🇹🇼 Đài Loan</button>
+    <button data-country="singapore">🇸🇬 Singapore</button>
+    <button data-country="india">🇮🇳 Ấn Độ</button>
+    <button data-country="tibet">🏔️ Tây Tạng</button>
+    <button data-country="western">🌍 Phương Tây</button>
+  </div>
+
+  <!-- Hàng chọn hành động -->
+  <div class="bar">
+    <button id="bw" class="action-btn">🚶 Đi bộ</button>
+    <button id="bb" class="action-btn">🙏 Chắp tay lễ Phật</button>
+    <button id="bm" class="action-btn">🧘 Tọa thiền</button>
+    <button id="br" class="action-btn">🔄 Tự xoay 360°</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =========================================================================
+   1. TIỆN ÍCH DỰNG HÌNH LOW-POLY CHIBI (FLAT SHADING, KHÔNG TEXTURE)
+   ========================================================================= */
+const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({
+  color: c,
+  flatShading: true,
+  roughness: 0.82,
+  metalness: 0.04
+}, o));
+
+const sph = (r, w = 12, h = 9) => new THREE.SphereGeometry(r, w, h);
+const cyl = (rt, rb, h, s = 10) => new THREE.CylinderGeometry(rt, rb, h, s);
+const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const cone = (r, h, s = 14, open = false) => new THREE.ConeGeometry(r, h, s, 1, open);
+
+function mk(g, m, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) {
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.set(x, y, z);
+  mesh.scale.set(sx, sy, sz);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/**
+ * Dựng một mảnh vỏ cong siêu elip (squircle) 3D có độ dày:
+ * Giữ mặt trước phẳng đầy đặn bao phủ hoàn toàn 2 ống quần phía trong (không bao giờ bị quần đâm xuyên),
+ * đồng thời bo cong ở 2 mép ngoài cùng (|u| > 0.7) vào ôm sát sườn quần để không hở hông khi nhìn nghiêng.
+ */
+function buildCurvedShellGeo(
+  hwTop, hwBot, zFrontTop, zFrontBot, bendTop, bendBot,
+  height, sideZ,
+  u0, u1, v0, v1,
+  zExtraOffset, thickness, segU = 8, segV = 4
+) {
+  const positions = [];
+  const indices = [];
+
+  function pt(u, v, zOff) {
+    const y = -v * height;
+    const hw = hwTop + (hwBot - hwTop) * v;
+    const zFront = zFrontTop + (zFrontBot - zFrontTop) * v + zOff;
+    const bend = bendTop + (bendBot - bendTop) * v;
+    const absU = Math.min(1.05, Math.abs(u));
+    // Hàm mũ 2.8 giữ vùng giữa (-0.75..0.75) vồng ra trước ống quần, chỉ uốn vào ở mép biên
+    const zMag = zFront - bend * Math.pow(absU, 2.8);
+    return [
+      hw * u,
+      y,
+      sideZ * zMag
+    ];
+  }
+
+  const cols = segU + 1;
+  const rows = segV + 1;
+  for (let layer = 0; layer < 2; layer++) {
+    const zOff = layer === 0 ? zExtraOffset : (zExtraOffset - thickness);
+    for (let iv = 0; iv < rows; iv++) {
+      const v = v0 + (v1 - v0) * (iv / segV);
+      for (let iu = 0; iu < cols; iu++) {
+        const u = u0 + (u1 - u0) * (iu / segU);
+        positions.push(...pt(u, v, zOff));
+      }
+    }
+  }
+
+  const stride = cols * rows;
+  const flip = sideZ < 0;
+
+  function addQuad(a, b, c, d, invert = false) {
+    if (invert === flip) {
+      indices.push(a, c, b, a, d, c);
+    } else {
+      indices.push(a, b, c, a, c, d);
+    }
+  }
+
+  for (let iv = 0; iv < segV; iv++) {
+    for (let iu = 0; iu < segU; iu++) {
+      const i0 = iv * cols + iu;
+      const i1 = i0 + 1;
+      const i2 = i0 + cols + 1;
+      const i3 = i0 + cols;
+      addQuad(i0, i1, i2, i3, false);
+      addQuad(stride + i0, stride + i1, stride + i2, stride + i3, true);
+    }
+  }
+  for (let iu = 0; iu < segU; iu++) {
+    addQuad(iu, iu + 1, stride + iu + 1, stride + iu, true);
+    const b = segV * cols + iu;
+    addQuad(b, b + 1, stride + b + 1, stride + b, false);
+  }
+  for (let iv = 0; iv < segV; iv++) {
+    const l0 = iv * cols;
+    const l1 = (iv + 1) * cols;
+    addQuad(l0, l1, stride + l1, stride + l0, false);
+    const r0 = iv * cols + segU;
+    const r1 = (iv + 1) * cols + segU;
+    addQuad(r0, r1, stride + r1, stride + r0, true);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const flatGeo = geo.toNonIndexed();
+  geo.dispose();
+  flatGeo.computeVertexNormals();
+  return flatGeo;
+}
+
+/**
+ * Tạo tấm tà áo (trước hoặc sau) bao phủ hoàn toàn mặt trước/sau của 2 ống quần (không bị xuyên qua),
+ * đồng thời bo cong ở 2 mép biên ôm sát hông quần.
+ */
+function createAoDaiFlap(widthTop, widthBot, height, zOffset, mainMat, trimMat) {
+  const g = new THREE.Group();
+  const sideZ = zOffset >= 0 ? 1 : -1;
+  const hwTop = widthTop * 0.52;
+  const hwBot = widthBot * 0.50;
+  const zFrontTop = 0.152;
+  const zFrontBot = 0.170;
+  const bendTop = 0.044;
+  const bendBot = 0.050;
+  const thickness = 0.016;
+
+  // Tà chính ôm cong
+  const mainGeo = buildCurvedShellGeo(
+    hwTop, hwBot, zFrontTop, zFrontBot, bendTop, bendBot,
+    height, sideZ,
+    -1, 1, 0, 1,
+    0, thickness, 8, 4
+  );
+  const mainMesh = new THREE.Mesh(mainGeo, mainMat);
+  mainMesh.castShadow = true;
+  mainMesh.receiveShadow = true;
+  g.add(mainMesh);
+
+  if (trimMat) {
+    // Viền vàng dọc 2 bên tà áo
+    for (const s of [-1, 1]) {
+      const uStart = s < 0 ? -1.03 : 0.85;
+      const uEnd   = s < 0 ? -0.85 : 1.03;
+      const sideTrimGeo = buildCurvedShellGeo(
+        hwTop, hwBot, zFrontTop, zFrontBot, bendTop, bendBot,
+        height, sideZ,
+        uStart, uEnd, 0.02, 1.01,
+        0.004, thickness + 0.005, 2, 4
+      );
+      const sideTrimMesh = new THREE.Mesh(sideTrimGeo, trimMat);
+      sideTrimMesh.castShadow = true;
+      sideTrimMesh.receiveShadow = true;
+      g.add(sideTrimMesh);
+    }
+    // Viền vàng ngang gấu áo dưới cùng
+    const botTrimGeo = buildCurvedShellGeo(
+      hwTop, hwBot, zFrontTop, zFrontBot, bendTop, bendBot,
+      height, sideZ,
+      -1.03, 1.03, 0.89, 1.02,
+      0.005, thickness + 0.006, 8, 1
+    );
+    const botTrimMesh = new THREE.Mesh(botTrimGeo, trimMat);
+    botTrimMesh.castShadow = true;
+    botTrimMesh.receiveShadow = true;
+    g.add(botTrimMesh);
+  }
+  return g;
+}
+
+/**
+ * Tạo dải lụa vàng vắt chéo ngực phẳng mượt ôm sát thân trước Áo Dài (như ảnh mẫu)
+ */
+function createDiagonalChestSash(mat, secondLineMat) {
+  const g = new THREE.Group();
+  // Dải chéo chính đi từ dưới cổ phải (x=0.04, y=1.15) xuống hông trái (x=-0.21, y=0.80)
+  const pts = [
+    new THREE.Vector3( 0.08, 1.16, 0.132),
+    new THREE.Vector3( 0.01, 1.07, 0.156),
+    new THREE.Vector3(-0.09, 0.96, 0.162),
+    new THREE.Vector3(-0.18, 0.85, 0.146),
+    new THREE.Vector3(-0.23, 0.77, 0.095)
+  ];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = mk(new THREE.TubeGeometry(curve, 16, 0.034, 6, false), mat);
+  tube.scale.z = 0.38; // Ép phẳng ôm sát ngực, không bị phồng như xúc xích
+  tube.position.z = 0.088;
+  g.add(tube);
+
+  // Đường viền chỉ vàng mảnh song song phía trên (như cổ áo giao lĩnh / nhật bình)
+  if (secondLineMat) {
+    const pts2 = [
+      new THREE.Vector3( 0.05, 1.18, 0.132),
+      new THREE.Vector3(-0.03, 1.10, 0.154),
+      new THREE.Vector3(-0.13, 1.00, 0.156),
+      new THREE.Vector3(-0.21, 0.91, 0.138)
+    ];
+    const curve2 = new THREE.CatmullRomCurve3(pts2);
+    const tube2 = mk(new THREE.TubeGeometry(curve2, 12, 0.010, 5, false), secondLineMat);
+    tube2.scale.z = 0.4;
+    tube2.position.z = 0.088;
+    g.add(tube2);
+  }
+  return g;
+}
+
+/* =========================================================================
+   2. THÔNG TIN CẤU HÌNH 9 QUỐC GIA TRONG VẠN CẢNH THIỀN TỰ
+   ========================================================================= */
+const COUNTRY_CONFIGS = {
+  vietnam: {
+    title: '🇻🇳 Việt Nam — Áo Dài Lam Ngọc & Nón Lá',
+    desc: 'Cổ tàu cao, dải lụa vàng chéo ngực, tà áo dài xẻ hông, quần lụa trắng & quai nón xanh',
+    skin: 0xf9d8be, hair: 0x18181e,
+    robe: 0x3898a2, trim: 0xe6b432, pants: 0xf4eee1, shoes: 0x2a2321,
+    blush: 0xf28d95, strap: 0x567eb5, hat: 0xf4e79e,
+    style: 'vietnam'
+  },
+  japan: {
+    title: '🇯🇵 Nhật Bản — Kimono Anh Đào & Nón Kasa',
+    desc: 'Áo Kimono vạt chéo cổ trắng Juban, đai lưng Obi thắt bản lớn, tay áo rộng & nón Kasa tre',
+    skin: 0xfbe0c8, hair: 0x16151c,
+    robe: 0x3b4d6b, trim: 0xf2a6b8, pants: 0xf7f4ed, shoes: 0x3a2a1d,
+    blush: 0xf4929c, strap: 0xd95f76, hat: 0xe8cf96,
+    style: 'japan'
+  },
+  thailand: {
+    title: '🇹🇭 Thái Lan — Cổ Phục Chut Thai Hoàng Kim',
+    desc: 'Váy Sinh lụa cam vàng, dải lụa Sabai vắt chéo vai rủ tà & vương miện Chada mạ vàng',
+    skin: 0xf2c8a2, hair: 0x1a1618,
+    robe: 0xe87a1e, trim: 0xf5c438, pants: 0xd45b12, shoes: 0x5c3214,
+    blush: 0xed8585, strap: 0xf5c438, hat: 0xf5c438,
+    style: 'thailand'
+  },
+  korea: {
+    title: '🇰🇷 Hàn Quốc — Hanbok Truyền Thống & Mũ Gat',
+    desc: 'Áo khoác ngắn Jeogori xanh ngọc, nơ ngực Goreum, chân váy Chima xếp phồng & mũ Gat đen',
+    skin: 0xfce2ce, hair: 0x18161a,
+    robe: 0x6c9ab0, trim: 0xf5ece2, pants: 0xd96b7e, shoes: 0x2b3040,
+    blush: 0xf595a0, strap: 0x26262b, hat: 0x1c1c22,
+    style: 'korea'
+  },
+  taiwan: {
+    title: '🇹🇼 Đài Loan — Lễ Phục Đường Trang Cổ Điển',
+    desc: 'Áo Đường trang xanh lục bảo, viền gấm vàng kim, nút thắt hoa mai & mũ lễ truyền thống',
+    skin: 0xf7d6ba, hair: 0x1a181e,
+    robe: 0x2e6875, trim: 0xe5ae38, pants: 0xf5efdc, shoes: 0x2c2826,
+    blush: 0xf08a92, strap: 0xc93b3b, hat: 0x23384d,
+    style: 'taiwan'
+  },
+  singapore: {
+    title: '🇸🇬 Singapore — Nyonya Kebaya Peranakan',
+    desc: 'Áo Kebaya ngọc lục bảo viền thêu cam san hô, chân váy Sarong Batik & trâm cài tóc vàng',
+    skin: 0xf6d3b6, hair: 0x1c181b,
+    robe: 0x2ca393, trim: 0xf07b5e, pants: 0xf7f1e3, shoes: 0x362822,
+    blush: 0xf28b92, strap: 0xf0b840, hat: 0xf0b840,
+    style: 'singapore'
+  },
+  india: {
+    title: '🇮🇳 Ấn Độ — Sari & Kurta Đỏ Son Hoàng Gia',
+    desc: 'Trang phục đỏ son viền vàng nghệ, khăn choàng Dupatta vắt vai & chấm đỏ Bindi giữa trán',
+    skin: 0xdfb088, hair: 0x161215,
+    robe: 0xc22532, trim: 0xf7c844, pants: 0xf5a642, shoes: 0x522210,
+    blush: 0xe37878, strap: 0xf7c844, hat: 0xf7c844,
+    style: 'india'
+  },
+  tibet: {
+    title: '🏔️ Tây Tạng — Áo Chuba & Tạp Dề Ngũ Sắc Pangden',
+    desc: 'Áo choàng Chuba đỏ tía, tạp dề sọc ngũ sắc Pangden trước bụng & mũ lông vàng cao nguyên',
+    skin: 0xeabf98, hair: 0x181416,
+    robe: 0x7c1f8c, trim: 0xf7c128, pants: 0x9e1922, shoes: 0x3b124f,
+    blush: 0xeb8088, strap: 0xe84878, hat: 0xf7c128,
+    style: 'tibet'
+  },
+  western: {
+    title: '🌍 Phương Tây — Áo Choàng Hành Hương Cổ Điển',
+    desc: 'Áo choàng Pilgrim nâu trầm, khăn choàng vai Capelet viền đồng, dây đai lưng & mũ Beret',
+    skin: 0xfce2d0, hair: 0x6e472b,
+    robe: 0x6e4e37, trim: 0xc99b68, pants: 0xf2eadf, shoes: 0x382518,
+    blush: 0xf49298, strap: 0x4a3322, hat: 0x523927,
+    style: 'western'
+  }
+};
+
+/* =========================================================================
+   3. HÀM DỰNG NHÂN VẬT CHIBI LOW-POLY (CHUẨN TỶ LỆ ẢNH MẪU)
+   ========================================================================= */
+function buildCharacter(countryKey = 'vietnam') {
+  const cfg = COUNTRY_CONFIGS[countryKey] || COUNTRY_CONFIGS.vietnam;
+  const g = new THREE.Group();
+
+  // Vật liệu có độ sáng ấm dịu đúng chất đất sét / giấy gấp 3D trong ảnh mẫu
+  const skin  = M(cfg.skin,  { roughness: 0.75 });
+  const hair  = M(cfg.hair,  { roughness: 0.85 });
+  const robe  = M(cfg.robe,  { roughness: 0.80 });
+  const trim  = M(cfg.trim,  { roughness: 0.65, metalness: 0.08 });
+  const pants = M(cfg.pants, { roughness: 0.85 });
+  const shoes = M(cfg.shoes, { roughness: 0.85 });
+  const dark  = M(0x181514,  { roughness: 0.4 });
+  const blush = M(cfg.blush, { roughness: 0.85 });
+  const strap = M(cfg.strap, { roughness: 0.75 });
+  const hatMat = M(cfg.hat,  { roughness: 0.78, side: THREE.DoubleSide });
+
+  /* ----- A. ĐÔI CHÂN + KHỐI HÔNG QUẦN LIỀN MẠCH + QUẦN ỐNG RỘNG + GIÀY HÀI ----- */
+  // Khối hông quần (Pelvis) nằm gọn trong lòng tà áo, nối liền từ thân áo xuống 2 ống quần không hở hông
+  const pelvis = mk(cyl(0.185, 0.195, 0.22, 12), pants, 0, 0.58, 0, 1, 1, 0.56);
+  g.add(pelvis);
+
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const l = new THREE.Group();
+    l.position.set(s * 0.115, 0.58, 0);
+
+    // Chỏm cầu khớp hông gọn chiều Z giúp khi bước chân không bao giờ lộ khe hở hay đâm qua tà
+    l.add(mk(sph(0.102, 8, 6), pants, 0, 0, 0, 0.92, 0.82, 0.76));
+
+    // Ống quần lụa suông rộng 8 cạnh (rộng chiều ngang X để lộ đẹp ở khe xẻ tà, gọn chiều Z để nằm hoàn toàn trong tà áo)
+    const pantLeg = mk(cyl(0.108, 0.146, 0.50, 8), pants, 0, -0.24, 0, 1, 1, 0.78);
+    l.add(pantLeg);
+
+    // Đôi hài đen mũi tròn
+    const shoe = mk(sph(0.088, 8, 6), shoes, 0, -0.52, 0.035, 0.95, 0.52, 1.42);
+    l.add(shoe);
+
+    g.add(l);
+    legs.push(l);
+  }
+
+  /* ----- B. THÂN ÁO & TRANG PHỤC ĐẶC TRƯNG TỪNG NƯỚC ----- */
+  const torso = new THREE.Group();
+  g.add(torso);
+
+  // Thân áo trên (ôm gọn từ ngực y=1.20 xuống qua eo y=0.60, trùng khít với đỉnh tà áo và khối hông)
+  torso.add(mk(cyl(0.175, 0.228, 0.60, 12), robe, 0, 0.90, 0, 1, 1, 0.668));
+
+  // Cổ áo đứng (Cổ tàu) + viền vàng mảnh trên cổ
+  torso.add(mk(cyl(0.092, 0.105, 0.08, 10), robe, 0, 1.20, 0, 1, 1, 0.82));
+  torso.add(mk(cyl(0.096, 0.106, 0.022, 10), trim, 0, 1.175, 0, 1, 1, 0.83));
+
+  // Tùy biến chi tiết thân áo theo quốc gia (Gốc xoay tà áo đặt ngay tại đường eo y = 0.62)
+  const frontFlapGroup = new THREE.Group();
+  const backFlapGroup = new THREE.Group();
+  frontFlapGroup.position.set(0, 0.62, 0);
+  backFlapGroup.position.set(0, 0.62, 0);
+  torso.add(frontFlapGroup);
+  torso.add(backFlapGroup);
+
+  if (cfg.style === 'vietnam' || cfg.style === 'taiwan') {
+    // Dải lụa vàng vắt chéo ngực phẳng mượt đúng chuẩn ảnh mẫu
+    torso.add(createDiagonalChestSash(trim, trim));
+
+    // Tà áo dài trước và sau xẻ tà 2 bên hông để lộ quần trắng bên trong
+    frontFlapGroup.add(createAoDaiFlap(0.36, 0.42, 0.48,  0.142, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.36, 0.42, 0.48, -0.142, robe, trim));
+
+    if (cfg.style === 'taiwan') {
+      // Hàng cúc thắt hoa mai (Bàn khấu)
+      for (let i = 0; i < 3; i++) {
+        torso.add(mk(sph(0.018, 6, 5), M(0xc93b3b), -0.04 - i * 0.06, 1.08 - i * 0.08, 0.155));
+      }
+    }
+  } else if (cfg.style === 'japan') {
+    // Cổ áo Kimono chữ V trắng (Juban) + Đai lưng Obi to bản
+    torso.add(createDiagonalChestSash(M(0xffffff), trim));
+    torso.add(mk(cyl(0.228, 0.232, 0.18, 10), trim, 0, 0.78, 0, 1, 1, 0.68));
+    // Nơ Taiko sau lưng
+    torso.add(mk(box(0.24, 0.20, 0.09), trim, 0, 0.80, -0.17));
+    frontFlapGroup.add(createAoDaiFlap(0.38, 0.40, 0.48,  0.14, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.38, 0.40, 0.48, -0.14, robe, trim));
+  } else if (cfg.style === 'korea') {
+    // Hanbok: Áo Jeogori ngắn + Váy Chima phồng rộng hình chuông
+    torso.add(createDiagonalChestSash(trim, strap));
+    const chima = mk(cyl(0.21, 0.36, 0.64, 12), M(cfg.pants), 0, 0.56, 0, 1, 1, 0.78);
+    torso.add(chima);
+    torso.add(mk(cyl(0.362, 0.365, 0.04, 12), trim, 0, 0.26, 0, 1, 1, 0.78));
+  } else if (cfg.style === 'thailand') {
+    // Dải Sabai vàng kim vắt chéo vai + Váy Sinh ôm
+    torso.add(createDiagonalChestSash(trim, null));
+    frontFlapGroup.add(createAoDaiFlap(0.36, 0.38, 0.48,  0.14, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.36, 0.38, 0.48, -0.14, robe, trim));
+  } else if (cfg.style === 'tibet') {
+    // Áo Chuba + Tạp dề Pangden sọc ngũ sắc phía trước
+    torso.add(createDiagonalChestSash(trim, strap));
+    frontFlapGroup.add(createAoDaiFlap(0.34, 0.38, 0.48,  0.145, M(0xf5c128), M(0xc92a3a)));
+    backFlapGroup.add(createAoDaiFlap(0.38, 0.42, 0.48, -0.14, robe, trim));
+  } else if (cfg.style === 'india') {
+    // Khăn Dupatta vàng vắt chéo + tà Kurta đỏ viền vàng
+    torso.add(createDiagonalChestSash(trim, null));
+    frontFlapGroup.add(createAoDaiFlap(0.36, 0.43, 0.48,  0.142, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.36, 0.43, 0.48, -0.142, robe, trim));
+  } else if (cfg.style === 'singapore') {
+    // Kebaya viền ren cam san hô giữa ngực
+    torso.add(mk(box(0.05, 0.44, 0.02), trim, 0, 0.94, 0.15));
+    frontFlapGroup.add(createAoDaiFlap(0.36, 0.40, 0.46,  0.14, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.36, 0.40, 0.46, -0.14, robe, trim));
+  } else {
+    // Western: Áo choàng Pilgrim + Khăn choàng vai Capelet
+    torso.add(mk(cone(0.32, 0.26, 10), trim, 0, 1.08, 0, 1, 1, 0.72));
+    frontFlapGroup.add(createAoDaiFlap(0.36, 0.42, 0.48,  0.14, robe, trim));
+    backFlapGroup.add(createAoDaiFlap(0.36, 0.42, 0.48, -0.14, robe, trim));
+  }
+
+  // Cổ nhân vật
+  torso.add(mk(cyl(0.068, 0.078, 0.10, 8), skin, 0, 1.25, 0));
+
+  /* ----- C. HAI TAY ÁO DÀI XUÔI TỰ NHIÊN (KHÔNG BỊ U VAI) ----- */
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const a = new THREE.Group();
+    // Đặt tâm xoay ẩn vào trong bờ vai để vai xuôi mượt như ảnh mẫu
+    a.position.set(s * 0.195, 1.13, 0);
+    a.rotation.z = s * 0.30;
+
+    // Đầu vai bo nhỏ mượt
+    a.add(mk(sph(0.072, 8, 6), robe, 0, -0.02, 0, 0.95, 1.0, 0.85));
+
+    // Ống tay áo hơi loe nhẹ về phía cổ tay
+    const sleeveBotR = cfg.style === 'japan' ? 0.11 : 0.088;
+    a.add(mk(cyl(0.068, sleeveBotR, 0.42, 8), robe, 0, -0.22, 0, 1, 1, 0.85));
+
+    // Viền vàng cổ tay áo
+    a.add(mk(cyl(sleeveBotR + 0.003, sleeveBotR + 0.005, 0.042, 8), trim, 0, -0.42, 0, 1, 1, 0.86));
+
+    // Bàn tay mũm mĩm + ngón cái nhỏ
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.49, 0);
+    hand.add(mk(sph(0.058, 8, 6), skin, 0, 0, 0, 0.92, 1.12, 0.85));
+    hand.add(mk(sph(0.024, 6, 5), skin, -s * 0.042, 0.015, 0.025));
+    a.add(hand);
+
+    g.add(a);
+    arms.push(a);
+  }
+
+  /* ----- D. KHUÔN MẶT CHIBI, TÓC RẼ NGÔI & NÓN TRUYỀN THỐNG ----- */
+  const head = new THREE.Group();
+  head.position.set(0, 1.50, 0);
+  g.add(head);
+
+  // Đầu bầu dục chibi mặt phẳng đa giác mềm mại
+  head.add(mk(sph(0.34, 14, 10), skin, 0, 0, 0, 1.06, 0.94, 0.92));
+
+  // Đôi tai xinh hai bên
+  for (const s of [-1, 1]) {
+    head.add(mk(sph(0.062, 7, 6), skin, s * 0.355, -0.025, -0.01, 0.55, 0.95, 0.75));
+  }
+
+  // Đôi mắt đen láy + đốm sáng + lông mày đối xứng + má hồng đa giác
+  const eyes = [];
+  for (const s of [-1, 1]) {
+    const eye = mk(sph(0.042, 8, 6), dark, s * 0.132, -0.005, 0.295, 0.92, 1.25, 0.55);
+    head.add(eye);
+    eyes.push(eye);
+
+    // Đốm sáng trắng trong mắt
+    head.add(mk(sph(0.013, 5, 4), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 }), s * 0.132 - 0.012, 0.022, 0.322));
+
+    // Lông mày cong dịu dàng ĐỐI XỨNG hai bên (sửa lỗi lông mày lệch của bản nháp)
+    const brow = mk(new THREE.TorusGeometry(0.042, 0.008, 4, 6, Math.PI * 0.55), dark, s * 0.135, 0.088, 0.292);
+    brow.rotation.z = Math.PI * 0.22 - s * 0.08;
+    head.add(brow);
+
+    // Má hồng lục giác phẳng áp sát má
+    const cheek = mk(cyl(0.056, 0.056, 0.01, 6).rotateX(Math.PI / 2), blush, s * 0.215, -0.085, 0.258);
+    cheek.rotation.y = s * 0.48;
+    head.add(cheek);
+  }
+
+  // Mũi nhỏ xinh & miệng cười tươi tắn
+  head.add(mk(sph(0.024, 6, 5), M(0xebae8d), 0, -0.045, 0.322, 1.1, 0.85, 0.9));
+  const mouth = mk(new THREE.TorusGeometry(0.040, 0.009, 4, 8, Math.PI * 0.85), M(0xb85642), 0, -0.118, 0.298);
+  mouth.rotation.z = Math.PI * 1.075;
+  head.add(mouth);
+
+  // Chấm đỏ Bindi giữa trán cho Ấn Độ
+  if (cfg.style === 'india') {
+    head.add(mk(sph(0.016, 6, 5), M(0xd91e2a), 0, 0.065, 0.315, 1, 1, 0.4));
+  }
+
+  /* ----- E. MÁI TÓC ĐEN RẼ NGÔI GIỮA & BUÔNG SAU VAI (KHÔNG ĐÂM QUA CẰM) ----- */
+  // Chỏm tóc ôm đỉnh đầu
+  const hairCap = mk(new THREE.SphereGeometry(0.358, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.48), hair, 0, 0.02, -0.02, 1.06, 0.96, 0.95);
+  hairCap.rotation.x = -0.18;
+  head.add(hairCap);
+
+  // Hai dải tóc mái rẽ ngôi giữa ôm chéo qua trán xuống thái dương (như ảnh mẫu)
+  for (const s of [-1, 1]) {
+    const bang = mk(sph(0.18, 8, 6), hair, s * 0.175, 0.135, 0.225, 1.18, 0.58, 0.55);
+    bang.rotation.z = -s * 0.42;
+    bang.rotation.y = s * 0.32;
+    head.add(bang);
+
+    // Khối tóc xòe hai bên sau tai (đặt lùi về z = -0.12 để cằm phía trước hoàn toàn sạch sẽ)
+    const sideBob = mk(sph(0.19, 8, 7), hair, s * 0.25, -0.12, -0.12, 0.85, 1.08, 0.82);
+    head.add(sideBob);
+  }
+  // Khối tóc sau gáy
+  head.add(mk(sph(0.32, 10, 8), hair, 0, -0.09, -0.16, 1.12, 0.96, 0.72));
+
+  /* ----- F. NÓN LÁ & MŨ TRUYỀN THỐNG THEO QUỐC GIA ----- */
+  if (cfg.style === 'vietnam' || cfg.style === 'japan') {
+    // Nón lá Việt Nam (14 cạnh phẳng sắc nét) hoặc Nón Kasa Nhật
+    const hatRadius = cfg.style === 'vietnam' ? 0.68 : 0.64;
+    const hatHeight = cfg.style === 'vietnam' ? 0.56 : 0.36;
+    const nonLa = mk(cone(hatRadius, hatHeight, 14, true), hatMat, 0, 0.36, -0.02);
+    nonLa.rotation.x = -0.06; // Hơi ngửa nhẹ ra sau để lộ rõ khuôn mặt sáng
+    head.add(nonLa);
+
+    // Quai nón lụa xanh ôm dưới cằm + 2 dải dây rủ hai bên đúng chuẩn ảnh mẫu
+    const strapPts = [
+      [-0.46,  0.10, 0.08],
+      [-0.36, -0.13, 0.15],
+      [-0.18, -0.26, 0.20],
+      [ 0.00, -0.295, 0.21],
+      [ 0.18, -0.26, 0.20],
+      [ 0.36, -0.13, 0.15],
+      [ 0.46,  0.10, 0.08]
+    ].map(p => new THREE.Vector3(...p));
+    const strapCurve = new THREE.CatmullRomCurve3(strapPts);
+    head.add(mk(new THREE.TubeGeometry(strapCurve, 24, 0.012, 5, false), strap));
+
+    // Hai dải ruy-băng quai nón buông rủ ở 2 bên mép nón
+    for (const s of [-1, 1]) {
+      const ribbon = mk(box(0.022, 0.36, 0.010), strap, s * 0.47, -0.06, 0.08);
+      ribbon.rotation.z = s * 0.06;
+      head.add(ribbon);
+    }
+  } else if (cfg.style === 'thailand') {
+    // Vương miện Chada vàng kim nhọn nhiều tầng
+    head.add(mk(cyl(0.18, 0.24, 0.12, 10), trim, 0, 0.34, 0));
+    head.add(mk(cone(0.18, 0.48, 10), trim, 0, 0.62, 0));
+    head.add(mk(sph(0.04, 6, 6), trim, 0, 0.87, 0));
+  } else if (cfg.style === 'korea') {
+    // Mũ Gat đen truyền thống Hàn Quốc + quai hạt châu
+    head.add(mk(cyl(0.56, 0.56, 0.025, 16), hatMat, 0, 0.32, 0));
+    head.add(mk(cyl(0.19, 0.21, 0.26, 12), hatMat, 0, 0.45, 0));
+  } else if (cfg.style === 'taiwan') {
+    // Mũ lễ Đường trang tròn có nút ngọc đỏ trên đỉnh
+    head.add(mk(cyl(0.30, 0.33, 0.16, 12), hatMat, 0, 0.33, 0));
+    head.add(mk(sph(0.04, 8, 6), strap, 0, 0.43, 0));
+  } else if (cfg.style === 'singapore' || cfg.style === 'india') {
+    // Trâm hoa vàng kim cài trên đỉnh tóc
+    head.add(mk(cyl(0.22, 0.26, 0.08, 10), trim, 0, 0.32, 0));
+    for (let i = -2; i <= 2; i++) {
+      head.add(mk(sph(0.032, 6, 5), trim, i * 0.06, 0.37, 0.16 - Math.abs(i) * 0.02));
+    }
+  } else if (cfg.style === 'tibet') {
+    // Mũ lông vàng Tây Tạng vành nâu
+    head.add(mk(cyl(0.34, 0.36, 0.14, 12), M(0x4a2512), 0, 0.31, 0));
+    head.add(mk(sph(0.31, 10, 8), hatMat, 0, 0.38, 0, 1, 0.65, 1));
+  } else {
+    // Mũ Beret phương Tây
+    head.add(mk(sph(0.33, 12, 8), hatMat, 0.03, 0.32, 0, 1.08, 0.42, 1.05));
+  }
+
+  g.userData = { legs, arms, head, eyes, frontFlapGroup, backFlapGroup };
+  return g;
+}
+
+/* =========================================================================
+   4. KHỞI TẠO CẢNH 3D, ÁNH SÁNG STUDIO ẤM & ĐIỀU KHIỂN TƯƠNG TÁC
+   ========================================================================= */
+const cv = document.getElementById('c');
+const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+R.shadowMap.enabled = true;
+R.shadowMap.type = THREE.PCFSoftShadowMap;
+R.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+R.outputEncoding = THREE.sRGBEncoding;
+
+const S = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
+
+// Hệ thống ánh sáng ấm dịu tạo khối đa giác mềm như ảnh mẫu
+const hemi = new THREE.HemisphereLight(0xfff8eb, 0xd8be94, 0.92);
+S.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xfff5e4, 0.78);
+sun.position.set(2.8, 4.2, 3.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.radius = 5;
+Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 3, bottom: -2 });
+S.add(sun);
+
+// Đèn phụ làm dịu bóng dưới cằm (Fill light)
+const fillLight = new THREE.DirectionalLight(0xffeedd, 0.32);
+fillLight.position.set(-2.5, 1.5, 2.5);
+S.add(fillLight);
+
+// Mặt đất nhận bóng mềm
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20),
+  new THREE.ShadowMaterial({ opacity: 0.20 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+S.add(ground);
+
+// Quản lý nhân vật hiện tại
+let currentCountry = 'vietnam';
+let ch = buildCharacter(currentCountry);
+S.add(ch);
+
+// Trạng thái hoạt ảnh
+let mode = 'idle'; // 'idle' | 'walk' | 'bow' | 'meditate'
+let spin = false;
+let rotY = 0;
+let zoom = 1;
+let drag = false;
+let lx = 0;
+
+// Gắn sự kiện nút chọn quốc gia
+const countryBtns = document.querySelectorAll('#country-bar button');
+const titleEl = document.getElementById('char-title');
+const descEl = document.getElementById('char-desc');
+
+countryBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    countryBtns.forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    currentCountry = btn.getAttribute('data-country');
+    const cfg = COUNTRY_CONFIGS[currentCountry];
+    titleEl.textContent = cfg.title;
+    descEl.textContent = cfg.desc;
+
+    const prevRot = ch.rotation.y;
+    S.remove(ch);
+    ch = buildCharacter(currentCountry);
+    ch.rotation.y = prevRot;
+    S.add(ch);
+  });
+});
+
+// Gắn sự kiện nút hành động
+const bw = document.getElementById('bw');
+const bb = document.getElementById('bb');
+const bm = document.getElementById('bm');
+const br = document.getElementById('br');
+
+function setActionMode(newMode) {
+  mode = (mode === newMode) ? 'idle' : newMode;
+  bw.classList.toggle('on', mode === 'walk');
+  bb.classList.toggle('on', mode === 'bow');
+  bm.classList.toggle('on', mode === 'meditate');
+}
+
+bw.onclick = () => setActionMode('walk');
+bb.onclick = () => setActionMode('bow');
+bm.onclick = () => setActionMode('meditate');
+br.onclick = () => {
+  spin = !spin;
+  br.classList.toggle('on', spin);
+};
+
+// Xoay & Zoom bằng chuột / cảm ứng
+cv.addEventListener('pointerdown', e => {
+  drag = true;
+  lx = e.clientX;
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointerup', () => drag = false);
+cv.addEventListener('pointermove', e => {
+  if (drag) {
+    rotY += (e.clientX - lx) * 0.01;
+    lx = e.clientX;
+  }
+});
+cv.addEventListener('wheel', e => {
+  zoom = Math.min(1.5, Math.max(0.55, zoom + e.deltaY * 0.001));
+}, { passive: true });
+
+let dist = 6.8;
+function fit() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  R.setSize(w, h);
+  cam.aspect = w / h;
+  cam.updateProjectionMatrix();
+  const k = 2 * Math.tan(THREE.MathUtils.degToRad(14));
+  dist = Math.max(2.1 / (k * cam.aspect), 2.85 / k);
+}
+window.addEventListener('resize', fit);
+fit();
+
+/* =========================================================================
+   5. VÒNG LẶP HOẠT ẢNH (IDLE, ĐI BỘ, CHẮP TAY LỄ PHẬT, TỌA THIỀN)
+   ========================================================================= */
+function loop(t) {
+  requestAnimationFrame(loop);
+  t /= 1000;
+
+  if (spin && !drag) rotY += 0.012;
+  ch.rotation.y = rotY;
+
+  const u = ch.userData;
+
+  if (mode === 'walk') {
+    const sw = Math.sin(t * 6.5) * 0.28;
+    u.legs[0].rotation.x = sw;
+    u.legs[1].rotation.x = -sw;
+    u.legs[0].position.y = 0.58;
+    u.legs[1].position.y = 0.58;
+
+    u.arms[0].rotation.x = -sw * 0.95;
+    u.arms[1].rotation.x = sw * 0.95;
+    u.arms[0].rotation.z = -0.30;
+    u.arms[1].rotation.z =  0.30;
+
+    // Tà áo trước & sau mở ra đồng bộ theo góc bước chân tiến/lùi để ống quần không bao giờ đâm xuyên qua tà
+    u.frontFlapGroup.rotation.x = -(Math.abs(sw) * 0.95 + 0.04);
+    u.backFlapGroup.rotation.x  =  (Math.abs(sw) * 0.95 + 0.04);
+
+    ch.position.y = Math.abs(Math.sin(t * 6.5)) * 0.038;
+    u.head.position.y = 1.50 + Math.sin(t * 13) * 0.01;
+    u.head.rotation.x = 0;
+    u.head.rotation.z = Math.sin(t * 3.25) * 0.03;
+  } else if (mode === 'bow') {
+    // Tư thế chắp tay trước ngực và cúi đầu lễ Phật
+    const bowCycle = (Math.sin(t * 2.2) + 1) * 0.5; // 0..1
+    u.legs[0].rotation.x = 0;
+    u.legs[1].rotation.x = 0;
+    u.arms[0].rotation.x = -0.85;
+    u.arms[1].rotation.x = -0.85;
+    u.arms[0].rotation.z =  0.22;
+    u.arms[1].rotation.z = -0.22;
+
+    u.frontFlapGroup.rotation.x = 0;
+    u.backFlapGroup.rotation.x = 0;
+    ch.position.y = 0;
+    u.head.position.y = 1.49 - bowCycle * 0.03;
+    u.head.rotation.x = 0.12 + bowCycle * 0.22;
+    u.head.rotation.z = 0;
+  } else if (mode === 'meditate') {
+    // Tư thế ngồi thiền định trên bồ đoàn, nhịp thở 432Hz êm dịu
+    const breath = Math.sin(t * 1.8) * 0.012;
+    ch.position.y = -0.24 + breath;
+    u.legs[0].rotation.x = -1.25;
+    u.legs[1].rotation.x = -1.25;
+    u.arms[0].rotation.x = -0.55;
+    u.arms[1].rotation.x = -0.55;
+    u.arms[0].rotation.z =  0.15;
+    u.arms[1].rotation.z = -0.15;
+    u.frontFlapGroup.rotation.x = -0.35;
+    u.backFlapGroup.rotation.x =  0.15;
+    u.head.position.y = 1.50 + breath * 0.5;
+    u.head.rotation.x = 0.06;
+    u.head.rotation.z = 0;
+  } else {
+    // Đứng yên thở nhẹ nhàng (Idle)
+    u.legs[0].rotation.x = 0;
+    u.legs[1].rotation.x = 0;
+    u.arms[0].rotation.x = 0;
+    u.arms[1].rotation.x = 0;
+    u.arms[0].rotation.z = -0.30;
+    u.arms[1].rotation.z =  0.30;
+    u.frontFlapGroup.rotation.x = 0;
+    u.backFlapGroup.rotation.x = 0;
+    ch.position.y = 0;
+    u.head.position.y = 1.50 + Math.sin(t * 2) * 0.008;
+    u.head.rotation.x = 0;
+    u.head.rotation.z = Math.sin(t * 1.2) * 0.02;
+  }
+
+  // Nháy mắt tự nhiên (khi thiền thì nhắm mắt tịnh tâm)
+  const blink = mode === 'meditate' ? 0.12 : ((t % 3.6) < 0.12 ? 0.12 : 1);
+  u.eyes.forEach(e => e.scale.y = 1.25 * blink);
+
+  cam.position.set(0, 1.18, dist * zoom);
+  cam.lookAt(0, 1.02, 0);
+  R.render(S, cam);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
+

@@ -1,0 +1,215 @@
+{
+  "version": "2.0.0",
+  "disclaimer": "Chỉ mang tính giải trí — Nội dung chiêm bốc văn hóa dân gian & hướng dẫn chánh niệm, không thay thế tư vấn y khoa hay tài chính.",
+  "baseProbabilities": {
+    "dai_cat": 0.10,
+    "cat": 0.30,
+    "binh": 0.30,
+    "hung": 0.20,
+    "dai_hung": 0.10
+  },
+  "relationAdjustments": {
+    "tuong_sinh": {
+      "dai_cat": 0.04,
+      "cat": 0.06,
+      "binh": -0.02,
+      "hung": -0.05,
+      "dai_hung": -0.03
+    },
+    "binh_hoa": {
+      "dai_cat": 0.00,
+      "cat": 0.00,
+      "binh": 0.00,
+      "hung": 0.00,
+      "dai_hung": 0.00
+    },
+    "tuong_khac": {
+      "dai_cat": -0.03,
+      "cat": -0.06,
+      "binh": -0.01,
+      "hung": 0.06,
+      "dai_hung": 0.04
+    }
+  },
+  "minCombinedBadRate": 0.15,
+  "dailyFreeDrawsPerSubject": 1,
+  "extraDrawCostMc": 50,
+  "maxHistoryRecords": 30,
+  "avoidRecentCount": 3,
+  "mucMetadata": {
+    "dai_cat": {
+      "label": "Đại Cát",
+      "sealText": "ĐẠI CÁT",
+      "badgeColor": "gold"
+    },
+    "cat": {
+      "label": "Cát",
+      "sealText": "CÁT",
+      "badgeColor": "emerald"
+    },
+    "binh": {
+      "label": "Bình",
+      "sealText": "BÌNH",
+      "badgeColor": "sky"
+    },
+    "hung": {
+      "label": "Hung",
+      "sealText": "HUNG",
+      "badgeColor": "amber"
+    },
+    "dai_hung": {
+      "label": "Đại Hung",
+      "sealText": "ĐẠI HUNG",
+      "badgeColor": "crimson"
+    }
+  },
+  "topicLabels": {
+    "tong_quan": "Bổn Mạng & Tổng Quan Vận Trình",
+    "su_nghiep": "Công Danh & Sự Nghiệp",
+    "tai_loc": "Tài Lộc & Kinh Doanh",
+    "tinh_duyen": "Tình Duyên & Tri Kỷ",
+    "gia_dao": "Gia Đạo & Con Cái",
+    "suc_khoe": "An Khang & Thân Tâm",
+    "thi_cu": "Học Vấn & Khoa Cử",
+    "xuat_hanh": "Xuất Hành & Di Chuyển"
+  },
+  "keywordMap": [
+    {
+      "tag": "tai_loc",
+      "keywords": ["tien", "tai loc", "luong", "kinh doanh", "buon ban", "no", "dau tu", "von", "loi nhuan", "giau", "mua ban", "dat dai"]
+    },
+    {
+      "tag": "tinh_duyen",
+      "keywords": ["tinh", "yeu", "duyen", "nguoi yeu", "vo chong", "hon nhan", "cuoi", "chia tay", "quay lai", "crush", "tri ky", "hen ho"]
+    },
+    {
+      "tag": "suc_khoe",
+      "keywords": ["benh", "khoe", "suc khoe", "om", "dau", "ngu", "met", "kham", "binh an", "than tam", "thuoc", "duong sinh"]
+    },
+    {
+      "tag": "thi_cu",
+      "keywords": ["thi", "hoc", "diem", "do", "truot", "tot nghiep", "chung chi", "khoa cu", "hoc bổng", "luan van"]
+    },
+    {
+      "tag": "su_nghiep",
+      "keywords": ["viec", "cong viec", "su nghiep", "thang chuc", "chuyen viec", "xin viec", "sep", "dong nghiep", "cong ty", "du an", "khoi nghiep"]
+    },
+    {
+      "tag": "gia_dao",
+      "keywords": ["con", "con cai", "cau tu", "gia dinh", "gia dao", "cha me", "nha cua", "to am", "anh em"]
+    },
+    {
+      "tag": "xuat_hanh",
+      "keywords": ["di xa", "di choi", "xuat hanh", "du lich", "chuyen nha", "xuat ngoai", "di chuyen", "thuong lo", "ve que", "cong tac", "khoi hanh", "lich trinh"]
+    }
+  ],
+  "presetQuestions": {
+    "xin_xam": [
+      { "id": "xx_q1", "text": "Vận trình bổn mạng và bình an trong tháng này ra sao?", "tag": "tong_quan" },
+      { "id": "xx_q2", "text": "Công việc và dự định sự nghiệp sắp tới có thuận lợi không?", "tag": "su_nghiep" },
+      { "id": "xx_q3", "text": "Tài lộc và kế hoạch tài chính hiện tại nên tiến hay thủ?", "tag": "tai_loc" },
+      { "id": "xx_q4", "text": "Chuyện tình cảm và nhân duyên đang mong cầu sẽ đi về đâu?", "tag": "tinh_duyen" },
+      { "id": "xx_q5", "text": "Gia đạo và hòa khí trong nhà thời gian tới thế nào?", "tag": "gia_dao" },
+      { "id": "xx_q6", "text": "Kỳ thi hoặc việc học tập nâng cao sắp tới có đạt kết quả tốt?", "tag": "thi_cu" },
+      { "id": "xx_q7", "text": "Chuyến xuất hành hoặc thay đổi chỗ ở sắp tới có bình an?", "tag": "xuat_hanh" }
+    ],
+    "to_duyen": [
+      { "id": "td_q1", "text": "Nhân duyên giữa tôi và người ấy có tương hợp lâu dài không?", "tag": "tinh_duyen" },
+      { "id": "td_q2", "text": "Bao giờ nhân duyên lành mới thực sự mỉm cười với tôi?", "tag": "tinh_duyen" },
+      { "id": "td_q3", "text": "Làm sao hóa giải những hiểu lầm và khoảng cách hiện tại giữa hai người?", "tag": "tinh_duyen" },
+      { "id": "td_q4", "text": "Hai tuổi kết hợp vun đắp tài chính và xây dựng tổ ấm có thuận hòa?", "tag": "gia_dao" },
+      { "id": "td_q5", "text": "Tôi nên buông bỏ chuyện cũ hay kiên nhẫn chờ đợi thêm một cơ hội?", "tag": "tinh_duyen" },
+      { "id": "td_q6", "text": "Gia đình hai bên và chuyện trăm năm sắp tới có được êm đẹp?", "tag": "gia_dao" },
+      { "id": "td_q7", "text": "Làm thế nào để giữ lửa yêu thương và sự bình yên trong hôn nhân?", "tag": "tinh_duyen" }
+    ],
+    "cau_tu": [
+      { "id": "ct_q1", "text": "Gia đạo mong cầu tin vui con cái trong năm nay cần chuẩn bị gì?", "tag": "gia_dao" },
+      { "id": "ct_q2", "text": "Hòa khí vợ chồng và sự gắn kết tổ ấm hiện tại ra sao?", "tag": "gia_dao" },
+      { "id": "ct_q3", "text": "Việc nuôi dạy và đồng hành cùng con trẻ cần lưu tâm điều gì?", "tag": "gia_dao" },
+      { "id": "ct_q4", "text": "Chế độ sinh hoạt và nghỉ ngơi của gia đình nên điều chỉnh thế nào?", "tag": "suc_khoe" },
+      { "id": "ct_q5", "text": "Tâm thế nào giúp hai vợ chồng an nhiên đón nhận duyên lành?", "tag": "tong_quan" },
+      { "id": "ct_q6", "text": "Việc học tập và rèn luyện nhân cách của con cái sắp tới thế nào?", "tag": "thi_cu" },
+      { "id": "ct_q7", "text": "Làm sao để dung hòa quan điểm nuôi dạy con giữa các thế hệ trong nhà?", "tag": "gia_dao" }
+    ],
+    "chieu_tai": [
+      { "id": "cht_q1", "text": "Vận khí kinh doanh và buôn bán trong giai đoạn này ra sao?", "tag": "tai_loc" },
+      { "id": "cht_q2", "text": "Có nên mở rộng quy mô hoặc xuống vốn dự án mới lúc này?", "tag": "tai_loc" },
+      { "id": "cht_q3", "text": "Việc hợp tác làm ăn với đối tác hiện tại cần lưu ý điểm gì?", "tag": "su_nghiep" },
+      { "id": "cht_q4", "text": "Cách quản trị dòng tiền và phòng tránh thất thoát năm nay?", "tag": "tai_loc" },
+      { "id": "cht_q5", "text": "Hướng phát triển nghề nghiệp phụ để tăng thu nhập bền vững?", "tag": "su_nghiep" },
+      { "id": "cht_q6", "text": "Khoản công nợ hoặc thanh toán đang chờ có sớm thu hồi được không?", "tag": "tai_loc" },
+      { "id": "cht_q7", "text": "Làm thế nào để cân bằng giữa phát triển tài chính và giữ gìn phúc đức?", "tag": "tong_quan" }
+    ],
+    "duoc_su": [
+      { "id": "ds_q1", "text": "Trạng thái cân bằng thân - tâm - trí hiện tại của tôi ra sao?", "tag": "suc_khoe" },
+      { "id": "ds_q2", "text": "Làm sao để cải thiện giấc ngủ và phục hồi năng lượng mỗi ngày?", "tag": "suc_khoe" },
+      { "id": "ds_q3", "text": "Sự bình an và sức khỏe của cha mẹ, người thân trong gia đình?", "tag": "gia_dao" },
+      { "id": "ds_q4", "text": "Thói quen sinh hoạt nào tôi cần thay đổi để sống khỏe lâu dài?", "tag": "suc_khoe" },
+      { "id": "ds_q5", "text": "Cách giữ tâm thanh tịnh trước áp lực công việc quá tải?", "tag": "tong_quan" },
+      { "id": "ds_q6", "text": "Khi thời tiết giao mùa, gia đình cần lưu ý chăm sóc cơ thể thế nào?", "tag": "suc_khoe" },
+      { "id": "ds_q7", "text": "Phương pháp thiền thở nào phù hợp để giải tỏa căng thẳng mỗi tối?", "tag": "suc_khoe" }
+    ],
+    "dang_sao": [
+      { "id": "sao_q1", "text": "Sao chiếu mệnh năm nay của tôi tác động thế nào đến vận trình?", "tag": "tong_quan" },
+      { "id": "sao_q2", "text": "Tháng nào trong năm cần cẩn trọng lời ăn tiếng nói và đi lại?", "tag": "xuat_hanh" },
+      { "id": "sao_q3", "text": "Cách tu tập và làm việc thiện để nghênh cát tinh, giải hung tinh?", "tag": "tong_quan" },
+      { "id": "sao_q4", "text": "Vận hạn tài chính và công việc dưới sao chiếu mệnh năm nay?", "tag": "tai_loc" },
+      { "id": "sao_q5", "text": "Gia đạo và bình an nội tâm trong năm có điểm gì cần lưu ý?", "tag": "gia_dao" },
+      { "id": "sao_q6", "text": "Chuyến đi xa hoặc thay đổi công việc trong năm nay có thuận lợi?", "tag": "su_nghiep" },
+      { "id": "sao_q7", "text": "Làm sao giữ tâm bình an không mê tín trước những lời đồn về sao hạn?", "tag": "tong_quan" }
+    ]
+  },
+  "dailyEffects": {
+    "dai_cat": {
+      "type": "buff",
+      "id": "buff_dai_cat",
+      "name": "Linh Khí Đại Cát (+15% Công Đức Thiền)",
+      "description": "Tâm thần sáng suốt, hào quang cát tường hộ trì. Tăng +15% điểm Tâm An khi tọa thiền và dâng hương trong ngày.",
+      "statModifier": { "karmaBonusPct": 15, "meditationCalmBonusPct": 10 },
+      "remediationQuest": null
+    },
+    "cat": {
+      "type": "buff",
+      "id": "buff_cat",
+      "name": "Thanh Phong Cát Tường (+8% Tâm An)",
+      "description": "Khí vận hanh thông, bước chân nhẹ nhàng. Tăng +8% điểm Tâm An khi hành lễ và tọa thiền trong ngày.",
+      "statModifier": { "karmaBonusPct": 8, "meditationCalmBonusPct": 5 },
+      "remediationQuest": null
+    },
+    "binh": {
+      "type": "neutral",
+      "id": "effect_binh",
+      "name": "Tâm Bình Khí Hòa (Trạng thái cân bằng)",
+      "description": "Mọi sự tùy duyên, giữ chánh niệm vững vàng trong từng hơi thở.",
+      "statModifier": { "karmaBonusPct": 0, "meditationCalmBonusPct": 0 },
+      "remediationQuest": null
+    },
+    "hung": {
+      "type": "debuff",
+      "id": "debuff_hung",
+      "name": "Tâm Động Vọng Niệm (-5% Tập Trung)",
+      "description": "Khí vận đang có chút thử thách nhỏ. Hoàn thành nhiệm vụ hóa giải bên dưới để chuyển hóa thành trạng thái Tâm Bình Khí Hòa.",
+      "statModifier": { "karmaBonusPct": -5, "meditationCalmBonusPct": -5 },
+      "remediationQuest": {
+        "id": "quest_resolve_hung",
+        "title": "Tọa Thiền Chánh Niệm hoặc Dâng Hương Cầu An",
+        "actionType": "meditate",
+        "description": "Thực hành 1 thời khóa Hội Thiền 432Hz hoặc gieo duyên Hòm Công Đức để tĩnh tâm và gỡ bỏ trạng thái Tâm Động."
+      }
+    },
+    "dai_hung": {
+      "type": "debuff",
+      "id": "debuff_dai_hung",
+      "name": "Thử Thách Nghịch Cảnh (-10% Tập Trung)",
+      "description": "Vận trình nhắc nhở cần dừng lại quán chiếu. Hãy hoàn thành Pháp Hóa Giải để gỡ bỏ debuff và khôi phục bình an.",
+      "statModifier": { "karmaBonusPct": -10, "meditationCalmBonusPct": -10 },
+      "remediationQuest": {
+        "id": "quest_resolve_dai_hung",
+        "title": "Phát Nguyện Hóa Giải (Tọa Thiền 432Hz / Cúng Dường)",
+        "actionType": "donate_merit",
+        "description": "Thực hành tọa thiền 432Hz hoặc phát tâm Hòm Công Đức để hồi hướng thiện nghiệp, hóa giải hoàn toàn vận xấu trong ngày."
+      }
+    }
+  }
+}
+

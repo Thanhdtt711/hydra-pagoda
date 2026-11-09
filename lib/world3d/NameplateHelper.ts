@@ -2,6 +2,7 @@
 // Follows Vercel Geist Minimalist Design System with High-DPI Canvas Rendering
 
 import * as THREE from 'three'
+import { fitText } from './utils/FitText'
 
 const COUNTRY_CODES: Record<string, string> = {
   vietnam: 'VN',
@@ -60,18 +61,18 @@ export function createPilgrimNameplate(name: string, title: string, country: str
   ctx.textBaseline = 'middle'
   ctx.fillText(code, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1)
 
-  // Pilgrim Name
+  // Pilgrim Name: tự co chữ vừa khung (tên dài, có dấu tiếng Việt)
+  const textX = badgeX + badgeW + 14
+  const textMaxW = pillX + pillW - 18 - textX
   ctx.textAlign = 'left'
   ctx.fillStyle = '#f5f5f5'
-  ctx.font = '600 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  const displayName = name.length > 18 ? name.slice(0, 17) + '…' : name
-  ctx.fillText(displayName, badgeX + badgeW + 14, badgeY + 14)
-
+  const displayName = fitText(ctx, name, { maxWidth: textMaxW, maxPx: 26, minPx: 15, font: '600 {px}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' })
+  ctx.fillText(displayName, textX, badgeY + 14)
+  
   // Pilgrim Spiritual Title
   ctx.fillStyle = '#fbbf24'
-  ctx.font = '500 15px monospace'
-  const displayTitle = title.length > 22 ? title.slice(0, 21) + '…' : title
-  ctx.fillText(displayTitle, badgeX + badgeW + 14, badgeY + 39)
+  const displayTitle = fitText(ctx, title, { maxWidth: textMaxW, maxPx: 16, minPx: 12, font: '500 {px}px monospace' })
+  ctx.fillText(displayTitle, textX, badgeY + 39)
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.minFilter = THREE.LinearFilter
@@ -128,8 +129,7 @@ export function createSpeechBubbleSprite(text: string): THREE.Sprite {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#ededed'
-  ctx.font = '500 21px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  const display = text.length > 34 ? text.slice(0, 33) + '…' : text
+  const display = fitText(ctx, text, { maxWidth: bubbleW - 40, maxPx: 24, minPx: 15, font: '500 {px}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' })
   ctx.fillText(display, 256, bubbleY + bubbleH / 2)
 
   const texture = new THREE.CanvasTexture(canvas)

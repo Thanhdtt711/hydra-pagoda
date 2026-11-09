@@ -168,11 +168,14 @@ export class CharacterController {
     const capsuleY = this.getCapsule()
     const verticalCollisions = this.world.testCapsule(capsuleY, this.stepHeight)
 
+    let maxFloorY = -Infinity
     for (const col of verticalCollisions) {
-      // Đụng sàn / mặt trên
+      // Đụng sàn / mặt trên: luôn lấy mặt sàn cao nhất tại điểm đứng để không bị lún khi 2 hộp sàn chồng nhau
       if (col.normal.y > 0.5) {
-        this.position.y += col.penetration
-        this.velocity.y = 0
+        const targetY = col.floorY !== undefined ? col.floorY : this.position.y + col.penetration
+        if (targetY > maxFloorY) {
+          maxFloorY = targetY
+        }
         groundedThisStep = true
       }
       // Đụng trần / mái chùa (Ceiling hit)
@@ -180,6 +183,10 @@ export class CharacterController {
         this.position.y -= col.penetration
         this.velocity.y = Math.min(0, this.velocity.y) // Triệt tiêu ngay vận tốc nhảy lên
       }
+    }
+    if (groundedThisStep && maxFloorY > -Infinity) {
+      this.position.y = maxFloorY
+      this.velocity.y = 0
     }
 
     // Đảm bảo không rơi xuống vô tận dưới lòng đất (Fall protection / Void safety net)

@@ -669,3 +669,30 @@ Bộ test tự động `scratch/test_phase7_acceptance.mjs` chạy kiểm địn
 * **Mạng nhị phân**: Gói tin nén 35 bytes ($\le 40$ bytes), giải mã nguyên vẹn $100\%$, AoI 40m grid chuẩn xác.
 
 
+
+
+---
+
+## XV. THIẾT KẾ LẠI GIAO DIỆN 3D PHONG CÁCH LOW-POLY TỐI GIẢN (PHASE 0 → 6)
+
+Kế hoạch: `docs/superpowers/plans/2026-11-06-lowpoly-minimalist-redesign-plan.md` (nhánh `feat/lowpoly-redesign`). Phong cách mới thay thế hướng PBR/realistic của các giai đoạn trước. Các mô tả về PBR, Preetham Sky, texture Canvas 2D, 500 chỗ thiền và 500 người chơi ở các mục phía trên là lịch sử, không còn phản ánh hiện trạng.
+
+### 1. Hiện trạng đồ họa
+* Màu phẳng theo bảng màu 3 chế độ ngày / hoàng hôn / đêm (`lib/world3d/style/Palette.ts`, `FlatMaterialFactory.ts`), không còn ảnh texture, PBR map, IBL, GTAO hay outline.
+* Dựng hình bằng `LowPolyBuilder`, `SlotBatch`, `RoofBuilder`; bầu trời `SkyDome`; địa hình 400×400 m (`TerrainSystem`, `DistantMountains`).
+* Một đèn định hướng đổ bóng mềm, tối đa 4 PointLight; hậu kỳ gồm MSAA, Bloom nhẹ (ngưỡng 1.0) và Vignette nhẹ.
+* Nhân vật khoảng 7 đầu ghép từ bộ phận cứng; đám đông dùng InstancedMesh và 4 mức LOD (`AvatarCrowd`).
+* Đại Hùng Bảo Điện 28×22 m với khoảng 256 chỗ thiền; Tam Quan, Lầu Chuông, Hồ Sen và 6 loài cây dựng lại theo phong cách mới.
+* Duy nhất một tôn tượng Phật GLB.
+
+### 2. Kết quả Phase 6 (hoàn thiện và dọn dẹp)
+* **Mạng:** ngân sách thiết kế khoảng 200 người chơi đồng thời (gói 24 byte, AoI 40×40 m); sửa lỗi kiểu của `MultiplayerClient.sendBinary`; cập nhật chú thích `server/routes/_ws.ts`; logic giới hạn tốc độ, chống teleport và kiểm tra id giữ nguyên.
+* **Dọn dẹp:** xóa shim `lib/world3d/environment/LightingConfig.ts`; `PostProcessingManager` đọc thông số Bloom từ `POST_STYLE`; loại bỏ khối method bị trùng lặp trong `TempleStage.ts` (từ 1914 xuống 1689 dòng).
+* **Chất lượng đồ họa:** `TempleStage.setGraphicsQuality` gọi thêm `AtmosphereManager.setShadowQuality` (Low: tắt bóng; Medium: bóng 1024; High/Ultra: bóng 2048), kết hợp pixel ratio và Bloom của `PostProcessingManager`.
+* **Nén tượng Phật:** `public/models/the_buddha_statue_in_a_mountain.glb` giảm từ 10.82 MB xuống khoảng 0.10 MB (bỏ texture, UV, tangent; hàn đỉnh; lượng tử hóa; meshopt). Còn 6 mesh, khoảng 11.6 nghìn đỉnh, 21.5 nghìn tam giác, bounding box không đổi. `SacredBuddhaStatue.ts` đã có sẵn bộ giải nén meshopt nên không cần sửa mã.
+* **Tài liệu:** viết lại `CREDITS.md`, thêm mục 10.0 vào `GAME_DESIGN_DOCUMENT.md`, thêm mục này.
+
+### 3. Việc còn lại sau Phase 6
+* Đo FPS và draw call trên trình duyệt thật với `?bots=200` (phím F2 mở HUD): mục tiêu ≥ 60 FPS (High), ≥ 30 FPS (Low), draw call ≤ 150 (High) và ≤ 80 (Low).
+* Kiểm tra tải GLB đã nén ở runtime và đổi màu theo thời điểm trong ngày.
+* Bổ sung tên tác giả, liên kết và giấy phép của mô hình tượng Phật trên Sketchfab vào `CREDITS.md` mục 2.5 trước khi phát hành công khai.

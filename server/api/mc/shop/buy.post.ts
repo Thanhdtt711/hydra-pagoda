@@ -1,5 +1,6 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { getAccountInventory, purchaseShopItem } from '../../../utils/wallet/mcService'
+import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 /**
@@ -27,6 +28,7 @@ export default defineEventHandler(async (event) => {
     ledgerId: res.ledgerId,
     spentMc: res.spentMc,
     mcBalance: res.balanceAfter,
+    hydra: await getHydraProof(res.ledgerId),
     item: res.extra.item,
     quantity: res.extra.quantity,
     unlockedAt: res.extra.unlockedAt,
