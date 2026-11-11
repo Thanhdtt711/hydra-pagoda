@@ -95,9 +95,18 @@ async function handleSyncHydraBridge() {
   isSyncingBridge.value = true
   try {
     const bridge = useHydraOneWallet()
-    const addr = await bridge.refreshAddress()
+    await bridge.init().catch(() => {})
+    const addr = await bridge.refreshAddress().catch(() => null)
     if (addr) {
-      await wallet.loginWithHydraBridge(addr)
+      wallet.address = addr
+      wallet.status = 'connected'
+      wallet.walletKey = 'hydraone'
+      wallet.walletName = 'HydraOne'
+      await bridge.refreshBalance().catch(() => {})
+      if (bridge.balanceLovelace.value !== null) {
+        wallet.balanceLovelace = bridge.balanceLovelace.value
+      }
+      void wallet.syncServerAccount(addr)
       activeTab.value = 'buy'
     }
   } finally {

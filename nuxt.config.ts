@@ -54,7 +54,7 @@ export default defineNuxtConfig({
     webhookSecret: '', // NUXT_WEBHOOK_SECRET (tùy chọn cho Blockfrost webhook)
     public: {
       cardanoNetwork: 'preprod', // NUXT_PUBLIC_CARDANO_NETWORK: 'preprod' | 'mainnet'
-      appCenterOrigin: 'https://dev.hydraone.app,https://beta.hydraone.app,*' // NUXT_PUBLIC_APP_CENTER_ORIGIN
+      appCenterOrigin: 'https://beta.hydraone.app,https://developers-portal-beta.hydraone.app,https://dev.hydraone.app,https://portal.hydraone.app,https://alpha.hydraone.app,https://hydraone.app' // NUXT_PUBLIC_APP_CENTER_ORIGIN
     }
   },
   modules: [

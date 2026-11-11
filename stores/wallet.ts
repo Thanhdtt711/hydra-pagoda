@@ -286,16 +286,34 @@ export const useWalletStore = defineStore('wallet', {
     },
 
     /**
+     * Đồng bộ session tài khoản server ngầm khi có địa chỉ từ HydraOne Bridge.
+     */
+    async syncServerAccount(targetAddress: string) {
+      if (!targetAddress) return
+      try {
+        const me = await $fetch<{ authenticated: boolean; account?: AuthAccount }>('/api/auth/me')
+        if (me.authenticated && me.account && me.account.address === targetAddress) {
+          this.applyAccount(me.account)
+          await this.fetchOrders()
+          await useEconomyStore().loadCatalog()
+        }
+      } catch {
+        // Bỏ qua lỗi mạng
+      }
+    },
+
+    /**
      * Tự động đăng nhập qua HydraOne Wallet Bridge khi chạy trong Iframe.
-     * Xin nonce từ server -> gọi bridge.signData -> server verify -> tạo phiên JWT.
+     * Ký nonce để tạo session JWT trên server khi người chơi cần thao tác.
      */
     async loginWithHydraBridge(targetAddress: string): Promise<boolean> {
       if (!targetAddress) return false
       await this.loadNetwork()
       this.setError(null)
-      this.status = 'connecting'
       this.walletKey = 'hydraone'
       this.walletName = 'HydraOne'
+      this.address = targetAddress
+      this.status = 'connected'
 
       try {
         const issued = await $fetch<{ nonce: string; message: string }>('/api/auth/nonce', {
@@ -308,8 +326,8 @@ export const useWalletStore = defineStore('wallet', {
         try {
           signed = await bridge.signData(targetAddress, utf8ToHex(issued.message))
         } catch (signErr: any) {
-          this.status = 'disconnected'
-          this.setError('sign_failed')
+          // Người dùng từ chối hoặc đóng popup ký: Vẫn giữ trạng thái ví đã kết nối từ Header
+          console.debug('[loginWithHydraBridge] Sign declined or closed:', signErr)
           return false
         }
 
@@ -333,8 +351,8 @@ export const useWalletStore = defineStore('wallet', {
         this.startWatchers()
         return true
       } catch (err: any) {
-        this.status = 'disconnected'
-        this.setError('server_error')
+        // Vẫn giữ kết nối từ Header
+        console.debug('[loginWithHydraBridge] Verify error:', err)
         return false
       }
     },
@@ -347,18 +365,30 @@ export const useWalletStore = defineStore('wallet', {
       bridgeInitialized = true
       const bridge = useHydraOneWallet()
 
+      // Đồng bộ ngay nếu bridge đã có sẵn địa chỉ
+      if (bridge.address.value) {
+        this.address = bridge.address.value
+        this.status = 'connected'
+        this.walletKey = 'hydraone'
+        this.walletName = 'HydraOne'
+        if (bridge.balanceLovelace.value !== null) {
+          this.balanceLovelace = bridge.balanceLovelace.value
+        }
+      }
+
       watch(
-        () => [bridge.isWalletConnected.value, bridge.address.value] as const,
-        async ([connected, newAddr]) => {
+        () => [bridge.isWalletConnected.value, bridge.address.value, bridge.balanceLovelace.value] as const,
+        async ([connected, newAddr, lovelace]) => {
           if (connected && newAddr) {
-            // Khi có ví mới trên Header mà khác với địa chỉ hiện tại trong game -> tự động đổi tài khoản
-            if (this.address !== newAddr) {
-              await this.loginWithHydraBridge(newAddr)
-            } else if (bridge.balanceLovelace.value !== null) {
-              this.balanceLovelace = bridge.balanceLovelace.value
+            this.address = newAddr
+            this.status = 'connected'
+            this.walletKey = 'hydraone'
+            this.walletName = 'HydraOne'
+            if (lovelace !== null) {
+              this.balanceLovelace = lovelace
             }
+            void this.syncServerAccount(newAddr)
           } else if (!connected && this.walletKey === 'hydraone') {
-            // Khi người dùng bấm ngắt kết nối trên Header HydraOne
             await this.disconnect()
           }
         },
@@ -375,26 +405,19 @@ export const useWalletStore = defineStore('wallet', {
       if (this.isIframeMode) {
         this.initHydraBridgeWatcher()
         try {
-          const me = await $fetch<{ authenticated: boolean; account?: AuthAccount }>('/api/auth/me')
           const bridge = useHydraOneWallet()
-
-          if (me.authenticated && me.account) {
+          await bridge.init().catch(() => {})
+          const currentAddr = await bridge.refreshAddress().catch(() => null)
+          if (currentAddr) {
+            this.address = currentAddr
+            this.status = 'connected'
             this.walletKey = 'hydraone'
             this.walletName = 'HydraOne'
-            this.applyAccount(me.account)
+            await bridge.refreshBalance().catch(() => {})
             if (bridge.balanceLovelace.value !== null) {
               this.balanceLovelace = bridge.balanceLovelace.value
             }
-            await this.fetchOrders()
-            await useEconomyStore().loadCatalog()
-            this.startWatchers()
-
-            // Nếu ví trên Header HydraOne khác với session cũ -> tự đăng nhập theo ví Header
-            if (bridge.address.value && bridge.address.value !== me.account.address) {
-              await this.loginWithHydraBridge(bridge.address.value)
-            }
-          } else if (bridge.isWalletConnected.value && bridge.address.value) {
-            await this.loginWithHydraBridge(bridge.address.value)
+            void this.syncServerAccount(currentAddr)
           }
         } catch {
           // Lỗi mạng tạm thời: không chặn tải trang
