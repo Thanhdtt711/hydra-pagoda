@@ -24,6 +24,7 @@
   "dependencies": {
     "@hydra-sdk/cardano-wasm": "1.0.0",
     "@hydra-sdk/core": "1.4.1",
+    "@hydraone-sdk/core": "^0.3.0",
     "@noble/curves": "1.8.1",
     "@noble/hashes": "1.7.1",
     "@pinia/nuxt": "^0.11.0",

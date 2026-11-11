@@ -53,7 +53,8 @@ export default defineNuxtConfig({
     orderMetadataLabel: 8181, // NUXT_ORDER_METADATA_LABEL (nhãn metadata gắn orderId)
     webhookSecret: '', // NUXT_WEBHOOK_SECRET (tùy chọn cho Blockfrost webhook)
     public: {
-      cardanoNetwork: 'preprod' // NUXT_PUBLIC_CARDANO_NETWORK: 'preprod' | 'mainnet'
+      cardanoNetwork: 'preprod', // NUXT_PUBLIC_CARDANO_NETWORK: 'preprod' | 'mainnet'
+      appCenterOrigin: 'https://dev.hydraone.app,https://beta.hydraone.app,*' // NUXT_PUBLIC_APP_CENTER_ORIGIN
     }
   },
   modules: [

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useWalletStore, KNOWN_WALLETS, type OrderStatus } from '~/stores/wallet'
+import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
 import UiModal from '~/components/ui/UiModal.vue'
 import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 const wallet = useWalletStore()
 const installedList = ref<{ key: string; name: string; installed: boolean; icon?: string }[]>([])
 const isConnectingKey = ref<string | null>(null)
+const isSyncingBridge = ref(false)
 
 const quickPackages = [5, 10, 50, 100] as const
 const selectedAda = ref<number>(5)
@@ -89,6 +91,20 @@ async function handleConnectEternl() {
   }
 }
 
+async function handleSyncHydraBridge() {
+  isSyncingBridge.value = true
+  try {
+    const bridge = useHydraOneWallet()
+    const addr = await bridge.refreshAddress()
+    if (addr) {
+      await wallet.loginWithHydraBridge(addr)
+      activeTab.value = 'buy'
+    }
+  } finally {
+    isSyncingBridge.value = false
+  }
+}
+
 async function handleDisconnect() {
   await wallet.disconnect()
 }
@@ -150,68 +166,101 @@ function formatTime(ts: number): string {
     <div class="space-y-4 font-sans text-primary">
       <!-- TRẠNG THÁI 1: CHƯA KẾT NỐI VÍ -->
       <div v-if="!wallet.isConnected" class="space-y-4">
-        <p class="text-sm text-secondary leading-normal m-0">
-          Chọn ví Cardano để kết nối. Bạn sẽ ký một thông điệp CIP-8 để xác minh quyền sở hữu ví — hoàn toàn không tốn phí, không gửi giao dịch on-chain.
-        </p>
-
-        <!-- Thông báo lỗi kết nối nếu có -->
-        <div v-if="wallet.errorMessage" role="alert" class="p-3 rounded-[6px] bg-trading-down/10 border border-trading-down/30 text-xs">
-          <div class="flex items-start gap-2.5">
-            <ZenIcon name="circle-alert" :size="16" class="text-trading-down shrink-0 mt-0.5" />
+        <!-- Khi chạy trong Iframe HydraOne: Hướng dẫn kết nối từ Header cha -->
+        <div v-if="wallet.isIframeMode" class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-3">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0 mt-0.5">
+              <ZenIcon name="wallet" :size="20" class="text-binance-yellow" />
+            </div>
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold text-trading-down">Không thể kết nối ví</div>
-              <p class="text-xs text-secondary mt-0.5 leading-normal">{{ wallet.errorMessage }}</p>
-            </div>
-          </div>
-          <UiButton variant="secondary" size="sm" class="mt-2" @click="handleConnectEternl">
-            Thử lại
-          </UiButton>
-        </div>
-
-        <!-- THẺ VÍ ETERNL DUY NHẤT -->
-        <div class="p-3.5 rounded-lg bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-10 h-10 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0 overflow-hidden">
-              <img
-                src="/images/eternl-logo.png"
-                alt="Eternl"
-                class="w-7 h-7 object-contain"
-              />
-            </div>
-            <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-primary">Eternl</span>
-                <UiBadge variant="warning">Khuyên dùng</UiBadge>
+                <span class="text-sm font-bold text-primary">Ví HydraOne</span>
+                <UiBadge variant="warning">Iframe Host</UiBadge>
               </div>
-              <p class="text-xs text-secondary leading-tight mt-0.5 truncate">
-                {{ isEternlInstalled ? 'Đã phát hiện tiện ích Eternl' : 'Chưa cài đặt tiện ích Eternl' }}
+              <p class="text-xs text-secondary mt-1 leading-normal">
+                Vạn Cảnh Thiền Tự đang nhúng trong hệ sinh thái HydraOne. Vui lòng bấm nút <span class="text-primary font-semibold">"Kết nối"</span> ở góc trên bên phải thanh menu HydraOne để tự động đăng nhập.
               </p>
-              <div class="text-xs text-muted leading-tight mt-0.5 font-numbers">Chuẩn CIP-30 / CIP-8 Verified</div>
             </div>
           </div>
 
-          <div class="shrink-0">
+          <div class="flex items-center justify-between pt-2 border-t border-hairline">
+            <span class="text-xs text-muted font-numbers">Tự động đồng bộ số dư L1/L2</span>
             <UiButton
-              v-if="isEternlInstalled"
-              variant="primary"
+              variant="secondary"
               size="sm"
-              :loading="isConnectingKey === 'eternl'"
-              :disabled="Boolean(isConnectingKey)"
-              @click="handleConnectEternl"
+              :loading="isSyncingBridge"
+              @click="handleSyncHydraBridge"
             >
-              {{ isConnectingKey === 'eternl' ? 'Đang chờ...' : 'Kết Nối' }}
+              Làm Mới Trạng Thái Ví
             </UiButton>
-            <a
-              v-else
-              :href="eternlWallet.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center justify-center px-3 h-8 rounded-[4px] bg-surface-card border border-hairline text-xs font-semibold text-primary hover:bg-surface-elevated transition-colors"
-            >
-              Cài Đặt
-            </a>
           </div>
         </div>
+
+        <!-- Khi chạy ngoài Iframe: Kết nối CIP-30 thông thường -->
+        <template v-else>
+          <p class="text-sm text-secondary leading-normal m-0">
+            Chọn ví Cardano để kết nối. Bạn sẽ ký một thông điệp CIP-8 để xác minh quyền sở hữu ví — hoàn toàn không tốn phí, không gửi giao dịch on-chain.
+          </p>
+
+          <!-- Thông báo lỗi kết nối nếu có -->
+          <div v-if="wallet.errorMessage" role="alert" class="p-3 rounded-[6px] bg-trading-down/10 border border-trading-down/30 text-xs">
+            <div class="flex items-start gap-2.5">
+              <ZenIcon name="circle-alert" :size="16" class="text-trading-down shrink-0 mt-0.5" />
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-trading-down">Không thể kết nối ví</div>
+                <p class="text-xs text-secondary mt-0.5 leading-normal">{{ wallet.errorMessage }}</p>
+              </div>
+            </div>
+            <UiButton variant="secondary" size="sm" class="mt-2" @click="handleConnectEternl">
+              Thử lại
+            </UiButton>
+          </div>
+
+          <!-- THẺ VÍ ETERNL DUY NHẤT -->
+          <div class="p-3.5 rounded-lg bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0 overflow-hidden">
+                <img
+                  src="/images/eternl-logo.png"
+                  alt="Eternl"
+                  class="w-7 h-7 object-contain"
+                />
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-primary">Eternl</span>
+                  <UiBadge variant="warning">Khuyên dùng</UiBadge>
+                </div>
+                <p class="text-xs text-secondary leading-tight mt-0.5 truncate">
+                  {{ isEternlInstalled ? 'Đã phát hiện tiện ích Eternl' : 'Chưa cài đặt tiện ích Eternl' }}
+                </p>
+                <div class="text-xs text-muted leading-tight mt-0.5 font-numbers">Chuẩn CIP-30 / CIP-8 Verified</div>
+              </div>
+            </div>
+
+            <div class="shrink-0">
+              <UiButton
+                v-if="isEternlInstalled"
+                variant="primary"
+                size="sm"
+                :loading="isConnectingKey === 'eternl'"
+                :disabled="Boolean(isConnectingKey)"
+                @click="handleConnectEternl"
+              >
+                {{ isConnectingKey === 'eternl' ? 'Đang chờ...' : 'Kết Nối' }}
+              </UiButton>
+              <a
+                v-else
+                :href="eternlWallet.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center justify-center px-3 h-8 rounded-[4px] bg-surface-card border border-hairline text-xs font-semibold text-primary hover:bg-surface-elevated transition-colors"
+              >
+                Cài Đặt
+              </a>
+            </div>
+          </div>
+        </template>
 
         <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline flex items-start gap-2.5">
           <ZenIcon name="info" :size="16" class="text-secondary shrink-0 mt-0.5" />
@@ -226,19 +275,26 @@ function formatTime(ts: number): string {
         <!-- Identity Bar -->
         <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
           <div class="flex items-center gap-2.5 min-w-0">
-            <img src="/images/eternl-logo.png" alt="Eternl" class="w-7 h-7 rounded shrink-0 object-contain" />
+            <img v-if="wallet.walletKey !== 'hydraone'" src="/images/eternl-logo.png" alt="Eternl" class="w-7 h-7 rounded shrink-0 object-contain" />
+            <div v-else class="w-7 h-7 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0">
+              <ZenIcon name="wallet" :size="14" class="text-binance-yellow" />
+            </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-bold text-primary">{{ wallet.walletName }}</span>
                 <UiBadge variant="success" dot>Đã kết nối</UiBadge>
+                <UiBadge v-if="wallet.isIframeMode" variant="warning">Host Header</UiBadge>
               </div>
               <div class="text-xs text-secondary font-numbers truncate mt-0.5">
                 {{ wallet.address }}
               </div>
             </div>
           </div>
-          <UiButton variant="ghost" size="sm" @click="handleDisconnect">
+          <UiButton v-if="!wallet.isIframeMode" variant="ghost" size="sm" @click="handleDisconnect">
             Ngắt
+          </UiButton>
+          <UiButton v-else variant="ghost" size="sm" :loading="isSyncingBridge" @click="handleSyncHydraBridge">
+            Làm mới
           </UiButton>
         </div>
 

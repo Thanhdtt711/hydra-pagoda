@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
+import { watch } from 'vue'
 import { getOrCreateEphemeralKey } from '~/lib/cardano/ephemeralKey'
 import {
   classifyCip30Error, decodeLovelace, getInjected, hexToBech32, utf8ToHex, waitForInjected,
   WALLET_ERROR_TEXT, type Cip30Api, type WalletErrorCode
 } from '~/lib/cardano/cip30'
 import { useEconomyStore } from '~/stores/economy'
+import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
 
 export interface WalletMeta {
   key: string
@@ -103,6 +105,8 @@ export interface WalletState {
   purchaseStatusText: string
   treasuryAddress: string
   confirmationsRequired: number
+  /** Chạy trong môi trường iframe của HydraOne Portal */
+  isIframeMode: boolean
 }
 
 // Đối tượng không tuần tự hóa được: giữ ngoài state của Pinia.
@@ -111,6 +115,7 @@ let watchTimer: ReturnType<typeof setInterval> | null = null
 let focusCheck: (() => void) | null = null
 let accountPollTimer: ReturnType<typeof setInterval> | null = null
 let orderPollTimer: ReturnType<typeof setInterval> | null = null
+let bridgeInitialized = false
 const HINT_KEY = 'pagoda_wallet_hint' // chỉ là gợi ý tên ví để tự kết nối lại; KHÔNG phải token xác thực
 
 export const useWalletStore = defineStore('wallet', {
@@ -136,7 +141,8 @@ export const useWalletStore = defineStore('wallet', {
     purchasePhase: 'idle',
     purchaseStatusText: '',
     treasuryAddress: '',
-    confirmationsRequired: 1
+    confirmationsRequired: 1,
+    isIframeMode: typeof window !== 'undefined' && window.parent !== window
   }),
 
   getters: {
@@ -279,10 +285,126 @@ export const useWalletStore = defineStore('wallet', {
       }
     },
 
+    /**
+     * Tự động đăng nhập qua HydraOne Wallet Bridge khi chạy trong Iframe.
+     * Xin nonce từ server -> gọi bridge.signData -> server verify -> tạo phiên JWT.
+     */
+    async loginWithHydraBridge(targetAddress: string): Promise<boolean> {
+      if (!targetAddress) return false
+      await this.loadNetwork()
+      this.setError(null)
+      this.status = 'connecting'
+      this.walletKey = 'hydraone'
+      this.walletName = 'HydraOne'
+
+      try {
+        const issued = await $fetch<{ nonce: string; message: string }>('/api/auth/nonce', {
+          method: 'POST',
+          body: { address: targetAddress }
+        })
+
+        const bridge = useHydraOneWallet()
+        let signed: { signature: string; key: string }
+        try {
+          signed = await bridge.signData(targetAddress, utf8ToHex(issued.message))
+        } catch (signErr: any) {
+          this.status = 'disconnected'
+          this.setError('sign_failed')
+          return false
+        }
+
+        const res = await $fetch<{ account: AuthAccount }>('/api/auth/verify', {
+          method: 'POST',
+          body: {
+            address: targetAddress,
+            nonce: issued.nonce,
+            signature: signed.signature,
+            key: signed.key
+          }
+        })
+
+        this.applyAccount(res.account)
+        if (bridge.balanceLovelace.value !== null) {
+          this.balanceLovelace = bridge.balanceLovelace.value
+        }
+        getOrCreateEphemeralKey()
+        await this.fetchOrders()
+        await useEconomyStore().loadCatalog()
+        this.startWatchers()
+        return true
+      } catch (err: any) {
+        this.status = 'disconnected'
+        this.setError('server_error')
+        return false
+      }
+    },
+
+    /**
+     * Khởi tạo bộ lắng nghe sự kiện đổi ví hoặc ngắt kết nối từ Header của HydraOne.
+     */
+    initHydraBridgeWatcher() {
+      if (typeof window === 'undefined' || !this.isIframeMode || bridgeInitialized) return
+      bridgeInitialized = true
+      const bridge = useHydraOneWallet()
+
+      watch(
+        () => [bridge.isWalletConnected.value, bridge.address.value] as const,
+        async ([connected, newAddr]) => {
+          if (connected && newAddr) {
+            // Khi có ví mới trên Header mà khác với địa chỉ hiện tại trong game -> tự động đổi tài khoản
+            if (this.address !== newAddr) {
+              await this.loginWithHydraBridge(newAddr)
+            } else if (bridge.balanceLovelace.value !== null) {
+              this.balanceLovelace = bridge.balanceLovelace.value
+            }
+          } else if (!connected && this.walletKey === 'hydraone') {
+            // Khi người dùng bấm ngắt kết nối trên Header HydraOne
+            await this.disconnect()
+          }
+        },
+        { immediate: true }
+      )
+    },
+
     /** Tự kết nối lại khi tải trang: khôi phục ngay phiên từ cookie httpOnly trên server, sau đó đồng bộ CIP-30 nền. */
     async restore() {
       await this.loadNetwork()
       if (this.restored) return
+
+      // Nếu đang chạy trong Iframe của HydraOne Portal
+      if (this.isIframeMode) {
+        this.initHydraBridgeWatcher()
+        try {
+          const me = await $fetch<{ authenticated: boolean; account?: AuthAccount }>('/api/auth/me')
+          const bridge = useHydraOneWallet()
+
+          if (me.authenticated && me.account) {
+            this.walletKey = 'hydraone'
+            this.walletName = 'HydraOne'
+            this.applyAccount(me.account)
+            if (bridge.balanceLovelace.value !== null) {
+              this.balanceLovelace = bridge.balanceLovelace.value
+            }
+            await this.fetchOrders()
+            await useEconomyStore().loadCatalog()
+            this.startWatchers()
+
+            // Nếu ví trên Header HydraOne khác với session cũ -> tự đăng nhập theo ví Header
+            if (bridge.address.value && bridge.address.value !== me.account.address) {
+              await this.loginWithHydraBridge(bridge.address.value)
+            }
+          } else if (bridge.isWalletConnected.value && bridge.address.value) {
+            await this.loginWithHydraBridge(bridge.address.value)
+          }
+        } catch {
+          // Lỗi mạng tạm thời: không chặn tải trang
+        } finally {
+          this.restored = true
+        }
+        return
+      }
+
+      // Luồng Standalone (ngoài Iframe): Giữ nguyên logic CIP-30 hiện tại
       try {
         const me = await $fetch<{ authenticated: boolean; account?: AuthAccount }>('/api/auth/me')
         if (!me.authenticated || !me.account) return
@@ -364,6 +486,16 @@ export const useWalletStore = defineStore('wallet', {
     },
 
     async refreshAdaBalance() {
+      if (this.isIframeMode) {
+        try {
+          const bridge = useHydraOneWallet()
+          await bridge.refreshBalance()
+          if (bridge.balanceLovelace.value !== null) {
+            this.balanceLovelace = bridge.balanceLovelace.value
+          }
+        } catch { /* không chặn vì lỗi hiển thị số dư */ }
+        return
+      }
       if (!walletApi) return
       try {
         this.balanceLovelace = decodeLovelace(await walletApi.getBalance())
@@ -424,6 +556,119 @@ export const useWalletStore = defineStore('wallet', {
         this.setError('session_lost')
         return false
       }
+
+      // Xử lý riêng cho chế độ Iframe HydraOne khi không có extension CIP-30 trực tiếp
+      if (this.isIframeMode && !walletApi) {
+        const bridge = useHydraOneWallet()
+        if (!bridge.isWalletConnected.value || !bridge.address.value) {
+          this.setError('wallet_locked')
+          this.purchasePhase = 'error'
+          this.purchaseStatusText = 'Vui lòng kết nối ví trên thanh Header của HydraOne để tiếp tục.'
+          return false
+        }
+
+        const cleanAda = Math.floor(Number(adaAmount))
+        if (!Number.isSafeInteger(cleanAda) || cleanAda < 2 || cleanAda > 100_000) {
+          this.purchasePhase = 'error'
+          this.purchaseStatusText = 'Số lượng mua tối thiểu là 2 ADA (số nguyên).'
+          return false
+        }
+
+        try {
+          // Bước 1: Tạo đơn trên server
+          this.purchasePhase = 'creating_order'
+          this.purchaseStatusText = 'Đang khởi tạo đơn hàng & dựng giao dịch Cardano...'
+          const created = await $fetch<{ order: ShopOrderDto }>('/api/shop/orders', {
+            method: 'POST',
+            body: { adaAmount: cleanAda }
+          })
+          this.activeOrder = created.order
+
+          // Bước 2: Đọc UTxO từ ví thông qua HydraOne Bridge
+          const utxos = (await bridge.client.getUtxos()) ?? []
+          if (!utxos.length) {
+            this.purchasePhase = 'error'
+            this.purchaseStatusText = 'Ví của bạn chưa có UTxO (ADA) nào để thanh toán.'
+            this.setError('tx_insufficient_funds')
+            return false
+          }
+          const changeAddress = bridge.address.value || (await bridge.client.getChangeAddress())
+
+          const built = await $fetch<{
+            order: ShopOrderDto
+            unsignedTxCbor: string
+            txHash: string
+            feeLovelace: number
+          }>(`/api/shop/orders/${created.order.orderId}/build`, {
+            method: 'POST',
+            body: { utxos, changeAddress }
+          })
+          this.activeOrder = built.order
+
+          // Bước 3: Ký qua HydraOne Bridge
+          this.purchasePhase = 'awaiting_signature'
+          this.purchaseStatusText = `Đang chờ bạn ký xác nhận giao dịch ${cleanAda} ADA trên ví HydraOne...`
+          let witnessHex = ''
+          try {
+            witnessHex = await bridge.signTx(built.unsignedTxCbor, true)
+          } catch (signErr: any) {
+            this.purchasePhase = 'error'
+            const errCode = classifyCip30Error(signErr, 'tx_submit_failed')
+            this.setError(errCode)
+            this.purchaseStatusText = 'Ký giao dịch bị từ chối hoặc thất bại trên HydraOne.'
+            return false
+          }
+
+          // Bước 4: Ghép witness trên server & submitTx qua bridge
+          this.purchasePhase = 'submitting_tx'
+          this.purchaseStatusText = 'Đã ký — đang phát tán giao dịch lên mạng Cardano...'
+          const attached = await $fetch<{ signedTxCbor: string; txHash: string }>(
+            `/api/shop/orders/${created.order.orderId}/witness`,
+            { method: 'POST', body: { witnessHex } }
+          )
+
+          let submittedHash = ''
+          try {
+            submittedHash = await bridge.submitTx(attached.signedTxCbor)
+          } catch (subErr: any) {
+            this.purchasePhase = 'error'
+            this.setError('tx_submit_failed')
+            this.purchaseStatusText = `Gửi giao dịch lên mạng thất bại: ${subErr?.message || 'Lỗi mạng'}`
+            return false
+          }
+
+          const finalHash = (submittedHash || attached.txHash).trim().toLowerCase()
+          this.lastTxHash = finalHash
+
+          // Bước 5: Ghi nhận txHash với server và theo dõi
+          const subRes = await $fetch<{ order: ShopOrderDto; account: AuthAccount }>(
+            `/api/shop/orders/${created.order.orderId}/submit`,
+            { method: 'POST', body: { txHash: finalHash } }
+          )
+          this.activeOrder = subRes.order
+          if (subRes.account) this.applyAccount(subRes.account)
+          await this.fetchOrders()
+
+          if (subRes.order.status === 'completed') {
+            this.purchasePhase = 'completed'
+            this.purchaseStatusText = `Hoàn tất! Đã cộng +${(subRes.order.creditedMc ?? subRes.order.expectedMc).toLocaleString()} MC.`
+            await this.refreshAdaBalance()
+            return true
+          }
+
+          this.purchasePhase = 'awaiting_confirmation'
+          this.purchaseStatusText = `Đã gửi giao dịch (${finalHash.slice(0, 10)}...) — đang chờ xác nhận trên chuỗi (${subRes.order.confirmations}/${subRes.order.confirmationsRequired})...`
+          this.startOrderPolling(subRes.order.orderId)
+          return true
+        } catch (e: any) {
+          this.purchasePhase = 'error'
+          const msg = e?.data?.data?.message || e?.data?.message || e?.message || 'Không thể xử lý đơn hàng'
+          this.purchaseStatusText = msg
+          return false
+        }
+      }
+
+      // Luồng Standalone (CIP-30 trực tiếp qua extension)
       if (!walletApi) {
         const injected = getInjected(this.walletKey || 'eternl')
         if (injected) {

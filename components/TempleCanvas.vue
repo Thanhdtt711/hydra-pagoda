@@ -1236,7 +1236,7 @@ function simulateLoading() {
           type="button"
           @click="openWalletModal()"
           class="hud-wallet-btn ui-focus-ring"
-          title="Kết nối ví Cardano (Eternl)"
+          :title="wallet.isIframeMode ? 'Đồng bộ ví từ HydraOne Header' : 'Kết nối ví Cardano (Eternl)'"
         >
           <span
             class="hud-status-dot"
@@ -1244,10 +1244,10 @@ function simulateLoading() {
             aria-hidden="true"
           />
           <span class="text-sm font-semibold" :class="wallet.isConnected ? 'font-numbers' : ''">
-            {{ wallet.isConnected ? wallet.shortAddress : 'Ví Cardano' }}
+            {{ wallet.isConnected ? (wallet.isIframeMode ? `HydraOne: ${wallet.shortAddress}` : wallet.shortAddress) : (wallet.isIframeMode ? 'Kết nối trên HydraOne' : 'Ví Cardano') }}
           </span>
           <UiBadge v-if="wallet.isTestnet" variant="warning">TESTNET</UiBadge>
-          </button>
+        </button>
           
           <!-- Chỉ báo chế độ sổ cái: Hydra L2 hay SQLite -->
           <span class="hud-ledger-wrap" :title="hydra.modeDescription">
