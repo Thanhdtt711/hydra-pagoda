@@ -32,6 +32,7 @@ import {
   type ProfileValidationResult
 } from '~/lib/boi/ProfileService'
 import { renderFortuneShareCardPng } from '~/lib/boi/ShareCardRenderer'
+import { renderCoupleShareCardPng } from '~/lib/boi/CoupleShareCardRenderer'
 import type { GenderType, InputMode, MucQue, PersonProfile, SavedFortuneProfile } from '~/lib/boi/types'
 import { createClientRequestId, useEconomyStore } from '~/stores/economy'
 import { useUserStore, type CountryId } from '~/stores/user'
@@ -47,6 +48,10 @@ import UiInput from '~/components/ui/UiInput.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import HauDongPanel from '~/components/HauDongPanel.vue'
 import { useHauDongStore } from '~/stores/hauDong'
+import CardPackCard from '~/components/cards/CardPackCard.vue'
+import CardRevealModal from '~/components/cards/CardRevealModal.vue'
+import CardGalleryView from '~/components/cards/CardGalleryView.vue'
+import CardDetailViewer from '~/components/cards/CardDetailViewer.vue'
 
 export type DrawerTab =
   | 'fortune'
@@ -58,6 +63,7 @@ export type DrawerTab =
   | 'soundscape'
   | 'sangha'
   | 'temple_detail'
+  | 'love_couple'
 
 type DivinationType = 'stick' | 'love' | 'family' | 'wealth' | 'health' | 'star'
 type DivinationTier = 'basic' | 'auspicious' | 'golden'
@@ -130,6 +136,7 @@ onMounted(() => {
 
 const TAB_NAV: Array<{ id: DrawerTab; label: string; name: string; badge: string; subtitle: string }> = [
   { id: 'fortune', label: 'Bói Quẻ', name: 'Bói Quẻ 6 Môn Cầu An', badge: 'Chiêm bốc tâm linh', subtitle: 'Gieo quẻ 6 môn, luận giải theo chủ đề và hướng dẫn chánh niệm' },
+  { id: 'love_couple', label: 'Tơ Duyên', name: 'Đài Tơ Duyên Nguyệt Lão', badge: 'Nguyệt Lão thắt chỉ hồng', subtitle: 'Bói duyên cặp đôi đồng tu, tính điểm tương hợp Bát Tự và trao tặng Bùa Chỉ Đỏ Uyên Ương' },
   { id: 'hau_dong', label: 'Hầu Đồng', name: 'Điện Thờ Tứ Phủ & Trần Triều', badge: 'Di sản UNESCO', subtitle: 'Nghi lễ Hầu Đồng 5 Giá (8 phút/buổi), Thỉnh Lộc MC và Mở Đàn Đặc Cách' },
   { id: 'shop', label: 'Cửa Hàng', name: 'Cửa Hàng Pháp Bảo & Cổ Phục', badge: 'Pháp bảo & Cổ phục', subtitle: 'Trang phục hành hương 9 quốc gia, nhang trầm và lễ phẩm cúng dường' },
   { id: 'merit', label: 'Công Đức', name: 'Hòm Công Đức Tam Bảo', badge: 'Phước đức tâm an', subtitle: 'Cúng dường tự nguyện bằng MC và lưu danh Bảng vàng công đức' },
@@ -303,9 +310,17 @@ onMounted(() => {
   const sp = loadSavedProfile()
   savedProfile.value = sp
   syncProfileFormsFromSaved(sp)
+  if (sp) {
+    if (sp.gender === 'nu') user.setGender('female')
+    else if (sp.gender === 'nam') user.setGender('male')
+    if (sp.fullName && (!user.name || user.name.startsWith('addr_'))) {
+      user.name = sp.fullName
+    }
+  }
   partnerContacts.value = loadPartnerContacts()
   activeDailyEffect.value = loadActiveDailyEffect()
   localFortuneHistory.value = loadLocalFortuneHistory()
+  void cards.fetchInventory()
 })
 
 function handleSaveProfile() {
@@ -334,6 +349,9 @@ function handleSaveProfile() {
 
   const saved = saveProfile(check.sanitized, partnerToSave)
   savedProfile.value = saved
+  if (saved.gender === 'nu') user.setGender('female')
+  else if (saved.gender === 'nam') user.setGender('male')
+  if (saved.fullName) user.name = saved.fullName
   isEditingProfile.value = false
   profileStatusMsg.value = 'Hồ sơ Bát Tự đã xác nhận thành công! Đã mở khóa các môn thỉnh quẻ.'
   zenAudio.playTempleBell()
@@ -634,22 +652,7 @@ function requestRollFortune() {
   }
 
   const activeProfile = savedProfile.value
-  let activePartner: PersonProfile | null = null
-
-  if (fortuneCategory.value === 'love') {
-    if (!partnerForm.value.fullName?.trim() || !partnerForm.value.birthDate?.trim() || !partnerForm.value.gender) {
-      fortuneNotice.value = 'Môn Tơ Duyên yêu cầu nhập đầy đủ thông tin Người thương (Họ tên, Ngày sinh, Giới tính).'
-      return
-    }
-    const pCheck = validatePersonProfile(partnerForm.value)
-    if (!pCheck.valid || !pCheck.sanitized) {
-      partnerFieldErrors.value = pCheck.fieldErrors
-      fortuneNotice.value = `Hồ sơ người thương: ${pCheck.error}`
-      return
-    }
-    activePartner = pCheck.sanitized
-    partnerContacts.value = savePartnerContact(pCheck.sanitized)
-  }
+  const activePartner: PersonProfile | null = null
 
   if (fortuneMode.value === 'custom' && customQuestionText.value.trim().length < 3) {
     fortuneNotice.value = 'Vui lòng nhập câu hỏi của bạn (tối thiểu 3 ký tự) hoặc chuyển sang chế độ Xin Nhanh.'
@@ -795,6 +798,126 @@ function handleCompleteRemediationQuest() {
 }
 
 /* =====================================================================
+   1B. ĐÀI TƠ DUYÊN NGUYỆT LÃO (BÓI DUYÊN CẶP ĐÔI ĐỒNG TU)
+===================================================================== */
+const myEffectiveGender = computed<'nam' | 'nu'>(() => {
+  if (savedProfile.value?.gender === 'nu' || savedProfile.value?.gender === 'nam') {
+    return savedProfile.value.gender
+  }
+  return user.gender === 'female' ? 'nu' : 'nam'
+})
+
+const myEffectiveName = computed<string>(() => {
+  return savedProfile.value?.fullName?.trim() || (user.name && !user.name.startsWith('addr_') ? user.name : '') || 'Hành Giả Thiền Tự'
+})
+
+const couplePartnerForm = ref({
+  fullName: '',
+  birthDate: '1998-05-20',
+  gender: (myEffectiveGender.value === 'nu' ? 'nam' : 'nu') as 'nam' | 'nu'
+})
+
+watch(myEffectiveGender, (newGender) => {
+  couplePartnerForm.value.gender = newGender === 'nu' ? 'nam' : 'nu'
+}, { immediate: true })
+
+watch(savedProfile, (sp) => {
+  if (sp?.partner) {
+    if (!couplePartnerForm.value.fullName && sp.partner.fullName) {
+      couplePartnerForm.value.fullName = sp.partner.fullName
+    }
+    if (sp.partner.birthDate) {
+      couplePartnerForm.value.birthDate = sp.partner.birthDate
+    }
+    if (sp.partner.gender === 'nam' || sp.partner.gender === 'nu') {
+      couplePartnerForm.value.gender = sp.partner.gender
+    }
+  }
+}, { immediate: true })
+
+const couplePaymentMode = ref<'free_daily' | 'mc'>('free_daily')
+const coupleLoading = ref(false)
+const coupleError = ref<string | null>(null)
+const coupleResult = ref<any | null>(null)
+const coupleShareImageUrl = ref<string | null>(null)
+
+async function handleDrawCouple() {
+  coupleError.value = null
+  if (!couplePartnerForm.value.fullName.trim()) {
+    coupleError.value = 'Vui lòng nhập Họ tên người thương / bạn đồng tu.'
+    return
+  }
+  if (!couplePartnerForm.value.birthDate) {
+    coupleError.value = 'Vui lòng chọn Ngày sinh của người thương.'
+    return
+  }
+
+  coupleLoading.value = true
+  try {
+    const res = await $fetch<any>('/api/mc/fortune/draw-couple', {
+      method: 'POST',
+      body: {
+        profile: {
+          fullName: myEffectiveName.value,
+          birthDate: savedProfile.value?.birthDate || '1995-01-01',
+          gender: myEffectiveGender.value
+        },
+        partnerProfile: {
+          fullName: couplePartnerForm.value.fullName.trim(),
+          birthDate: couplePartnerForm.value.birthDate,
+          gender: couplePartnerForm.value.gender
+        },
+        paymentMode: couplePaymentMode.value,
+        requestId: 'couple_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+      }
+    })
+    coupleResult.value = res
+    if (res.spentMc > 0) {
+      economy.meritCoins = res.currentBalanceMc
+    }
+    if (res.inventory) {
+      economy.inventory = res.inventory
+    }
+    zenAudio.playTempleBell()
+  } catch (err: any) {
+    coupleError.value = err?.data?.message || err?.message || 'Không thể thỉnh quẻ lúc này.'
+  } finally {
+    coupleLoading.value = false
+  }
+}
+
+async function handleExportCoupleCard() {
+  if (!coupleResult.value) return
+  const comp = coupleResult.value.compatibility
+  const fort = coupleResult.value.fortune
+  try {
+    coupleShareImageUrl.value = await renderCoupleShareCardPng({
+      selfName: myEffectiveName.value,
+      partnerName: couplePartnerForm.value.fullName,
+      selfCanChi: comp?.grounds?.[0]?.match(/\((.*?)\)/)?.[1] || 'Bản Mệnh',
+      partnerCanChi: comp?.partnerComparison?.partnerCanChi ? `${comp.partnerComparison.partnerCanChi} (${comp.partnerComparison.partnerNapAm})` : 'Bản Mệnh',
+      score: comp?.score,
+      rankTitle: comp?.rankTitle,
+      relationLabel: comp?.relationLabel,
+      summary: comp?.partnerComparison?.summary,
+      poemText: fort?.blocks?.tho?.text,
+      adviceText: fort?.blocks?.loikhuyen?.text,
+      receiptHash: coupleResult.value.receiptHash
+    })
+  } catch (e: any) {
+    coupleError.value = 'Không thể xuất ảnh: ' + (e?.message || 'Lỗi canvas')
+  }
+}
+
+function downloadCoupleCardPng() {
+  if (!coupleShareImageUrl.value) return
+  const a = document.createElement('a')
+  a.href = coupleShareImageUrl.value
+  a.download = `ToDuyenNguyetLao_${(couplePartnerForm.value.fullName || 'SongDuyen').replace(/\s+/g, '_')}_${Date.now()}.png`
+  a.click()
+}
+
+/* =====================================================================
    2. CỬA HÀNG PHÁP BẢO
 ===================================================================== */
 const shopTab = ref<'attire' | 'offerings'>('attire')
@@ -912,10 +1035,36 @@ function formatDonorName(entry: { displayName?: string; address?: string }): str
 }
 
 /* =====================================================================
-   4. THẺ BÀI DI SẢN 3D
+   4. THẺ BÀI DI SẢN CỔ TỰ & GACHA PACK
 ===================================================================== */
+const cardSubTab = ref<'gacha' | 'gallery'>('gacha')
 const cardNotice = ref<string | null>(null)
 const cardSuccess = ref<string | null>(null)
+const viewingDetailCard = ref<any | null>(null)
+
+async function handleOpenPack(packId: string) {
+  cardNotice.value = null
+  cardSuccess.value = null
+  const pack = cards.packs.find(p => p.id === packId)
+  if (!pack) return
+
+  if (wallet.isConnected && economy.meritCoins < pack.priceMc) {
+    cardNotice.value = `Số dư không đủ (${economy.meritCoins.toLocaleString('vi-VN')} / ${pack.priceMc.toLocaleString('vi-VN')} MC). Hãy bấm "Nạp MC" bên trên!`
+    return
+  }
+
+  try {
+    const res = await cards.openPack(packId)
+    zenAudio.playCoinDrop()
+    cardSuccess.value = `Khai mở thành công "${pack.name}" (-${pack.priceMc.toLocaleString('vi-VN')} MC)!`
+  } catch (err: any) {
+    cardNotice.value = err?.data?.message || err?.message || 'Không thể mở gói thẻ lúc này.'
+  }
+}
+
+function handleSelectCard(card: any) {
+  viewingDetailCard.value = card
+}
 
 function getCardPriceMc(cardId: string): number {
   return economy.getItemPriceMc(cardId, 1500)
@@ -1417,78 +1566,24 @@ function sendMantraMessage(text: string) {
                   </div>
                 </div>
 
-                <!-- MÔN TƠ DUYÊN TƯƠNG NGỘ: HỒ SƠ NGƯỜI THƯƠNG -->
-                <div v-if="fortuneCategory === 'love'" class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-3 mt-3">
+                <!-- MÔN TƠ DUYÊN TƯƠNG NGỘ: ĐỘC THÂN CẦU DUYÊN (1 NGƯỜI) -->
+                <div v-if="fortuneCategory === 'love'" class="p-3.5 rounded-lg bg-surface-elevated border border-hairline space-y-2 mt-3">
                   <div class="flex items-center justify-between border-b border-hairline pb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-primary">Hồ Sơ Người Thương (Bắt buộc cho Tơ Duyên)</span>
-                    <span class="text-xs text-secondary">Đối sánh 2 mệnh</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-primary">Độc Thân Cầu Duyên (1 Người)</span>
+                    <span class="text-xs text-secondary">Bát Tự bản mệnh</span>
                   </div>
-
-                  <!-- Danh bạ người thương đã lưu (tối đa 5) -->
-                  <div v-if="partnerContacts.length > 0" class="space-y-1.5">
-                    <label class="text-xs text-secondary block">Chọn nhanh từ danh bạ:</label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <div
-                        v-for="ct in partnerContacts"
-                        :key="ct.fullName + ct.birthDate"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-card border border-hairline text-xs"
-                      >
-                        <button type="button" class="text-white hover:text-primary cursor-pointer font-medium" @click="handleSelectPartnerFromContact(ct)">
-                          {{ ct.fullName }} ({{ ct.gender === 'nu' ? 'Nữ' : 'Nam' }})
-                        </button>
-                        <button type="button" class="text-secondary hover:text-danger cursor-pointer ml-1 inline-flex items-center" title="Xóa khỏi danh bạ" @click="handleDeletePartnerFromContact(ct.fullName, ct.birthDate)">
-                          <ZenIcon name="close" size="xs" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Form thông tin người thương -->
-                  <div class="space-y-2.5">
-                    <div>
-                      <label class="text-xs font-semibold text-white block mb-1">Họ và tên người thương *</label>
-                      <UiInput v-model="partnerForm.fullName" placeholder="Ví dụ: Trần Thị Mai" @input="partnerFieldErrors.fullName = undefined" />
-                      <p v-if="partnerFieldErrors.fullName" class="text-xs text-danger mt-1">{{ partnerFieldErrors.fullName }}</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div>
-                        <label class="text-xs font-semibold text-white block mb-1">Ngày sinh dương lịch *</label>
-                        <UiInput v-model="partnerForm.birthDate" type="date" @change="partnerFieldErrors.birthDate = undefined" />
-                        <p v-if="partnerFieldErrors.birthDate" class="text-xs text-danger mt-1">{{ partnerFieldErrors.birthDate }}</p>
-                      </div>
-
-                      <div>
-                        <label class="text-xs font-semibold text-white block mb-1">Giới tính *</label>
-                        <div class="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            class="h-10 px-2 rounded border text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                            :class="partnerForm.gender === 'nam' ? 'border-primary bg-[rgba(252,213,53,0.12)] text-white' : 'border-hairline bg-surface-card text-secondary'"
-                            @click="partnerForm.gender = 'nam'; partnerFieldErrors.gender = undefined"
-                          >
-                            <span>Nam</span>
-                          </button>
-                          <button
-                            type="button"
-                            class="h-10 px-2 rounded border text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                            :class="partnerForm.gender === 'nu' ? 'border-primary bg-[rgba(252,213,53,0.12)] text-white' : 'border-hairline bg-surface-card text-secondary'"
-                            @click="partnerForm.gender = 'nu'; partnerFieldErrors.gender = undefined"
-                          >
-                            <span>Nữ</span>
-                          </button>
-                        </div>
-                        <p v-if="partnerFieldErrors.gender" class="text-xs text-danger mt-1">{{ partnerFieldErrors.gender }}</p>
-                      </div>
-                    </div>
-
-                    <!-- Thẻ xem trước Người Thương -->
-                    <div v-if="partnerPreview" class="p-2.5 rounded bg-surface-card border border-hairline text-xs space-y-1">
-                      <div class="text-secondary font-medium">Bát Tự người thương:</div>
-                      <div class="text-white">
-                        Năm <strong>{{ partnerPreview.canChiNam }}</strong> · Mệnh <strong>{{ partnerPreview.napAmName }}</strong> ({{ partnerPreview.nguHanhMenh }}) · Cung <strong>{{ partnerPreview.cungPhi }}</strong> ({{ partnerPreview.cungPhiHanh }})
-                      </div>
-                    </div>
+                  <p class="text-xs text-secondary leading-relaxed">
+                    Chiêm bốc vận đào hoa, thời điểm tương ngộ ý trung nhân theo Bát Tự của bạn.
+                  </p>
+                  <div class="pt-1.5 flex items-center justify-between text-xs border-t border-hairline">
+                    <span class="text-secondary">Muốn so khớp Bát Tự cặp đôi?</span>
+                    <button
+                      type="button"
+                      class="text-primary hover:underline font-semibold cursor-pointer"
+                      @click="activeTab = 'love_couple'"
+                    >
+                      Đài Tơ Duyên Nguyệt Lão &rarr;
+                    </button>
                   </div>
                 </div>
               </section>
@@ -1798,7 +1893,236 @@ function sendMantraMessage(text: string) {
           </div>
         </div>
 
-        <!-- ==================== TAB 2: CỬA HÀNG PHÁP BẢO ==================== -->
+        <!-- ==================== TAB 1B: ĐÀI TƠ DUYÊN NGUYỆT LÃO ==================== -->
+        <div v-else-if="currentTab === 'love_couple'" class="space-y-4">
+          <!-- Banner Giới Thiệu Đài Tơ Duyên -->
+          <UiCard variant="subtle" class="p-4 space-y-2 border-hairline bg-surface-card">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <ZenIcon name="sparkles" class="w-5 h-5 text-gold" />
+                <span class="text-sm font-bold text-white">Đài Tơ Duyên Nguyệt Lão</span>
+              </div>
+              <UiBadge variant="warning">Nguyệt Lão Chỉ Hồng</UiBadge>
+            </div>
+            <p class="text-xs text-secondary leading-normal m-0">
+              Cây Hồng Thần Mộc ngàn năm bên bờ Hồ Sen soi bóng nước. Thành tâm thắt sợi chỉ hồng, gieo quẻ Bát Tự tương hợp đôi lứa và đón nhận duyên lành trăm năm.
+            </p>
+          </UiCard>
+
+          <!-- Khi CHƯA Gieo Quẻ: Hiển thị Form Nhập Liệu Đôi Lứa -->
+          <div v-if="!coupleResult" class="space-y-4">
+            <!-- Cột 1: Thông Tin Bản Thân -->
+            <UiCard variant="subtle" class="p-3.5 space-y-2 border-hairline bg-surface-card">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-primary">1. Bản Thân (Đạo Hữu)</span>
+                <span class="text-xs text-secondary font-numbers">{{ savedProfile?.birthDate || 'Chưa lưu Bát Tự' }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-surface-elevated border border-hairline flex items-center justify-center shrink-0">
+                  <ZenIcon name="profile" class="w-5 h-5 text-gold" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-semibold text-white truncate">{{ myEffectiveName }}</div>
+                  <div class="text-xs text-secondary">
+                    {{ myEffectiveGender === 'nu' ? 'Nữ giới' : 'Nam giới' }}
+                    <span v-if="savedProfile?.canChiNam"> · {{ savedProfile.canChiNam }} ({{ savedProfile.napAmName }})</span>
+                  </div>
+                </div>
+              </div>
+            </UiCard>
+
+            <!-- Cột 2: Thông Tin Người Thương / Bạn Đồng Tu -->
+            <UiCard variant="subtle" class="p-3.5 space-y-3 border-hairline bg-surface-card">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-gold">2. Người Thương / Bạn Đồng Tu</span>
+                <span class="text-xs text-secondary">Nhập Bát Tự</span>
+              </div>
+
+              <div class="space-y-2">
+                <label class="block text-xs text-secondary font-medium">Họ và tên người thương</label>
+                <UiInput
+                  v-model="couplePartnerForm.fullName"
+                  placeholder="Ví dụ: Trần Thị Mai, Lê Minh..."
+                  class="w-full text-xs"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                  <label class="block text-xs text-secondary font-medium">Ngày sinh (Dương lịch)</label>
+                  <input
+                    v-model="couplePartnerForm.birthDate"
+                    type="date"
+                    class="w-full h-9 px-2.5 rounded border border-hairline bg-surface-elevated text-xs text-white focus:outline-none focus:border-gold"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="block text-xs text-secondary font-medium">Giới tính</label>
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      class="flex-1 h-9 rounded border text-xs font-medium cursor-pointer transition"
+                      :class="couplePartnerForm.gender === 'nam' ? 'border-gold bg-surface-elevated text-gold font-semibold' : 'border-hairline bg-surface-elevated/40 text-secondary hover:text-white'"
+                      @click="couplePartnerForm.gender = 'nam'"
+                    >
+                      Nam
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 h-9 rounded border text-xs font-medium cursor-pointer transition"
+                      :class="couplePartnerForm.gender === 'nu' ? 'border-gold bg-surface-elevated text-gold font-semibold' : 'border-hairline bg-surface-elevated/40 text-secondary hover:text-white'"
+                      @click="couplePartnerForm.gender = 'nu'"
+                    >
+                      Nữ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </UiCard>
+
+            <!-- Chọn Phương Thức Thanh Toán -->
+            <div class="space-y-2 pt-1">
+              <label class="block text-xs text-secondary font-medium">Phương thức gieo quẻ</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="p-2.5 rounded border text-left cursor-pointer transition"
+                  :class="couplePaymentMode === 'free_daily' ? 'border-gold bg-surface-elevated text-white' : 'border-hairline bg-surface-card text-secondary hover:text-white'"
+                  @click="couplePaymentMode = 'free_daily'"
+                >
+                  <div class="text-xs font-semibold text-white">Lượt Miễn Phí</div>
+                  <div class="text-xs text-gold font-numbers">0 MC (1 lần/ngày)</div>
+                </button>
+                <button
+                  type="button"
+                  class="p-2.5 rounded border text-left cursor-pointer transition"
+                  :class="couplePaymentMode === 'mc' ? 'border-gold bg-surface-elevated text-white' : 'border-hairline bg-surface-card text-secondary hover:text-white'"
+                  @click="couplePaymentMode = 'mc'"
+                >
+                  <div class="text-xs font-semibold text-white">Thêm Lượt MC</div>
+                  <div class="text-xs text-gold font-numbers">50 MC / lượt</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Báo Lỗi Nếu Có -->
+            <div v-if="coupleError" class="p-2.5 rounded bg-loss/15 border border-loss/30 text-xs text-loss leading-normal">
+              {{ coupleError }}
+            </div>
+
+            <!-- Nút Kích Hoạt Nghi Thức -->
+            <UiButton
+              variant="primary"
+              size="lg"
+              class="w-full text-xs font-semibold"
+              :disabled="coupleLoading"
+              @click="handleDrawCouple"
+            >
+              <ZenIcon v-if="!coupleLoading" name="sparkles" class="w-4 h-4 mr-1.5" />
+              <span>{{ coupleLoading ? 'Đang Khai Quẻ Tơ Duyên...' : 'Thắt Chỉ Hồng Khai Quẻ' }}</span>
+            </UiButton>
+          </div>
+
+          <!-- Khi ĐÃ Có Kết Quả Gieo Quẻ -->
+          <div v-else class="space-y-4">
+            <!-- Huy Hiệu Điểm Tương Hợp & Danh Vị -->
+            <UiCard variant="subtle" class="p-4 space-y-3 border-hairline bg-surface-card text-center">
+              <div class="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-loss/20 border border-loss text-xs font-bold text-white tracking-wider">
+                {{ coupleResult.compatibility?.rankTitle || 'Song Duyên Tương Hợp' }}
+              </div>
+
+              <!-- Điểm tương hợp số lớn -->
+              <div class="space-y-1">
+                <div class="font-numbers text-4xl font-bold text-gold tracking-tight">
+                  {{ coupleResult.compatibility?.score || 88 }}%
+                </div>
+                <div class="text-xs text-secondary font-medium">ĐIỂM TƯƠNG HỢP BÁT TỰ</div>
+              </div>
+
+              <!-- Hai Tên Đôi Lứa Nối Nhau -->
+              <div class="flex items-center justify-center gap-3 pt-1 text-xs">
+                <span class="font-semibold text-white">{{ myEffectiveName }}</span>
+                <span class="text-loss font-bold">❤</span>
+                <span class="font-semibold text-white">{{ couplePartnerForm.fullName }}</span>
+              </div>
+
+              <!-- Tóm tắt ngũ hành -->
+              <div class="text-xs text-primary font-medium bg-surface-elevated p-2 rounded border border-hairline">
+                {{ coupleResult.compatibility?.partnerComparison?.summary || coupleResult.compatibility?.relationLabel }}
+              </div>
+            </UiCard>
+
+            <!-- Bài Thơ Tơ Duyên 4 Câu -->
+            <UiCard variant="subtle" class="p-4 space-y-2 border-hairline bg-surface-card">
+              <div class="flex items-center gap-2 border-b border-hairline pb-2">
+                <ZenIcon name="cards" class="w-4 h-4 text-gold" />
+                <span class="text-xs font-bold text-gold uppercase tracking-wide">Thơ Nguyệt Lão Thiêng Liêng</span>
+              </div>
+              <div class="text-xs text-white italic leading-relaxed whitespace-pre-line py-1 text-center">
+                {{ coupleResult.fortune?.blocks?.tho?.text || coupleResult.fortune?.poem }}
+              </div>
+            </UiCard>
+
+            <!-- Lời Khuyên Dung Hòa Đôi Lứa -->
+            <UiCard variant="subtle" class="p-4 space-y-2 border-hairline bg-surface-card">
+              <div class="flex items-center gap-2 border-b border-hairline pb-2">
+                <ZenIcon name="lotus" class="w-4 h-4 text-primary" />
+                <span class="text-xs font-bold text-primary uppercase tracking-wide">Lời Khuyên Dung Hòa Chánh Niệm</span>
+              </div>
+              <p class="text-xs text-secondary leading-relaxed m-0">
+                {{ coupleResult.fortune?.blocks?.loikhuyen?.text || coupleResult.fortune?.mindfulAdvice || 'Hai bạn hãy cùng nhau nuôi dưỡng lòng thấu hiểu và bao dung để lương duyên luôn tròn đầy viên mãn.' }}
+              </p>
+            </UiCard>
+
+            <!-- Thông Báo Tặng Bùa Chỉ Đỏ Uyên Ương -->
+            <div class="p-3 rounded bg-gain/15 border border-gain/30 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-gain/20 flex items-center justify-center shrink-0">
+                <ZenIcon name="sparkles" class="w-4 h-4 text-gain" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-semibold text-white">Đã nhận Bùa Chỉ Đỏ Uyên Ương!</div>
+                <div class="text-xs text-secondary">Vật phẩm may mắn phong thủy đã được cất vào túi đồ của bạn.</div>
+              </div>
+            </div>
+
+            <!-- Khung Xuất Ảnh Thẻ Song Duyên Nếu Có -->
+            <div v-if="coupleShareImageUrl" class="rounded-lg border border-hairline bg-surface-card p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white">Thẻ Bài Song Duyên Kỷ Niệm</span>
+                <button type="button" class="text-secondary hover:text-white cursor-pointer" @click="coupleShareImageUrl = null">
+                  <ZenIcon name="close" class="w-4 h-4" />
+                </button>
+              </div>
+              <div class="flex justify-center bg-black/40 p-2 rounded">
+                <img :src="coupleShareImageUrl" alt="Thẻ bài Song Duyên" class="max-w-full h-auto rounded max-h-72" />
+              </div>
+              <UiButton variant="primary" size="sm" class="w-full text-xs font-semibold" @click="downloadCoupleCardPng">
+                Tải ảnh PNG về máy
+              </UiButton>
+            </div>
+
+            <!-- Các Nút Hành Động -->
+            <div class="flex gap-2 pt-1">
+              <UiButton
+                variant="secondary"
+                size="md"
+                class="flex-1 text-xs font-semibold"
+                @click="handleExportCoupleCard"
+              >
+                <ZenIcon name="cards" class="w-4 h-4 mr-1.5 text-gold" />
+                <span>Xuất Thẻ Song Duyên</span>
+              </UiButton>
+              <UiButton
+                variant="ghost"
+                size="md"
+                class="text-xs"
+                @click="coupleResult = null; coupleShareImageUrl = null"
+              >
+                Gieo Lại
+              </UiButton>
+            </div>
+          </div>
+        </div>
         <div v-else-if="currentTab === 'shop'" class="space-y-4">
           <!-- Sub-navigation tabs: Binance underline style -->
           <div class="flex items-center gap-6 border-b border-hairline px-1">
@@ -2141,15 +2465,16 @@ function sendMantraMessage(text: string) {
           </div>
         </div>
 
-        <!-- ==================== TAB 4: THẺ DI SẢN 3D ==================== -->
+        <!-- ==================== TAB 4: THẺ BÀI DI SẢN CỔ TỰ & GACHA ==================== -->
         <div v-else-if="currentTab === 'cards'" class="space-y-4">
+          <!-- Thông báo Thành công / Thất bại -->
           <div
             v-if="cardSuccess"
             class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] flex items-center gap-2"
           >
             <ZenIcon name="circle-check" :size="16" class="shrink-0" />
             <span>{{ cardSuccess }}</span>
-          <HydraBadge v-if="economy.lastShopHydra" :proof="economy.lastShopHydra" class="ml-auto shrink-0" />
+            <HydraBadge v-if="cards.lastHydraProof" :proof="cards.lastHydraProof" class="ml-auto shrink-0" />
           </div>
           <div
             v-if="cardNotice"
@@ -2159,42 +2484,77 @@ function sendMantraMessage(text: string) {
             <span>{{ cardNotice }}</span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div
-              v-for="card in cards.allCards"
-              :key="card.id"
-              class="p-4 rounded-lg border border-hairline bg-surface-card flex flex-col justify-between gap-3 transition-colors hover:border-[var(--surface-elevated-dark,#2b3139)]"
+          <!-- Thanh chuyển đổi Sub-Tabs: Gacha Hộp Mù <-> Phòng Trưng Bày -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-surface-elevated border border-hairline text-xs font-semibold">
+            <button
+              type="button"
+              class="py-2 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              :class="cardSubTab === 'gacha' ? 'bg-gold text-canvas-dark font-bold shadow-sm' : 'text-secondary hover:text-white'"
+              @click="cardSubTab = 'gacha'"
             >
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-semibold text-secondary">{{ card.country }}</span>
-                  <UiBadge :variant="cards.isUnlocked(card.id) ? 'success' : 'neutral'">
-                    {{ cards.isUnlocked(card.id) ? 'Đã khai quang' : 'Chưa mở' }}
-                  </UiBadge>
-                </div>
-                <h4 class="text-sm font-bold text-white mt-2 leading-snug">{{ card.title }}</h4>
-                <p class="text-xs text-secondary mt-1 leading-relaxed line-clamp-3">{{ card.description }}</p>
+              <ZenIcon name="sparkles" :size="14" />
+              <span>Hộp Mù Gacha</span>
+            </button>
+            <button
+              type="button"
+              class="py-2 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              :class="cardSubTab === 'gallery' ? 'bg-gold text-canvas-dark font-bold shadow-sm' : 'text-secondary hover:text-white'"
+              @click="cardSubTab = 'gallery'"
+            >
+              <ZenIcon name="cards" :size="14" />
+              <span>Phòng Trưng Bày</span>
+            </button>
+          </div>
+
+          <!-- SUB-TAB 1: HỘP MÙ GACHA -->
+          <div v-if="cardSubTab === 'gacha'" class="space-y-3.5">
+            <!-- Banner giới thiệu Gacha -->
+            <UiCard variant="subtle" class="p-3.5 space-y-1.5 border-hairline bg-surface-card">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <ZenIcon name="sparkles" :size="14" class="text-gold" />
+                  <span>Khai Quang Thần Khí Di Sản Cổ Tự</span>
+                </span>
+                <UiBadge variant="warning">Cardano CIP-68 Ready</UiBadge>
               </div>
-              <UiButton
-                v-if="!cards.isUnlocked(card.id)"
-                variant="primary"
-                size="sm"
-                block
-                @click="requestUnlockCard(card)"
-              >
-                Khai quang (-{{ getCardPriceMc(card.id).toLocaleString() }} MC)
-              </UiButton>
-              <UiButton
-                v-else
-                variant="secondary"
-                size="sm"
-                block
-                disabled
-              >
-                Đã sở hữu
-              </UiButton>
+              <p class="text-xs text-secondary leading-relaxed m-0">
+                Mở gói hộp mù để thỉnh các thẻ bài di sản cổ tự và kinh kệ ngàn năm. Mỗi lần mở thẻ đều được ghi nhận vĩnh viễn trên sổ cái Merit Coins và chứng thực bởi Cardano Hydra L2 Head.
+              </p>
+            </UiCard>
+
+            <!-- Danh sách các Gói Thẻ Gacha -->
+            <div class="space-y-3">
+              <CardPackCard
+                v-for="pack in cards.packs"
+                :key="pack.id"
+                :pack="pack"
+                :loading="cards.isOpening"
+                @open="handleOpenPack"
+              />
             </div>
           </div>
+
+          <!-- SUB-TAB 2: PHÒNG TRƯNG BÀY DI SẢN -->
+          <div v-else class="space-y-3.5">
+            <CardGalleryView @select="handleSelectCard" />
+          </div>
+
+          <!-- MODAL LẬT THẺ TƯƠNG TÁC KHI MỞ GACHA -->
+          <CardRevealModal
+            v-if="cards.showRevealModal"
+            :cards="cards.lastRevealedCards"
+            :hydra-proof="cards.lastHydraProof"
+            @close="cards.closeRevealModal"
+          />
+
+          <!-- MODAL XEM CHI TIẾT THẺ BÀI DI SẢN 3D -->
+          <CardDetailViewer
+            v-if="viewingDetailCard"
+            :card="viewingDetailCard"
+            :is-owned="cards.isUnlocked(viewingDetailCard.id)"
+            :copy-count="cards.getCardCount(viewingDetailCard.id)"
+            @close="viewingDetailCard = null"
+          />
         </div>
 
         <!-- ==================== TAB 5: HỘI THIỀN 432HZ ==================== -->
@@ -2292,6 +2652,10 @@ function sendMantraMessage(text: string) {
               <p class="text-xs text-secondary leading-relaxed">
                 {{ meditation.notice.message }}
               </p>
+              <div v-if="meditation.notice.hydra || meditation.lastHydraProof" class="pt-2 flex items-center justify-between border-t border-hairline/60 mt-2">
+                <span class="text-xs text-secondary">Chứng thực sổ cái:</span>
+                <HydraBadge :proof="meditation.notice.hydra || meditation.lastHydraProof" />
+              </div>
               <UiButton
                 v-if="meditation.notice.action === 'guide_to_hall'"
                 variant="primary"

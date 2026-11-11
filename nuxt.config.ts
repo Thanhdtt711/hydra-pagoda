@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   ssr: false, // SPA Mode for WebGL 3D, Web Audio API and Cardano Web3 Wallet integrations
   compatibilityDate: '2025-07-15',
+  experimental: {
+    appManifest: false
+  },
   nitro: {
     experimental: {
       websocket: true

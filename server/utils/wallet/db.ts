@@ -5,14 +5,17 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { MIGRATIONS } from '../../db/migrations'
-import { getWalletConfig } from './config'
+import { MIGRATIONS } from '../../db/migrations.ts'
+import { getWalletConfig } from './config.ts'
 
 let db: DatabaseSync | null = null
 
 /** Lấy (và khởi tạo lười) kết nối CSDL, tự chạy migration còn thiếu. */
 export function getDb(): DatabaseSync {
-  if (db) return db
+  if (db) {
+    runMigrations(db)
+    return db
+  }
   const file = resolve(getWalletConfig().dbPath)
   mkdirSync(dirname(file), { recursive: true })
   const conn = new DatabaseSync(file)
@@ -46,12 +49,19 @@ function runMigrations(conn: DatabaseSync) {
   }
 }
 
+let inTx = false
+
 /**
  * Chạy `fn` trong một transaction ghi nguyên tử (BEGIN IMMEDIATE lấy khóa ghi ngay từ đầu
  * nên hai yêu cầu đua nhau sẽ được xếp hàng, không đọc-rồi-ghi trên số liệu cũ).
+ * Hỗ trợ re-entrant: nếu đang trong transaction sẵn thì tái sử dụng kết nối.
  */
 export function withTransaction<T>(fn: (conn: DatabaseSync) => T): T {
   const conn = getDb()
+  if (inTx) {
+    return fn(conn)
+  }
+  inTx = true
   conn.exec('BEGIN IMMEDIATE')
   try {
     const result = fn(conn)
@@ -60,6 +70,8 @@ export function withTransaction<T>(fn: (conn: DatabaseSync) => T): T {
   } catch (e) {
     conn.exec('ROLLBACK')
     throw e
+  } finally {
+    inTx = false
   }
 }
 

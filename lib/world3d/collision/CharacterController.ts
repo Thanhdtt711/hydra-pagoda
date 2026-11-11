@@ -15,10 +15,10 @@ export class CharacterController {
   public radius = 0.38
   public standingHeight = 1.75
   public sneakingHeight = 1.40
-  public stepHeight = 0.45 // Leo tam cấp đá 0.45m mượt mà
+  public stepHeight = 0.55 // Leo tam cấp đá & mép ván 0.55m mượt mà
 
-  public gravity = -22.0
-  public jumpStrength = 7.2
+  public gravity = -20.0
+  public jumpStrength = 8.8
 
   public position = new THREE.Vector3(0, 0, 10)
   public velocity = new THREE.Vector3()

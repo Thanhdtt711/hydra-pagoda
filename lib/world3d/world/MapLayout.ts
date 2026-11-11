@@ -238,6 +238,21 @@ export class MapLayout {
       isExclusion: true,
       size: { width: 20.0, height: 9.5, depth: 18.0 },
       doorCenter: { x: 35.0, y: 0.90, z: -0.5 }
+    },
+
+    // 12. ĐÀI TƠ DUYÊN NGUYỆT LÃO (Bên bờ Hồ Sen & Cầu Kiều)
+    LOVE_TREE_SHRINE: {
+      id: 'love_tree_shrine',
+      name: 'Đài Tơ Duyên Nguyệt Lão (Cây Hồng Thần Mộc)',
+      category: 'prop',
+      center: { x: -10.5, y: 0, z: 17.5 },
+      footprint: { type: 'circle', radius: 3.2 },
+      radius: 3.2,
+      elevation: 0.0,
+      rotationY: 0,
+      clearance: 1.0,
+      isWalkable: false,
+      isExclusion: true
     }
   }
 
@@ -307,12 +322,9 @@ export class MapLayout {
       // 2. Cây Đa Cổ Thụ (Phía Đông đối xứng sân chùa: 9.0, 0, 7.5)
       { id: 'tree_banyan_east', species: 'banyan', x: 9.0, z: 7.5, scale: 1.10, rotY: 1.82, seed: 1002 },
 
-      // 3. Thông Cổ Tự Ngoại Vi & Hậu Viện (Đặt an toàn ngoài thềm Chánh Điện & Nhà Hầu Đồng)
+      // 3. Thông Cổ Tự Ngoại Vi & Hậu Viện (Đặt an toàn ngoài thềm Chánh Điện & Nhà Hầu Đồng, không chắn khu Parkour)
       { id: 'tree_pine_bell_1', species: 'pine', x: 26.0, z: 16.5, scale: 1.05, rotY: 0.2, seed: 1003 },
       { id: 'tree_pine_bell_2', species: 'pine', x: 54.0, z: 3.5, scale: 0.95, rotY: 1.1, seed: 1004 },
-      { id: 'tree_pine_back_1', species: 'pine', x: -18.0, z: -36.0, scale: 1.10, rotY: 2.3, seed: 1005 },
-      { id: 'tree_pine_back_2', species: 'pine', x: 18.0, z: -36.0, scale: 1.05, rotY: 0.8, seed: 1006 },
-      { id: 'tree_pine_back_3', species: 'pine', x: 0.0, z: -37.5, scale: 1.15, rotY: 1.4, seed: 1007 },
       { id: 'tree_pine_corner_1', species: 'pine', x: -28.0, z: 24.0, scale: 1.0, rotY: 1.5, seed: 1008 },
       { id: 'tree_pine_corner_2', species: 'pine', x: 28.0, z: 24.0, scale: 1.0, rotY: 2.1, seed: 1009 },
 
@@ -427,6 +439,17 @@ export class MapLayout {
       x <= 50.0 + extraMargin &&
       z >= -23.0 - extraMargin &&
       z <= 11.5 + extraMargin
+    ) {
+      return true
+    }
+
+    // Khu vực Parkour leo núi phía sau Chùa ("Đường Lên Đỉnh Phù Vân"):
+    // Loại bỏ 100% cây cối, khóm trúc, tán lá che khuất ván và đường nhảy
+    if (
+      x >= -28.0 - extraMargin &&
+      x <= 28.0 + extraMargin &&
+      z <= -20.0 + extraMargin &&
+      z >= -75.0 - extraMargin
     ) {
       return true
     }

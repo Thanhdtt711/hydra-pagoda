@@ -25,6 +25,8 @@ export interface MeditationNotice {
   action?: 'guide_to_hall'
   /** Mã tăng dần để UI/Toast phân biệt các thông báo liên tiếp. */
   seq: number
+  /** Chứng thực giao dịch L2 (nếu có) */
+  hydra?: any
 }
 
 export interface MeditationStageAdapter {
@@ -70,7 +72,9 @@ export const useMeditationStore = defineStore('meditation', {
     /** Số bồ đoàn còn trống / tổng (cập nhật khi mở tab Thiền và mỗi lần bắt đầu). */
     availableSlots: 0,
     totalSlots: 0,
-    endsAt: 0
+    endsAt: 0,
+    /** Bằng chứng Hydra L2 của thời khóa hoàn thành gần nhất */
+    lastHydraProof: null as any
   }),
 
   getters: {
@@ -101,8 +105,8 @@ export const useMeditationStore = defineStore('meditation', {
       if (this.phase === 'idle') this.selectedDurationMin = min
     },
 
-    pushNotice(kind: MeditationNoticeKind, title: string, message: string, action?: MeditationNotice['action']) {
-      this.notice = { kind, title, message, action, seq: ++noticeSeq }
+    pushNotice(kind: MeditationNoticeKind, title: string, message: string, action?: MeditationNotice['action'], hydra?: any) {
+      this.notice = { kind, title, message, action, seq: ++noticeSeq, hydra }
     },
 
     clearNotice() {
@@ -280,9 +284,12 @@ export const useMeditationStore = defineStore('meditation', {
         message: 'Thời khóa đã được ghi nhận. Hãy kết nối ví để nhận MC công đức ở thời khóa sau.'
       }
 
+      let noticeHydra: any = null
       if (token) {
         try {
           const res = await economy.completeMeditation(token)
+          noticeHydra = res.hydra || null
+          this.lastHydraProof = noticeHydra
           if (res.creditedMc > 0) {
             const partial = res.creditedMc < res.expectedRewardMc
             notice = {
@@ -313,7 +320,7 @@ export const useMeditationStore = defineStore('meditation', {
       user.recordMeditation(minutes)
       this.releaseSeat(true)
       this.phase = 'idle'
-      this.pushNotice(notice.kind, notice.title, notice.message)
+      this.pushNotice(notice.kind, notice.title, notice.message, undefined, noticeHydra)
     },
 
     /** Xả thiền sớm: đứng dậy, nhả chỗ, không nhận MC. */

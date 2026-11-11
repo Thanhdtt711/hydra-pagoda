@@ -52,6 +52,12 @@ export class TerrainSystem {
       return 0.0
     }
 
+    // Hành lang Parkour Leo Núi phía sau Chùa ("Đường Lên Đỉnh Phù Vân"):
+    // Mặt đất phẳng thoáng đãng, triệt tiêu sườn núi đâm xuyên các tầm ván
+    if (x >= -28.0 && x <= 28.0 && z <= -22.0 && z >= -75.0) {
+      return 0.0
+    }
+
     // 2. Trục đường dẫn Nam ra cổng ngoài (Đường rộng 9m dọc trục Z)
     if (Math.abs(x) < 4.8 && z >= 26.0 && z <= 120.0) {
       return 0.0

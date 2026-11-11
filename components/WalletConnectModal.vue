@@ -98,6 +98,11 @@ async function handleBuyMc() {
   await wallet.buyMcWithAda(parsedAda.value)
 }
 
+function handleResetPurchase() {
+  wallet.purchasePhase = 'idle'
+  wallet.purchaseStatusText = ''
+}
+
 function statusBadge(status: OrderStatus): { label: string; variant: 'success' | 'warning' | 'info' | 'neutral' | 'danger' } {
   switch (status) {
     case 'completed':
@@ -370,15 +375,24 @@ function formatTime(ts: number): string {
             </div>
           </div>
 
-          <!-- Single Primary Yellow CTA button -->
+          <!-- Single Primary Yellow CTA button (Ẩn khi đang đợi nạp / đang xử lý giao dịch) -->
           <UiButton
+            v-if="wallet.purchasePhase === 'idle' || wallet.purchasePhase === 'error'"
             variant="primary"
             block
-            :loading="isBuying"
-            :disabled="parsedAda < 2 || isBuying"
+            :disabled="parsedAda < 2"
             @click="handleBuyMc"
           >
-            {{ isBuying ? 'Đang xử lý...' : `Xác nhận nạp ${parsedAda >= 2 ? previewMc.toLocaleString() : 0} MC (${parsedAda >= 2 ? parsedAda : 0} ADA)` }}
+            {{ `Xác nhận nạp ${parsedAda >= 2 ? previewMc.toLocaleString() : 0} MC (${parsedAda >= 2 ? parsedAda : 0} ADA)` }}
+          </UiButton>
+
+          <UiButton
+            v-else-if="wallet.purchasePhase === 'completed'"
+            variant="secondary"
+            block
+            @click="handleResetPurchase"
+          >
+            Tiếp tục nạp đơn mới
           </UiButton>
         </div>
 

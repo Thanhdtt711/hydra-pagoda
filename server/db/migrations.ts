@@ -287,5 +287,99 @@ CREATE TABLE hau_dong_attendance (
 );
 CREATE INDEX hau_dong_attendance_account_idx ON hau_dong_attendance (account_id, claimed_at DESC);
 `
+  },
+  {
+    version: 7,
+    name: 'parkour_mountain_challenge',
+    sql: `
+-- Thử thách Parkour Leo Núi Phía Sau Chùa (Đường Lên Đỉnh Phù Vân)
+CREATE TABLE parkour_records (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id       INTEGER NOT NULL REFERENCES accounts(id),
+  day_key          TEXT    NOT NULL, -- YYYY-MM-DD
+  attempts_count   INTEGER NOT NULL DEFAULT 0 CHECK (attempts_count >= 0),
+  has_free_claimed INTEGER NOT NULL DEFAULT 0 CHECK (has_free_claimed IN (0, 1)),
+  completed_count  INTEGER NOT NULL DEFAULT 0 CHECK (completed_count >= 0),
+  best_time_sec    INTEGER CHECK (best_time_sec > 0),
+  updated_at       INTEGER NOT NULL,
+  UNIQUE(account_id, day_key)
+);
+CREATE INDEX parkour_records_acc_day_idx ON parkour_records (account_id, day_key);
+
+CREATE TABLE parkour_runs (
+  run_token        TEXT    PRIMARY KEY,
+  account_id       INTEGER NOT NULL REFERENCES accounts(id),
+  day_key          TEXT    NOT NULL,
+  fee_mc           INTEGER NOT NULL DEFAULT 0 CHECK (fee_mc >= 0),
+  grant_mc         INTEGER NOT NULL DEFAULT 0 CHECK (grant_mc >= 0),
+  started_at       INTEGER NOT NULL,
+  completed_at     INTEGER,
+  time_taken_sec   INTEGER,
+  reward_mc        INTEGER NOT NULL DEFAULT 0 CHECK (reward_mc >= 0),
+  ledger_id        INTEGER REFERENCES mc_ledger(id)
+);
+CREATE INDEX parkour_runs_account_idx ON parkour_runs (account_id, started_at DESC);
+`
+  },
+  {
+    version: 8,
+    name: 'fortune_records_relax_constraints',
+    sql: `
+-- Tái cấu trúc fortune_records: cho phép tier đa dạng ('free_daily', 'offering_*', 'basic', 'auspicious', 'golden'),
+-- cho phép cost_mc = 0 (lượt miễn phí trong ngày / dâng lễ phẩm),
+-- và mở rộng category ('love_couple', v.v.)
+CREATE TABLE fortune_records_v8 (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id    INTEGER NOT NULL REFERENCES accounts(id),
+  request_id    TEXT    NOT NULL UNIQUE,
+  category      TEXT    NOT NULL,
+  tier          TEXT    NOT NULL,
+  cost_mc       INTEGER NOT NULL DEFAULT 0 CHECK (cost_mc >= 0),
+  fortune_json  TEXT    NOT NULL,
+  receipt_hash  TEXT    NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+INSERT INTO fortune_records_v8 (id, account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at)
+  SELECT id, account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at FROM fortune_records;
+
+DROP TABLE fortune_records;
+
+ALTER TABLE fortune_records_v8 RENAME TO fortune_records;
+
+CREATE INDEX fortune_records_account_idx ON fortune_records (account_id, created_at DESC);
+`
+  },
+  {
+    version: 9,
+    name: 'heritage_card_inventory_and_gacha',
+    sql: `
+-- Kho Thẻ Bài Di Sản Cổ Tự & Kinh Kệ Gacha (Monetization & Card Collection)
+CREATE TABLE IF NOT EXISTS card_inventory (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id    INTEGER NOT NULL REFERENCES accounts(id),
+  card_id       TEXT    NOT NULL,
+  rarity        TEXT    NOT NULL CHECK (rarity IN ('common', 'rare', 'epic', 'legendary')),
+  unlocked_at   INTEGER NOT NULL,
+  is_nft_minted INTEGER DEFAULT 0 CHECK (is_nft_minted IN (0, 1)),
+  nft_asset_id  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_card_inv_acc ON card_inventory (account_id, unlocked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_card_inv_card ON card_inventory (card_id);
+
+-- Lịch sử mở gói thẻ Gacha Pack
+CREATE TABLE IF NOT EXISTS card_pack_openings (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id   INTEGER NOT NULL REFERENCES accounts(id),
+  request_id   TEXT    NOT NULL UNIQUE,
+  pack_id      TEXT    NOT NULL,
+  cost_mc      INTEGER NOT NULL CHECK (cost_mc > 0),
+  card_ids     TEXT    NOT NULL,
+  cards_json   TEXT    NOT NULL,
+  receipt_hash TEXT    NOT NULL,
+  created_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_card_pack_acc ON card_pack_openings (account_id, created_at DESC);
+`
   }
 ]

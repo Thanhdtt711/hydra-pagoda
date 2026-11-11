@@ -17,14 +17,16 @@ import { resolveLegacyCategory, resolveMonId } from '../../../lib/boi/ContentRep
 import { generateFortune } from '../../../lib/boi/FortuneEngine'
 import type { FortuneDrawInput, InputMode, PersonProfile, RecentDrawRef } from '../../../lib/boi/types'
 import { HallLayout } from '../../../lib/world3d/world/HallLayout'
-import { apiError } from './auth'
-import { getDb, withTransaction } from './db'
-import { scheduleHydraRecord } from '../hydra/hydraQueue'
+import { apiError } from './auth.ts'
+import { getDb, withTransaction } from './db.ts'
+import { scheduleHydraRecord } from '../hydra/hydraQueue.ts'
+import { getCardPackById, rollCardGacha, type BuddhistCardItem } from '../cards/catalog.ts'
 
 export type SpendReason =
   | 'shop_buy_attire'
   | 'shop_buy_offering'
   | 'shop_unlock_card'
+  | 'card_pack_purchase'
   | 'fortune_divination'
   | 'merit_donation'
   | 'hau_dong_donation'
@@ -32,7 +34,7 @@ export type SpendReason =
 
 export type DivinationCategory = 'stick' | 'love' | 'family' | 'wealth' | 'health' | 'star'
 export type DivinationTier = 'basic' | 'auspicious' | 'golden'
-export type ShopCategory = 'attire' | 'offering' | 'heritage_card'
+export type ShopCategory = 'attire' | 'offering' | 'heritage_card' | 'charm'
 
 export interface McServiceDefinition {
   id: string
@@ -308,6 +310,17 @@ export const SHOP_CATALOG: ShopCatalogItem[] = [
     consumable: true,
     defaultUnlocked: false,
     icon: 'lotus'
+  },
+  {
+    id: 'love_knot_charm',
+    name: 'Bùa Chỉ Đỏ Uyên Ương',
+    subname: 'Tín vật thắt gút đồng tâm Nguyệt Lão chúc phúc lương duyên',
+    category: 'charm',
+    countryCode: 'VN',
+    priceMc: 10,
+    consumable: false,
+    defaultUnlocked: false,
+    icon: 'sparkles'
   },
 
   // C. Thẻ bài Di Sản 3D (mở khóa bộ sưu tập cổ tự)
@@ -1737,5 +1750,118 @@ export function getMcOverviewAndHistory(accountId: number | null) {
     dailyFreeUsedByCategory,
     meditation: getMeditationStatus(accountId)
   }
+}
+
+/**
+ * Mở gói thẻ bài Gacha (Monetization & Card Collection).
+ * Trừ MC qua hàm `spend` nguyên tử, lưu vào `card_inventory`, `account_inventory`,
+ * và đẩy chứng thực Hydra L2 Head.
+ */
+export function buyAndOpenCardPack(accountId: number, packId: string, requestId: string) {
+  const pack = getCardPackById(packId)
+  if (!pack) {
+    apiError(404, 'pack_not_found', `Gói thẻ bài "${packId}" không tồn tại`)
+  }
+
+  const cleanReqId = normalizeRequestId(requestId)
+
+  return spend(accountId, pack.priceMc, 'card_pack_purchase', cleanReqId, {
+    refType: 'card_pack',
+    metadata: {
+      packId: pack.id,
+      packName: pack.name,
+      cardCount: pack.cardCount,
+      priceMc: pack.priceMc
+    },
+    onSpent: (conn, { now }) => {
+      // 1. Rút thẻ bài theo thuật toán xác suất & bảo hiểm
+      const drawnCards = rollCardGacha(pack.id)
+
+      // 2. Lưu vào bảng chuyên biệt card_inventory
+      const insertCardStmt = conn.prepare(`
+        INSERT INTO card_inventory (account_id, card_id, rarity, unlocked_at, is_nft_minted, nft_asset_id)
+        VALUES (?, ?, ?, ?, 0, NULL)
+      `)
+      for (const card of drawnCards) {
+        insertCardStmt.run(accountId, card.id, card.rarity, now)
+      }
+
+      // 3. Đồng bộ vào account_inventory (loại heritage_card)
+      const upsertAccInv = conn.prepare(`
+        INSERT INTO account_inventory (account_id, item_id, category, quantity, unlocked_at, updated_at)
+        VALUES (?, ?, 'heritage_card', 1, ?, ?)
+        ON CONFLICT(account_id, item_id) DO UPDATE SET
+          quantity = account_inventory.quantity + 1,
+          updated_at = excluded.updated_at
+      `)
+      for (const card of drawnCards) {
+        upsertAccInv.run(accountId, card.id, now, now)
+      }
+
+      // 4. Lưu lịch sử mở gói thẻ
+      const cardIdsStr = drawnCards.map(c => c.id).join(',')
+      const receiptHash = 'pack_' + createHash('sha256')
+        .update(`${accountId}:${cleanReqId}:${now}`)
+        .digest('hex')
+        .slice(0, 24)
+
+      conn.prepare(`
+        INSERT INTO card_pack_openings (account_id, request_id, pack_id, cost_mc, card_ids, cards_json, receipt_hash, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        accountId,
+        cleanReqId,
+        pack.id,
+        pack.priceMc,
+        cardIdsStr,
+        JSON.stringify(drawnCards),
+        receiptHash,
+        now
+      )
+
+      return {
+        pack,
+        cards: drawnCards,
+        receiptHash,
+        openedAt: now
+      }
+    },
+    onReplay: (conn) => {
+      const record = conn.prepare(`
+        SELECT cards_json, receipt_hash, created_at
+        FROM card_pack_openings
+        WHERE account_id = ? AND request_id = ?
+      `).get(accountId, cleanReqId) as { cards_json: string; receipt_hash: string; created_at: number } | undefined
+
+      const cards = record ? JSON.parse(record.cards_json) : []
+      return {
+        pack,
+        cards,
+        receiptHash: record?.receipt_hash || 'replay',
+        openedAt: record?.created_at || Date.now()
+      }
+    }
+  })
+}
+
+/**
+ * Lấy danh sách thẻ bài đã sở hữu của người dùng kèm thống kê số lượng bản sao.
+ */
+export function getUserCardInventory(accountId: number) {
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT card_id, rarity, COUNT(*) as count, MIN(unlocked_at) as first_unlocked_at, MAX(unlocked_at) as last_unlocked_at
+    FROM card_inventory
+    WHERE account_id = ?
+    GROUP BY card_id
+  `).all(accountId) as Array<{
+    card_id: string
+    rarity: string
+    count: number
+    first_unlocked_at: number
+    last_unlocked_at: number
+  }>
+
+  return rows
 }
 

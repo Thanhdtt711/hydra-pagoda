@@ -58,6 +58,7 @@ export const useHauDongStore = defineStore('hauDong', {
     notice: null as string | null,
     insideZone: false,
     isBowing: false,
+    lastClaimHydra: null as any,
     config: {
       sessionDurationSec: 480,
       giaCount: 5,
@@ -77,6 +78,14 @@ export const useHauDongStore = defineStore('hauDong', {
       lunarYear: 2026,
       isFestivalDay: false,
       festivalLabel: ''
+    },
+    scheduleInfo: {
+      fixedHourStr: '11:00',
+      timezone: 'GMT+7 (Giờ Hà Nội)',
+      nextScheduledAt: 0,
+      secondsUntilNextSchedule: 0,
+      isToday: true,
+      isHappeningNow: false
     },
     deityCatalog: [] as HauDongDeityDto[],
     activeSession: null as HauDongActiveSessionDto | null,
@@ -100,6 +109,7 @@ export const useHauDongStore = defineStore('hauDong', {
       this.loaded = true
       if (data.config) this.config = { ...this.config, ...data.config }
       if (data.lunarInfo) this.lunarInfo = data.lunarInfo
+      if (data.scheduleInfo) this.scheduleInfo = data.scheduleInfo
       if (Array.isArray(data.deityCatalog)) this.deityCatalog = data.deityCatalog
       this.activeSession = data.activeSession || null
       this.myAttendance = data.myAttendance || null
@@ -149,6 +159,7 @@ export const useHauDongStore = defineStore('hauDong', {
           deityName: string
           blessingTitle: string
           status: any
+          hydra?: any
         }>('/api/mc/hau-dong/claim', {
           method: 'POST',
           body: {
@@ -157,6 +168,7 @@ export const useHauDongStore = defineStore('hauDong', {
         })
         const economy = useEconomyStore()
         economy.meritCoins = res.balanceAfter
+        this.lastClaimHydra = res.hydra || null
         this.applyPayload(res.status)
         this.notice = `Thỉnh lộc thành công +${res.creditedMc} MC (${res.blessingTitle}) từ giá ${res.deityName}!`
         return res
@@ -169,7 +181,7 @@ export const useHauDongStore = defineStore('hauDong', {
     },
 
     async sponsorSession(opts: {
-      mode: 'single_open' | 'crowdfund' | 'free_ritual'
+      mode: 'single_open' | 'crowdfund'
       amountMc?: number
       customDeityId?: string | null
       prayerText?: string
@@ -196,9 +208,7 @@ export const useHauDongStore = defineStore('hauDong', {
         if (res.status) {
           this.applyPayload(res.status)
         }
-        if (opts.mode === 'free_ritual') {
-          this.notice = 'Đã khai đàn vấn hầu mới tại Điện Thờ Tứ Phủ!'
-        } else if (opts.mode === 'single_open') {
+        if (opts.mode === 'single_open') {
           this.notice =
             res.sessionStatus === 'active'
               ? 'Đã khai đàn Đặc Cách thành công! Danh vị của bạn đã khắc lên Cuốn Thư Vàng trên Chiếu Hầu.'

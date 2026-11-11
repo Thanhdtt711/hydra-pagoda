@@ -32,7 +32,7 @@ interface AccountRow {
 
 /** Ném lỗi HTTP có mã máy-đọc-được (`data.code`) để client hiển thị đúng thông báo. */
 export function apiError(statusCode: number, code: string, message: string): never {
-  throw createError({ statusCode, statusMessage: message, data: { code, message } })
+  throw createError({ statusCode, message, statusMessage: message.length > 64 ? code : message, data: { code, message } })
 }
 
 const sha256Hex = (s: string) => createHash('sha256').update(s).digest('hex')

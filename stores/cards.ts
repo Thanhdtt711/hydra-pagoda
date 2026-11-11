@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
+import catalogData from '../data/cards/catalog.json' with { type: 'json' }
+import { useEconomyStore } from './economy'
 
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary'
 export type CardCategory = 'wisdom' | 'architecture'
+export type CountryFilter = 'all' | 'VN' | 'JP' | 'TH' | 'KR'
+export type RarityFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary'
+export type OwnershipFilter = 'all' | 'owned' | 'unowned'
 
 export interface BuddhistCard {
   id: string
@@ -9,103 +14,283 @@ export interface BuddhistCard {
   subtitle: string
   category: CardCategory
   country: string
+  countryCode: string
   rarity: CardRarity
+  imageUrl?: string
   scriptureText?: string
   meaning: string
   lore: string
+  audioNarrator?: string
+  tags?: string[]
   unlockedAt: number | null
+}
+
+export interface CardPack {
+  id: string
+  name: string
+  subtitle: string
+  cardCount: number
+  priceMc: number
+  originalPriceMc?: number
+  discountPercent?: number
+  guaranteedRarity?: CardRarity | null
+  badge?: string
+  description: string
+}
+
+export interface UserCardRecord {
+  card_id: string
+  rarity: CardRarity
+  count: number
+  first_unlocked_at: number
+  last_unlocked_at: number
+}
+
+const STORAGE_KEY_OFFLINE_CARDS = 'van_canh_offline_cards_v1'
+
+function loadOfflineUnlocked(): Set<string> {
+  if (typeof window === 'undefined') return new Set(['card_vn_motcot', 'card_vn_truclam', 'card_jp_ichigo'])
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_OFFLINE_CARDS)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      return new Set(Array.isArray(arr) ? arr : [])
+    }
+  } catch (_) {}
+  return new Set(['card_vn_motcot', 'card_vn_truclam', 'card_jp_ichigo'])
+}
+
+function saveOfflineUnlocked(set: Set<string>) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(STORAGE_KEY_OFFLINE_CARDS, JSON.stringify(Array.from(set)))
+  } catch (_) {}
 }
 
 export const useCardsStore = defineStore('cards', {
   state: () => ({
-    allCards: [
-      {
-        id: 'card_vn_truclam',
-        title: 'Cư Trần Lạc Đạo Phú',
-        subtitle: 'Thiền Phái Trúc Lâm Yên Tử',
-        category: 'wisdom',
-        country: 'Việt Nam',
-        rarity: 'legendary',
-        scriptureText: 'Cư trần lạc đạo thả tùy duyên / Cơ tắc xan hề khốn tắc miên...',
-        meaning: 'Sống giữa trần tục mà vui với đạo, hãy thuận theo nhân duyên; đói thì ăn, mệt thì ngủ, không vướng bận tham sân.',
-        lore: 'Tác phẩm bất hủ của Đức Vua - Phật Hoàng Trần Nhân Tông sau khi ngài đắc đạo trên non thiêng Yên Tử.',
-        unlockedAt: Date.now()
-      },
-      {
-        id: 'card_jp_ichigo',
-        title: 'Nhất Kỳ Nhất Hội (一期一会)',
-        subtitle: 'Triết Lý Thiền Trà Nhật Bản',
-        category: 'wisdom',
-        country: 'Nhật Bản',
-        rarity: 'epic',
-        scriptureText: 'Ichigo Ichie',
-        meaning: 'Đời người chỉ gặp một lần. Mỗi khoảnh khắc hiện tại cùng chén trà là duy nhất và không bao giờ lặp lại.',
-        lore: 'Triết lý cốt lõi của Trà Đạo khởi xướng bởi Thiền sư Sen no Rikyu tại Kyoto.',
-        unlockedAt: Date.now()
-      },
-      {
-        id: 'card_vn_motcot',
-        title: 'Chùa Một Cột (Diên Hựu Tự)',
-        subtitle: 'Đóa Sen Ngàn Năm Thăng Long',
-        category: 'architecture',
-        country: 'Việt Nam',
-        rarity: 'legendary',
-        meaning: 'Biểu tượng đóa hoa sen ngát hương vươn lên từ mặt nước, tượng trưng cho sự thuần khiết thoát tục.',
-        lore: 'Xây dựng năm 1049 dưới triều vua Lý Thái Tông theo giấc chiêm bao Phật Bà Quan Âm ngự trên tòa sen.',
-        unlockedAt: Date.now()
-      },
-      {
-        id: 'card_jp_kinkaku',
-        title: 'Chùa Vàng Kinkaku-ji',
-        subtitle: 'Lộc Uyển Tự - Kyoto',
-        category: 'architecture',
-        country: 'Nhật Bản',
-        rarity: 'epic',
-        meaning: 'Ba tầng chùa dát vàng soi bóng xuống hồ Gương Sen (Kyoko-chi), tạo nên cảnh giới Tây Phương Cực Lạc chốn nhân gian.',
-        lore: 'Di sản thế giới UNESCO, xây dựng từ thời Mạc Phủ Ashikaga Yoshimitsu.',
-        unlockedAt: null
-      },
-      {
-        id: 'card_th_watphra',
-        title: 'Chùa Phật Ngọc (Wat Phra Kaew)',
-        subtitle: 'Bảo Vật Hoàng Gia Thái Lan',
-        category: 'architecture',
-        country: 'Thái Lan',
-        rarity: 'legendary',
-        meaning: 'Tượng Phật tạc từ ngọc bích nguyên khối xanh biếc, mang lại phúc lành và thịnh vượng cho quốc gia.',
-        lore: 'Tọa lạc bên trong Hoàng Cung Bangkok, nơi Vua Thái Lan tự tay thay 3 bộ y phục cho tượng theo 3 mùa.',
-        unlockedAt: null
-      },
-      {
-        id: 'card_kr_bulguk',
-        title: 'Phật Quốc Tự (Bulguksa)',
-        subtitle: 'Đỉnh Cao Kiến Trúc Đá Silla',
-        category: 'architecture',
-        country: 'Hàn Quốc',
-        rarity: 'epic',
-        meaning: 'Tượng trưng cho cõi Phật trần thế với tháp đá Đa Bảo Tháp (Dabotap) và Thích Ca Tháp (Seokgatap).',
-        lore: 'Quần thể cổ tự linh thiêng bậc nhất xứ sở kim chi được xây dựng từ thế kỷ thứ 8.',
-        unlockedAt: null
-      }
-    ] as BuddhistCard[]
+    catalogCards: (catalogData.cards as any[]).map(c => ({
+      ...c,
+      unlockedAt: null
+    })) as BuddhistCard[],
+    packs: catalogData.packs as CardPack[],
+    userInventory: [] as UserCardRecord[],
+    offlineUnlockedIds: loadOfflineUnlocked(),
+    isLoading: false,
+    isOpening: false,
+    selectedCard: null as BuddhistCard | null,
+    filterCountry: 'all' as CountryFilter,
+    filterRarity: 'all' as RarityFilter,
+    filterOwnership: 'all' as OwnershipFilter,
+    lastRevealedCards: [] as BuddhistCard[],
+    showRevealModal: false,
+    lastHydraProof: null as any
   }),
 
   getters: {
-    unlockedList: (state) => state.allCards.filter(c => c.unlockedAt !== null),
-    lockedList: (state) => state.allCards.filter(c => c.unlockedAt === null)
+    // Thuộc tính tương thích ngược cho các component cũ
+    allCards: (state) => {
+      const owned = new Set([
+        ...state.userInventory.map(i => i.card_id),
+        ...Array.from(state.offlineUnlockedIds)
+      ])
+      return state.catalogCards.map(c => ({
+        ...c,
+        unlockedAt: owned.has(c.id) ? Date.now() : null
+      }))
+    },
+
+    ownedCardIds(state): Set<string> {
+      return new Set([
+        ...state.userInventory.map(i => i.card_id),
+        ...Array.from(state.offlineUnlockedIds)
+      ])
+    },
+
+    isUnlocked: (state) => (id: string): boolean => {
+      return (
+        state.userInventory.some(i => i.card_id === id) ||
+        state.offlineUnlockedIds.has(id)
+      )
+    },
+
+    getCardCount: (state) => (id: string): number => {
+      const item = state.userInventory.find(i => i.card_id === id)
+      if (item) return item.count
+      return state.offlineUnlockedIds.has(id) ? 1 : 0
+    },
+
+    unlockedList(): BuddhistCard[] {
+      return this.allCards.filter(c => this.isUnlocked(c.id))
+    },
+
+    lockedList(): BuddhistCard[] {
+      return this.allCards.filter(c => !this.isUnlocked(c.id))
+    },
+
+    // Danh sách thẻ bài sau khi áp dụng bộ lọc (Country, Rarity, Ownership)
+    filteredCards(): BuddhistCard[] {
+      return this.allCards.filter(c => {
+        if (this.filterCountry !== 'all' && c.countryCode !== this.filterCountry) {
+          return false
+        }
+        if (this.filterRarity !== 'all' && c.rarity !== this.filterRarity) {
+          return false
+        }
+        if (this.filterOwnership === 'owned' && !this.isUnlocked(c.id)) {
+          return false
+        }
+        if (this.filterOwnership === 'unowned' && this.isUnlocked(c.id)) {
+          return false
+        }
+        return true
+      })
+    },
+
+    // Thống kê tiến độ sưu tập tổng và theo từng quốc gia
+    collectionStats(): {
+      total: number
+      owned: number
+      percent: number
+      byCountry: Record<string, { total: number; owned: number; percent: number }>
+    } {
+      const total = this.allCards.length
+      const owned = this.allCards.filter(c => this.isUnlocked(c.id)).length
+      const percent = total > 0 ? Math.round((owned / total) * 100) : 0
+
+      const byCountry: Record<string, { total: number; owned: number; percent: number }> = {
+        VN: { total: 0, owned: 0, percent: 0 },
+        JP: { total: 0, owned: 0, percent: 0 },
+        TH: { total: 0, owned: 0, percent: 0 },
+        KR: { total: 0, owned: 0, percent: 0 }
+      }
+
+      for (const c of this.allCards) {
+        if (byCountry[c.countryCode]) {
+          byCountry[c.countryCode]!.total++
+          if (this.isUnlocked(c.id)) {
+            byCountry[c.countryCode]!.owned++
+          }
+        }
+      }
+
+      for (const k of Object.keys(byCountry)) {
+        const item = byCountry[k]!
+        item.percent = item.total > 0 ? Math.round((item.owned / item.total) * 100) : 0
+      }
+
+      return { total, owned, percent, byCountry }
+    }
   },
 
   actions: {
-    unlockCard(id: string) {
-      const card = this.allCards.find(c => c.id === id)
-      if (card && !card.unlockedAt) {
-        card.unlockedAt = Date.now()
-        return true
+    /**
+     * Nạp catalog và kho thẻ đã sở hữu từ server
+     */
+    async fetchInventory() {
+      this.isLoading = true
+      try {
+        const res = await $fetch<any>('/api/mc/cards/inventory')
+        if (res && res.ok) {
+          if (Array.isArray(res.userInventory)) {
+            this.userInventory = res.userInventory
+          }
+          if (Array.isArray(res.packs)) {
+            this.packs = res.packs
+          }
+        }
+      } catch (err) {
+        console.warn('[cards] fetchInventory failed, using fallback:', err)
+      } finally {
+        this.isLoading = false
       }
-      return false
+    },
+
+    /**
+     * Mua và mở gói thẻ Gacha Pack qua API server
+     */
+    async openPack(packId: string) {
+      this.isOpening = true
+      const economy = useEconomyStore()
+      try {
+        const requestId = 'pack_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+        const res = await $fetch<any>('/api/mc/cards/pack-buy', {
+          method: 'POST',
+          body: { packId, requestId }
+        })
+
+        if (res && res.ok) {
+          // 1. Cập nhật số dư MC
+          if (typeof res.mcBalance === 'number') {
+            economy.meritCoins = res.mcBalance
+          }
+          // 2. Cập nhật kho thẻ server
+          if (Array.isArray(res.userCardInventory)) {
+            this.userInventory = res.userCardInventory
+          }
+          // 3. Đồng bộ offline set
+          if (Array.isArray(res.cards)) {
+            res.cards.forEach((c: any) => this.offlineUnlockedIds.add(c.id))
+            saveOfflineUnlocked(this.offlineUnlockedIds)
+            this.lastRevealedCards = res.cards
+          }
+          // 4. Lưu proof Hydra L2
+          this.lastHydraProof = res.hydra || null
+          this.showRevealModal = true
+
+          return res
+        }
+        throw new Error(res?.message || 'Không thể mở gói thẻ lúc này.')
+      } catch (err: any) {
+        throw err
+      } finally {
+        this.isOpening = false
+      }
+    },
+
+    /**
+     * Mở khóa đơn lẻ (tương thích backward compatibility)
+     */
+    unlockCard(id: string) {
+      this.offlineUnlockedIds.add(id)
+      saveOfflineUnlocked(this.offlineUnlockedIds)
+      const existing = this.userInventory.find(i => i.card_id === id)
+      if (existing) {
+        existing.count++
+      } else {
+        const found = this.catalogCards.find(c => c.id === id)
+        this.userInventory.push({
+          card_id: id,
+          rarity: found?.rarity || 'common',
+          count: 1,
+          first_unlocked_at: Date.now(),
+          last_unlocked_at: Date.now()
+        })
+      }
+      return true
+    },
+
+    setSelectedCard(card: BuddhistCard | null) {
+      this.selectedCard = card
+    },
+
+    setFilterCountry(c: CountryFilter) {
+      this.filterCountry = c
+    },
+
+    setFilterRarity(r: RarityFilter) {
+      this.filterRarity = r
+    },
+
+    setFilterOwnership(o: OwnershipFilter) {
+      this.filterOwnership = o
+    },
+
+    closeRevealModal() {
+      this.showRevealModal = false
+      this.lastRevealedCards = []
     }
   }
 })
 
 export const useCardStore = useCardsStore
-

@@ -157,6 +157,10 @@ export class LowPolyBuilder {
      * Gộp nhiều phần có màu riêng thành 1 BufferGeometry duy nhất (position, normal, color).
      * Dùng cùng FlatMaterialFactory.vertexColor().
      */
+    public static bake(parts: ColoredPart[], disposeSource = true): THREE.BufferGeometry {
+        return LowPolyBuilder.mergeColored(parts, disposeSource)
+    }
+
     public static mergeColored(parts: ColoredPart[], disposeSource = true): THREE.BufferGeometry {
         const prepared: THREE.BufferGeometry[] = []
         let total = 0

@@ -7,10 +7,42 @@
 
 export type AmbientChannel = 'rain' | 'stream' | 'singingBowl' | 'windChimes' | 'woodenFish' | 'chanting'
 
+const AUDIO_PATHS = {
+  zenBgm: '/audio/sfx/zen-meditation-bgm.mp3',
+  chauVanBgm: '/audio/sfx/chau-van-ritual-bgm.mp3',
+  greatBellSfx: '/audio/sfx/temple-great-bell.mp3',
+  mindfulnessBellSfx: '/audio/sfx/mindfulness-bell.mp3',
+  fortuneShakeSfx: '/audio/sfx/fortune-shake.mp3'
+} as const
+
+const DEITY_STAGE_INDEX: Record<string, number> = {
+  quan_lon_de_tam: 0,
+  chau_doi_thuong_ngan: 1,
+  ong_hoang_muoi: 2,
+  co_doi_thuong_ngan: 3,
+  cau_be_hoang_tu: 4,
+  duc_ong_tran_trieu: 0,
+  ong_hoang_bay: 2
+}
+
 export class ZenAudioEngine {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
   private isMuted: boolean = false
+  private masterVolValue: number = 0.7
+
+  // HTML5 Audio Elements cho nhạc nền Thiền Chùa & Chầu Văn Hầu Đồng (Streaming MP3 + Crossfade)
+  private zenBgmEl: HTMLAudioElement | null = null
+  private zenBgmBaseVolume: number = 0.45
+  private zenBgmWanted: boolean = true
+  private chauVanBaseVolume: number = 0.68
+  private chauVanActive: boolean = false
+  private bgmFadeTimer: ReturnType<typeof setInterval> | null = null
+  private gestureUnlocked: boolean = false
+
+  // Trọng số không gian 3D (0.0 .. 1.0) tính theo khoảng cách người chơi
+  private templeProximityWeight: number = 1.0
+  private hauDongProximityWeight: number = 0.0
 
   // Ambient Channels
   private ambientGains: Record<AmbientChannel, GainNode | null> = {
@@ -43,18 +75,160 @@ export class ZenAudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume()
     }
+    this.ensureBgmElements()
+  }
+
+  private ensureBgmElements() {
+    if (typeof window === 'undefined') return
+
+    if (!this.zenBgmEl) {
+      const el = new Audio(AUDIO_PATHS.zenBgm)
+      el.loop = true
+      el.preload = 'metadata'
+      el.volume = 0
+      this.zenBgmEl = el
+    }
+
+    if (!this.chauVanAudioEl) {
+      const el = new Audio(AUDIO_PATHS.chauVanBgm)
+      el.loop = true
+      el.preload = 'metadata'
+      el.volume = 0
+      this.chauVanAudioEl = el
+    }
+
+    if (!this.bgmFadeTimer) {
+      this.bgmFadeTimer = setInterval(() => {
+        this.stepBgmCrossfade()
+      }, 80)
+    }
+
+    if (!this.gestureUnlocked) {
+      this.gestureUnlocked = true
+      const unlock = () => {
+        this.initContext()
+        this.triggerActiveBgmPlayback()
+      }
+      window.addEventListener('pointerdown', unlock, { once: true, passive: true })
+      window.addEventListener('keydown', unlock, { once: true, passive: true })
+    }
+  }
+
+  private triggerActiveBgmPlayback() {
+    if (this.isMuted) return
+    if (this.chauVanActive && this.chauVanAudioEl) {
+      if (this.chauVanAudioEl.paused) {
+        void this.chauVanAudioEl.play().catch(() => undefined)
+      }
+    } else if (this.zenBgmWanted && this.zenBgmEl) {
+      if (this.zenBgmEl.paused) {
+        void this.zenBgmEl.play().catch(() => undefined)
+      }
+    }
+  }
+
+  /**
+   * Cập nhật vị trí người chơi theo thời gian thực để tính toán âm lượng không gian 3D:
+   * - Nhạc Chùa: To nhất (100%) khi ở quanh Chánh Điện & Sân Chùa (d <= 25m), nhỏ dần khi đi xa ra ngoài và về 0 khi > 80m hoặc khi vào sâu trong Nhà Hầu Đồng.
+   * - Nhạc Chầu Văn: Chỉ bắt đầu mở khi bước lên bậc hè (d <= 11.5m), to tối đa khi bước vào bên trong lòng Điện Tứ Phủ (d <= 7.0m), ở ngoài sân chùa hoàn toàn im lặng (0%).
+   */
+  public updatePlayerPosition(playerX: number, playerZ: number) {
+    // 1. Tâm Đại Hùng Bảo Điện: (x = 0, z = -9.5)
+    const distTemple = Math.hypot(playerX - 0, playerZ - (-9.5))
+    // Trong bán kính 28m (Chánh Điện + sân trước): âm lượng 100%. Từ 28m đến 85m (ra cổng/chân núi): nhỏ dần về 0.1
+    let templeW = 1.0
+    if (distTemple > 28.0) {
+      templeW = Math.max(0.08, 1.0 - (distTemple - 28.0) / (85.0 - 28.0))
+    }
+
+    // 2. Tâm Nhà Hầu Đồng: (x = 35.0, z = -9.5). Bậc hè mặt tiền nằm ở z = ZC + 11 = +1.5, cách tâm ~11m
+    const distHauDong = Math.hypot(playerX - 35.0, playerZ - (-9.5))
+    // Nếu ở ngoài sân (dist > 11.8m): trọng số = 0 (hoàn toàn không nghe thấy).
+    // Bắt đầu bước lên bậc hè (11.8m -> 7.0m): âm lượng tăng dần từ 0 lên 1.0.
+    // Đi vào trong điện (dist <= 7.0m): âm lượng to rõ 100%.
+    let hauDongW = 0.0
+    if (distHauDong < 11.8) {
+      hauDongW = Math.max(0.0, Math.min(1.0, (11.8 - distHauDong) / (11.8 - 7.0)))
+    }
+
+    // Khi người chơi vào Nhà Hầu Đồng thì nhạc Chùa tự động nhường chỗ
+    templeW = Math.max(0.0, templeW * (1.0 - hauDongW))
+
+    this.templeProximityWeight = templeW
+    this.hauDongProximityWeight = hauDongW
+  }
+
+  private stepBgmCrossfade() {
+    // Âm lượng đích phụ thuộc vào thanh master, mute, trạng thái bật/tắt và TRỌNG SỐ KHOẢNG CÁCH 3D
+    const masterScale = this.masterVolValue / 0.7
+    const zenTarget =
+      this.isMuted || !this.zenBgmWanted
+        ? 0
+        : Math.max(0, Math.min(1, this.zenBgmBaseVolume * masterScale * this.templeProximityWeight))
+
+    // Nhạc Chầu Văn chỉ phát khi người chơi bước lên bậc hè / vào điện (hauDongProximityWeight > 0.02)
+    const chauVanTarget =
+      this.isMuted || !this.chauVanActive || this.hauDongProximityWeight <= 0.02
+        ? 0
+        : Math.max(0, Math.min(1, this.chauVanBaseVolume * masterScale * this.hauDongProximityWeight))
+
+    if (this.zenBgmEl) {
+      if (zenTarget > 0.01 && this.zenBgmEl.paused) {
+        void this.zenBgmEl.play().catch(() => undefined)
+      }
+      const cur = this.zenBgmEl.volume
+      const diff = zenTarget - cur
+      if (Math.abs(diff) > 0.008) {
+        this.zenBgmEl.volume = Math.max(0, Math.min(1, cur + diff * 0.18))
+      } else {
+        this.zenBgmEl.volume = zenTarget
+        if (zenTarget === 0 && !this.zenBgmEl.paused) {
+          this.zenBgmEl.pause()
+        }
+      }
+    }
+
+    if (this.chauVanAudioEl) {
+      if (chauVanTarget > 0.01 && this.chauVanAudioEl.paused) {
+        void this.chauVanAudioEl.play().catch(() => undefined)
+      }
+      const cur = this.chauVanAudioEl.volume
+      const diff = chauVanTarget - cur
+      if (Math.abs(diff) > 0.008) {
+        this.chauVanAudioEl.volume = Math.max(0, Math.min(1, cur + diff * 0.22))
+      } else {
+        this.chauVanAudioEl.volume = chauVanTarget
+        if (chauVanTarget === 0 && !this.chauVanAudioEl.paused) {
+          this.chauVanAudioEl.pause()
+        }
+      }
+    }
+  }
+
+  /**
+   * Khởi động nhạc nền Thiền Phật Giáo khi vào sân chùa / Chánh Điện
+   */
+  public startTempleBgm() {
+    this.ensureBgmElements()
+    this.zenBgmWanted = true
+    this.triggerActiveBgmPlayback()
   }
 
   public setMasterVolume(vol: number) {
     this.initContext()
+    this.masterVolValue = Math.max(0, Math.min(1, vol))
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, vol)), this.ctx.currentTime)
+      this.masterGain.gain.setValueAtTime(this.masterVolValue, this.ctx.currentTime)
     }
+    this.stepBgmCrossfade()
   }
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted
     this.setMasterVolume(this.isMuted ? 0 : 0.7)
+    if (!this.isMuted) {
+      this.triggerActiveBgmPlayback()
+    }
     return this.isMuted
   }
 
@@ -64,7 +238,14 @@ export class ZenAudioEngine {
 
   public setChannelVolume(channel: AmbientChannel, vol: number) {
     this.initContext()
-    this.ambientVolumes[channel] = Math.max(0, Math.min(1, vol))
+    const clamped = Math.max(0, Math.min(1, vol))
+    this.ambientVolumes[channel] = clamped
+    if (channel === 'singingBowl') {
+      // Đồng bộ thanh trượt Chuông xoay / Nhạc Thiền 432Hz với âm lượng nhạc nền Thiền Phật Giáo
+      this.zenBgmBaseVolume = clamped * 0.65
+      this.zenBgmWanted = clamped > 0.01
+      this.triggerActiveBgmPlayback()
+    }
     if (!this.isAmbientRunning) {
       this.startAmbientGenerators()
     }
@@ -183,9 +364,36 @@ export class ZenAudioEngine {
   }
 
   /**
-   * Đại Hồng Chung / Chuông Chùa
+   * Phát file SFX thực tế trong /audio/sfx/, nếu trình duyệt chặn hoặc lỗi thì tự động fallback sang Web Audio Synth
+   */
+  private playSfxFile(url: string, volume: number, fallback: () => void) {
+    if (this.isMuted) return
+    this.initContext()
+    if (typeof window === 'undefined') {
+      fallback()
+      return
+    }
+    try {
+      const sfx = new Audio(url)
+      sfx.volume = Math.max(0, Math.min(1, volume * (this.masterVolValue / 0.7)))
+      sfx.play().catch(() => {
+        fallback()
+      })
+    } catch {
+      fallback()
+    }
+  }
+
+  /**
+   * Đại Hồng Chung / Chuông Chùa (Ưu tiên phát file thực tế temple-great-bell.mp3)
    */
   public playTempleBell() {
+    this.playSfxFile(AUDIO_PATHS.greatBellSfx, 0.8, () => {
+      this.playProceduralTempleBell()
+    })
+  }
+
+  private playProceduralTempleBell() {
     this.initContext()
     if (!this.ctx || !this.masterGain || this.isMuted) return
 
@@ -221,9 +429,19 @@ export class ZenAudioEngine {
   }
 
   /**
-   * Chuông Xoay Tây Tạng (Tibetan Singing Bowl - 432Hz)
+   * Chuông Tỉnh Giác / Chuông Xoay Tây Tạng (Ưu tiên phát file thực tế mindfulness-bell.mp3)
    */
   public playSingingBowl() {
+    this.playSfxFile(AUDIO_PATHS.mindfulnessBellSfx, 0.85, () => {
+      this.playProceduralSingingBowl()
+    })
+  }
+
+  public playMindfulnessBell() {
+    this.playSingingBowl()
+  }
+
+  private playProceduralSingingBowl() {
     this.initContext()
     if (!this.ctx || !this.masterGain || this.isMuted) return
 
@@ -318,9 +536,15 @@ export class ZenAudioEngine {
   }
 
   /**
-   * Tiếng Lắc Ống Xăm Gỗ (Fortune Sticks Shaking)
+   * Tiếng Lắc Ống Xăm Gỗ (Ưu tiên phát file thực tế fortune-shake.mp3)
    */
   public playFortuneShaking() {
+    this.playSfxFile(AUDIO_PATHS.fortuneShakeSfx, 0.9, () => {
+      this.playProceduralFortuneShaking()
+    })
+  }
+
+  private playProceduralFortuneShaking() {
     this.initContext()
     if (!this.ctx || !this.masterGain || this.isMuted) return
 
@@ -365,73 +589,101 @@ export class ZenAudioEngine {
   private mp3AvailabilityCache: Record<string, boolean> = {}
 
   /**
-   * Đồng bộ âm thanh Chầu Văn khi người chơi đứng gần/trong Nhà Hầu Đồng
+   * Đồng bộ âm thanh Chầu Văn khi người chơi đứng gần/trong Nhà Hầu Đồng:
+   * - Tự động Crossfade từ Nhạc Thiền Chùa (zen-meditation-bgm.mp3) sang Hòa Tấu Chầu Văn (chau-van-ritual-bgm.mp3).
+   * - Chia 5 mốc giai điệu (0%, 20%, 40%, 60%, 80% thời lượng file) ứng với 5 Giá Đồng để mỗi Giá mang một khúc nhạc riêng.
+   * - Điểm tiếng Trống Chầu / Chuông Tỉnh Giác khi chuyển bước lễ quan trọng (Khai Đàn, Thánh Giáng, Ban Lộc).
    */
-  public syncChauVanAudio(active: boolean, deityId: string, stepId: number) {
+  public syncChauVanAudio(active: boolean, deityId: string, stepId: number, secInGia = 0) {
+    this.ensureBgmElements()
+
     if (!active || this.isMuted) {
       this.stopChauVanAudio()
       return
     }
     this.initContext()
 
+    const wasActive = this.chauVanActive
     const deityChanged = this.chauVanCurrentDeity !== deityId
+    const stepChanged = this.chauVanCurrentStep !== stepId
+
+    this.chauVanActive = true
     this.chauVanCurrentDeity = deityId
     this.chauVanCurrentStep = stepId
 
-    if (deityChanged) {
-      this.tryPlayMp3OrFallback(deityId)
+    if (deityChanged || !wasActive) {
+      this.seekChauVanToStage(deityId, secInGia)
     }
+
+    if (stepChanged && wasActive) {
+      if (stepId === 1) {
+        this.playChauVanDrum(110, 0.28)
+        this.playChauVanGong(0.22)
+      } else if (stepId === 3) {
+        this.playTempleBell()
+      } else if (stepId === 5) {
+        this.playMindfulnessBell()
+      }
+    }
+
+    this.triggerActiveBgmPlayback()
 
     if (!this.chauVanLoopTimer) {
       this.chauVanBeatIndex = 0
       this.chauVanLoopTimer = setInterval(() => {
         if (this.isMuted || !this.ctx || !this.masterGain) return
-        // Nếu đang phát được file MP3 thực tế thì không cần gảy đàn procedural đè lên
-        if (this.chauVanAudioEl && !this.chauVanAudioEl.paused) return
+        // Nếu đang phát được file MP3 Chầu Văn thực tế thì không gảy đàn procedural đè lên
+        if (this.chauVanAudioEl && !this.chauVanAudioEl.paused && this.chauVanAudioEl.readyState >= 2) return
         this.tickProceduralChauVan()
       }, 240)
     }
   }
 
   public stopChauVanAudio() {
+    this.chauVanActive = false
     if (this.chauVanLoopTimer) {
       clearInterval(this.chauVanLoopTimer)
       this.chauVanLoopTimer = null
     }
-    if (this.chauVanAudioEl) {
-      this.chauVanAudioEl.pause()
-      this.chauVanAudioEl.currentTime = 0
-    }
     this.chauVanCurrentDeity = ''
     this.chauVanCurrentStep = 0
+    this.triggerActiveBgmPlayback()
   }
 
-  private async tryPlayMp3OrFallback(deityId: string) {
-    if (typeof window === 'undefined' || !deityId) return
-    const url = `/audio/hau-dong/${deityId}.mp3`
+  /**
+   * Nhảy tới mốc giai điệu tương ứng với Giá Đồng hiện tại (0% / 20% / 40% / 60% / 80% thời lượng bản Tuyển Tập Chầu Văn)
+   */
+  private seekChauVanToStage(deityId: string, secInGia = 0) {
+    if (typeof window === 'undefined' || !this.chauVanAudioEl) return
+    const el = this.chauVanAudioEl
+    const stageIdx = DEITY_STAGE_INDEX[deityId] ?? 0
 
-    if (this.mp3AvailabilityCache[deityId] === false) {
-      return
+    const applySeek = () => {
+      const dur = el.duration
+      if (Number.isFinite(dur) && dur > 60) {
+        const sliceLen = dur / 5
+        const offset = Math.min(Math.max(0, secInGia), Math.max(0, sliceLen - 8))
+        const target = Math.min(dur - 5, stageIdx * sliceLen + offset)
+        if (Math.abs(el.currentTime - target) > 4) {
+          try {
+            el.currentTime = target
+          } catch {
+            // ignore seek before range buffered
+          }
+        }
+      }
+      if (this.chauVanActive && !this.isMuted && el.paused) {
+        void el.play().catch(() => undefined)
+      }
     }
 
-    try {
-      if (this.mp3AvailabilityCache[deityId] === undefined) {
-        const res = await fetch(url, { method: 'HEAD' })
-        const contentType = res.headers.get('content-type') || ''
-        this.mp3AvailabilityCache[deityId] = res.ok && contentType.includes('audio')
+    if (Number.isFinite(el.duration) && el.duration > 60) {
+      applySeek()
+    } else {
+      el.addEventListener('loadedmetadata', applySeek, { once: true })
+      if (this.chauVanActive && !this.isMuted && el.paused) {
+        void el.play().catch(() => undefined)
       }
-
-      if (this.mp3AvailabilityCache[deityId]) {
-        if (!this.chauVanAudioEl) {
-          this.chauVanAudioEl = new Audio()
-          this.chauVanAudioEl.loop = true
-          this.chauVanAudioEl.volume = 0.55
-        }
-        this.chauVanAudioEl.src = url
-        await this.chauVanAudioEl.play()
-      }
-    } catch {
-      this.mp3AvailabilityCache[deityId] = false
     }
   }
 

@@ -197,6 +197,46 @@ function getLunarDayInfo(now = Date.now()) {
  * Xây dựng danh sách 5 Giá đồng (nếu Thanh đồng chọn 1 vị Thánh đặc biệt như Đức Ông Trần Triều
  * hoặc Ông Hoàng Bảy thì đưa vào vị trí trang trọng tương ứng).
  */
+/**
+ * Tính toán mốc 11h00 trưa (Giờ Ngọ / GMT+7) kế tiếp:
+ * - Khung giờ diễn ra: 11:00:00 - 11:08:00 (480 giây / 8 phút).
+ * - Nếu hiện tại < 11:08:00 hôm nay -> mốc là 11:00 hôm nay.
+ * - Nếu hiện tại >= 11:08:00 hôm nay -> mốc là 11:00 ngày mai.
+ */
+export function getNextScheduled11Am(now = Date.now()) {
+  const vnOffset = 7 * 3600 * 1000
+  const vnNow = new Date(now + vnOffset)
+  const dateStr = vnNow.toISOString().slice(0, 10) // 'YYYY-MM-DD'
+
+  // 11h00 hôm nay theo giờ Việt Nam
+  const today11AmUtc = new Date(`${dateStr}T11:00:00+07:00`).getTime()
+  const today11AmEndUtc = today11AmUtc + HAU_DONG_CONFIG.sessionDurationSec * 1000
+
+  let nextScheduledAt: number
+  let isToday: boolean
+
+  if (now < today11AmEndUtc) {
+    nextScheduledAt = today11AmUtc
+    isToday = true
+  } else {
+    // 11:00 ngày mai
+    nextScheduledAt = today11AmUtc + 24 * 3600 * 1000
+    isToday = false
+  }
+
+  const secondsUntilNextSchedule = Math.max(0, Math.ceil((nextScheduledAt - now) / 1000))
+  const isHappeningNow = now >= today11AmUtc && now < today11AmEndUtc
+
+  return {
+    fixedHourStr: '11:00',
+    timezone: 'GMT+7 (Giờ Hà Nội)',
+    nextScheduledAt,
+    secondsUntilNextSchedule,
+    isToday,
+    isHappeningNow
+  }
+}
+
 export function buildFiveDeitiesList(customDeityId?: string | null): string[] {
   const list = [...DEFAULT_FIVE_DEITIES]
   if (!customDeityId || !HAU_DONG_DEITIES[customDeityId]) return list
@@ -255,32 +295,38 @@ function advanceSessionLifecycle(conn: DatabaseSync, now: number): SessionRow | 
     }
   }
 
-  // 4. Nếu CSDL chưa có bất kỳ phiên nào (khởi tạo lần đầu), tạo phiên Khai Đàn Khánh Thành
-  const totalCount = (conn.prepare(`SELECT COUNT(*) AS cnt FROM hau_dong_sessions`).get() as { cnt: number }).cnt
-  if (totalCount === 0) {
-    const sessionId = `hd_inaugural_${Date.now()}`
-    const startedAt = now
-    const endsAt = now + HAU_DONG_CONFIG.sessionDurationSec * 1000
-    const deities = buildFiveDeitiesList(null)
-    conn
-      .prepare(
-        `INSERT INTO hau_dong_sessions (
-          session_id, trigger_type, sponsor_account_id, sponsor_display_name,
-          prayer_text, deities_json, total_pool_mc, remaining_pool_mc,
-          burned_mc, reserve_mc, status, started_at, ends_at, created_at
-        ) VALUES (?, 'inaugural_welcome', NULL, ?, ?, ?, 1500, 1500, 0, 0, 'active', ?, ?, ?)`
-      )
-      .run(
-        sessionId,
-        'Bản Đền Vạn Cảnh Chùa',
-        'Khai Đàn Khánh Thành Điện Thờ Tứ Phủ · Quốc Thái Dân An · Bách Gia Trăm Họ Bình An Lộc Tài',
-        JSON.stringify(deities),
-        startedAt,
-        endsAt,
-        now
-      )
-    active = conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow
-    return active
+  // 4. Tự động Khai Đàn Lễ Thường Nhật vào đúng khung giờ 11h00 Trưa (11:00 - 11:08 GMT+7)
+  const sched = getNextScheduled11Am(now)
+  if (sched.isHappeningNow) {
+    const vnDayStr = getVietnamDayKey(now)
+    const sessionId = `hd_scheduled_11am_${vnDayStr}`
+    const existing = conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
+    if (!existing) {
+      const lunar = getLunarDayInfo(now)
+      const deities = buildFiveDeitiesList(null)
+      conn
+        .prepare(
+          `INSERT INTO hau_dong_sessions (
+            session_id, trigger_type, sponsor_account_id, sponsor_display_name,
+            prayer_text, deities_json, total_pool_mc, remaining_pool_mc,
+            burned_mc, reserve_mc, status, started_at, ends_at, created_at
+          ) VALUES (?, 'scheduled_lunar', NULL, ?, ?, ?, 900, 900, 0, 0, 'active', ?, ?, ?)
+          ON CONFLICT(session_id) DO NOTHING`
+        )
+        .run(
+          sessionId,
+          'Bản Đền Tứ Phủ Vạn Cảnh',
+          `${lunar.festivalLabel} · Khai Đàn Giờ Ngọ (11h00) · Cầu Quốc Thái Dân An · Bách Gia Hưởng Lộc`,
+          JSON.stringify(deities),
+          sched.nextScheduledAt,
+          sched.nextScheduledAt + HAU_DONG_CONFIG.sessionDurationSec * 1000,
+          now
+        )
+      active = conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
+      if (active && active.status === 'active') return active
+    } else if (existing.status === 'active') {
+      return existing
+    }
   }
 
   return null
@@ -455,6 +501,7 @@ export function getHauDongStatus(accountId: number | null) {
     serverTime: now,
     config: HAU_DONG_CONFIG,
     lunarInfo,
+    scheduleInfo: getNextScheduled11Am(now),
     deityCatalog: Object.values(HAU_DONG_DEITIES),
     stepsCatalog: HAU_DONG_STEPS,
     activeSession: activeSession
@@ -665,42 +712,15 @@ export function sponsorHauDongSession(
 }
 
 /**
- * Khởi tạo nhanh một vấn hầu Lễ Thường Nhật / Khai Đàn (miễn phí khi điện đang nghỉ giữa giờ)
- * để người chơi bất kỳ lúc nào bước vào Nhà Hầu Đồng cũng có thể xem nghi lễ 5 Giá.
+ * Nghi lễ Khai Đàn định kỳ đã được cố định vào khung giờ 11h00 Trưa (Giờ Ngọ) hằng ngày.
+ * Các yêu cầu mở đàn miễn phí ngoài giờ đều bị từ chối.
  */
 export function startFreeRitualIfIdle(accountId: number | null) {
-  const conn = getDb()
-  const now = Date.now()
-  const existing = advanceSessionLifecycle(conn, now)
-  if (existing) {
-    return getHauDongStatus(accountId)
-  }
-
-  const lunar = getLunarDayInfo(now)
-  const sessionId = `hd_lunar_${now}_${randomBytes(2).toString('hex')}`
-  const startedAt = now
-  const endsAt = now + HAU_DONG_CONFIG.sessionDurationSec * 1000
-  const deities = buildFiveDeitiesList(null)
-
-  conn
-    .prepare(
-      `INSERT INTO hau_dong_sessions (
-        session_id, trigger_type, sponsor_account_id, sponsor_display_name,
-        prayer_text, deities_json, total_pool_mc, remaining_pool_mc,
-        burned_mc, reserve_mc, status, started_at, ends_at, created_at
-      ) VALUES (?, 'scheduled_lunar', NULL, ?, ?, ?, 900, 900, 0, 0, 'active', ?, ?, ?)`
-    )
-    .run(
-      sessionId,
-      'Bản Đền Tứ Phủ Vạn Cảnh',
-      `${lunar.festivalLabel} · Cầu Quốc Thái Dân An · Bách Gia Trăm Họ Hưởng Lộc Thánh Ân`,
-      JSON.stringify(deities),
-      startedAt,
-      endsAt,
-      now
-    )
-
-  return getHauDongStatus(accountId)
+  apiError(
+    400,
+    'free_ritual_disabled',
+    'Nghi lễ Khai Đàn định kỳ diễn ra vào đúng 11h00 Trưa (Giờ Ngọ) hằng ngày. Quý đạo hữu có thể hoan hỷ chờ hoặc Phát Tâm Mở Đàn Đặc Cách / Góp Bách Gia.'
+  )
 }
 
 /**
@@ -831,6 +851,7 @@ export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boo
   })
 
   return {
+    ledgerId: creditRes.ledgerId,
     creditedMc: creditRes.creditedMc,
     balanceAfter: creditRes.balanceAfter,
     giaIndex: live.giaIndex,

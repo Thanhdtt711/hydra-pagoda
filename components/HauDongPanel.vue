@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useHauDongStore } from '~/stores/hauDong'
 import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
@@ -66,9 +66,34 @@ async function handleClaimClick() {
   }
 }
 
-async function handleStartFreeRitual() {
-  await hauDong.sponsorSession({ mode: 'free_ritual' })
-}
+// Đồng hồ đếm ngược đến Khai Đàn 11h00 Trưa (Giờ Ngọ)
+const nowTick = ref(Date.now())
+let clockTicker: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  clockTicker = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (clockTicker) clearInterval(clockTicker)
+})
+
+const countdownTo11Am = computed(() => {
+  const target = hauDong.scheduleInfo?.nextScheduledAt || 0
+  const totalSec = Math.max(0, Math.ceil((target - nowTick.value) / 1000))
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  return {
+    totalSec,
+    hours: String(h).padStart(2, '0'),
+    minutes: String(m).padStart(2, '0'),
+    seconds: String(s).padStart(2, '0'),
+    isToday: hauDong.scheduleInfo?.isToday ?? true
+  }
+})
 
 function askOpenConfirm(mode: 'single_open' | 'crowdfund') {
   hauDong.error = null
@@ -199,7 +224,10 @@ async function executeConfirmedSponsor() {
       class="p-3 rounded-md bg-surface-elevated border border-[var(--trading-up,#0ecb81)] flex items-start gap-2.5"
     >
       <ZenIcon name="circle-check" :size="18" class="text-up shrink-0 mt-0.5" />
-      <div class="text-xs text-white leading-relaxed">{{ hauDong.notice }}</div>
+      <div class="space-y-1.5 flex-1">
+        <div class="text-xs text-white leading-relaxed">{{ hauDong.notice }}</div>
+        <HydraBadge v-if="hauDong.lastClaimHydra" :proof="hauDong.lastClaimHydra" compact />
+      </div>
     </div>
     <div
       v-if="hauDong.error"
@@ -330,6 +358,15 @@ async function executeConfirmedSponsor() {
                 <span>Ban Lộc sau <span class="font-numbers">{{ secondsUntilBlessing }}s</span></span>
               </template>
             </UiButton>
+
+            <!-- Chứng thực Hydra L2 khi đã thỉnh lộc -->
+            <div
+              v-if="hauDong.lastClaimHydra && hauDong.myAttendance?.hasClaimedThisGia"
+              class="p-2.5 rounded-md bg-surface-elevated/70 border border-hairline flex items-center justify-between text-xs"
+            >
+              <span class="text-secondary">Chứng thực L2:</span>
+              <HydraBadge :proof="hauDong.lastClaimHydra" compact />
+            </div>
           </div>
         </div>
 
@@ -373,19 +410,75 @@ async function executeConfirmedSponsor() {
         </div>
       </template>
 
-      <!-- Trường hợp Điện đang nghỉ giữa hai vấn hầu -->
-      <div v-else class="p-5 rounded-lg bg-surface-card border border-hairline text-center space-y-3">
-        <div class="text-sm font-bold text-white">Điện Thờ Tứ Phủ Đang Tịnh Đàn</div>
-        <p class="text-xs text-secondary leading-relaxed">
-          Hiện chưa có vấn hầu nào đang diễn ra. Bạn có thể Khai Đàn Lễ Thường Nhật miễn phí ngay bây giờ hoặc Mở Đàn Đặc Cách 2,500 MC để ghi danh Cuốn Thư Vàng!
-        </p>
-        <div class="flex items-center justify-center gap-2.5 pt-1">
-          <UiButton variant="primary" size="sm" :disabled="hauDong.submitting" @click="handleStartFreeRitual">
-            Khai Đàn Cầu An Ngay (8 Phút)
-          </UiButton>
-          <UiButton variant="secondary" size="sm" @click="activeSubTab = 'sponsor'">
-            Mở Đàn Đặc Cách
-          </UiButton>
+      <!-- Trường hợp Điện đang nghỉ giữa hai vấn hầu (Tịnh Đàn) -->
+      <div v-else class="p-5 rounded-lg bg-surface-card border border-hairline text-center space-y-4">
+        <div class="w-12 h-12 rounded-full bg-surface-elevated border border-hairline flex items-center justify-center mx-auto text-primary">
+          <ZenIcon name="lotus" :size="28" />
+        </div>
+
+        <div>
+          <h4 class="text-sm font-bold text-white tracking-wide">Điện Thờ Tứ Phủ Đang Tịnh Đàn</h4>
+          <p class="text-xs text-secondary leading-relaxed mt-1 max-w-sm mx-auto">
+            Nghi lễ Hầu Đồng 5 Giá diễn ra định kỳ hằng ngày vào đúng <span class="text-primary font-semibold">11h00 Trưa (Giờ Ngọ)</span>. Quý đạo hữu có thể hoan hỷ chờ đến giờ hành lễ, hoặc chọn Phát Tâm Mở Đàn Đặc Cách / Góp Bách Gia để mở đàn ngay!
+          </p>
+        </div>
+
+        <!-- Khung Đồng Hồ Đếm Ngược Khai Đàn 11h00 Trưa -->
+        <div class="p-3.5 rounded-lg bg-surface-elevated border border-hairline space-y-2 max-w-sm mx-auto">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-secondary flex items-center gap-1.5 font-medium">
+              <ZenIcon name="bell" :size="14" class="text-primary" />
+              Lễ Khai Đàn Giờ Ngọ (11:00 Trưa)
+            </span>
+            <UiBadge variant="warning">
+              {{ countdownTo11Am.isToday ? 'Hôm nay' : 'Ngày mai' }}
+            </UiBadge>
+          </div>
+
+          <!-- 3 Ô Đếm Ngược Thời Gian: Giờ - Phút - Giây -->
+          <div class="grid grid-cols-3 gap-2 py-1 text-center font-numbers">
+            <div class="p-2 rounded bg-surface-card border border-hairline">
+              <div class="text-base font-bold text-white">{{ countdownTo11Am.hours }}</div>
+              <div class="text-xs text-secondary">Giờ</div>
+            </div>
+            <div class="p-2 rounded bg-surface-card border border-hairline">
+              <div class="text-base font-bold text-white">{{ countdownTo11Am.minutes }}</div>
+              <div class="text-xs text-secondary">Phút</div>
+            </div>
+            <div class="p-2 rounded bg-surface-card border border-hairline">
+              <div class="text-base font-bold text-primary">{{ countdownTo11Am.seconds }}</div>
+              <div class="text-xs text-secondary">Giây</div>
+            </div>
+          </div>
+
+          <div class="text-xs text-secondary text-center pt-0.5">
+            Thời lượng 8 phút · 5 Giá Thỉnh Lộc Thánh Ban
+          </div>
+        </div>
+
+        <!-- 2 Nút Mở Đàn Thay Thế (Mở Đàn Đặc Cách & Góp Bách Gia) -->
+        <div class="space-y-2 pt-1 max-w-sm mx-auto">
+          <div class="text-xs font-semibold uppercase tracking-wider text-secondary">
+            Hoặc Khai Mở Vấn Hầu Riêng Ngay Bây Giờ
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <UiButton
+              variant="primary"
+              size="sm"
+              class="justify-center text-xs"
+              @click="activeSubTab = 'sponsor'"
+            >
+              Mở Đàn (2,500 MC)
+            </UiButton>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              class="justify-center text-xs"
+              @click="activeSubTab = 'crowdfund'"
+            >
+              Góp Bách Gia ({{ crowdfundPercent }}%)
+            </UiButton>
+          </div>
         </div>
       </div>
 

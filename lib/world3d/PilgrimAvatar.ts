@@ -88,15 +88,15 @@ export class PilgrimAvatar {
     this.model.setOutfitColor(hexColor)
   }
 
-  public triggerBow() {
-    this.bowTimer = 1.8
+  public triggerBow(totalDuration = 1.8, holdDuration = 0.5) {
+    this.bowTimer = totalDuration
     this.currentAction = 'bowing'
-    this.model.play('bow')
+    this.model.play('bow', totalDuration, holdDuration)
   }
 
-  public setAction(action: 'standing' | 'walking' | 'bowing' | 'meditating' | string) {
+  public setAction(action: 'standing' | 'walking' | 'bowing' | 'meditating' | string, duration = 1.8, holdDuration = 0.5) {
     if (action === 'bow' || action === 'bowing') {
-      this.triggerBow()
+      this.triggerBow(duration, holdDuration)
     } else if (action === 'meditate' || action === 'meditating') {
       this.currentAction = 'meditating'
       this.model.play('meditate')

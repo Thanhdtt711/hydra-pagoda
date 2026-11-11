@@ -103,6 +103,8 @@ export class LowPolyAvatarModel implements AvatarModel {
 
     private animTime = Math.random() * 10
     private bowTimer = -1
+    private bowDuration = 1.8
+    private bowHoldDuration = 0.5
     private readonly pose: Pose = neutralPose()
     private readonly target: Pose = neutralPose()
 
@@ -204,10 +206,12 @@ export class LowPolyAvatarModel implements AvatarModel {
         return this.currentBodyShape
     }
 
-    public play(anim: AvatarAnimation) {
+    public play(anim: AvatarAnimation, customDuration?: number, customHold?: number) {
         this.currentAnimation = anim
         if (anim === 'bow') {
             this.bowTimer = 0
+            this.bowDuration = customDuration ?? 1.8
+            this.bowHoldDuration = customHold ?? 0.5
         } else {
             this.bowTimer = -1
         }
@@ -219,18 +223,29 @@ export class LowPolyAvatarModel implements AvatarModel {
         const tg = this.target
         Object.assign(tg, neutralPose())
 
-        // Cúi lạy: hoạt ảnh một lần, xong tự về đứng yên.
+        // Cúi lạy: hỗ trợ giữ cúi đầu trang nghiêm (ví dụ giữ 2 giây khi thắp hương).
         if (this.currentAnimation === 'bow') {
             this.bowTimer += delta
-            const k = Math.min(this.bowTimer / BOW_DURATION, 1)
-            const eased = Math.sin(k * Math.PI)
-            tg.upperPitch = Math.min(eased * 1.35, 1) * 0.42
+            const total = this.bowDuration
+            const hold = Math.max(0, Math.min(this.bowHoldDuration, total - 0.4))
+            const easeTime = Math.max(0.1, (total - hold) / 2)
+            let eased = 0
+            if (this.bowTimer < easeTime) {
+                const k = this.bowTimer / easeTime
+                eased = Math.sin(k * (Math.PI / 2))
+            } else if (this.bowTimer < easeTime + hold) {
+                eased = 1.0 // Giữ nguyên tư thế cúi đầu chắp tay trang nghiêm
+            } else {
+                const k = Math.min((this.bowTimer - (easeTime + hold)) / easeTime, 1.0)
+                eased = Math.cos(k * (Math.PI / 2))
+            }
+            tg.upperPitch = Math.min(eased * 1.35, 1) * 0.45
             tg.bodyY = -tg.upperPitch * 0.04
             tg.armLX = -0.88 * eased
             tg.armRX = -0.88 * eased
             tg.armLZ = 0.28 * (1 - eased) - 0.22 * eased
             tg.armRZ = -0.28 * (1 - eased) + 0.22 * eased
-            if (k >= 1) {
+            if (this.bowTimer >= total) {
                 this.currentAnimation = 'idle'
                 this.bowTimer = -1
             }

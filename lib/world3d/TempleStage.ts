@@ -21,7 +21,9 @@ import { WindGrass } from './nature/WindGrass'
 import { WindSystem } from './nature/WindSystem'
 import { TreeSystem } from './nature/TreeSystem'
 import { DistantMountains } from './nature/DistantMountains'
+import { MountainParkourSystem } from './nature/MountainParkourSystem'
 import { PetalParticleSystem } from './nature/PetalParticleSystem'
+import { LoveTreeProp } from './nature/LoveTreeProp'
 import { MapLayout } from './world/MapLayout'
 import { HallLayout, type MeditationSlot } from './world/HallLayout'
 import { TerrainSystem } from './world/TerrainSystem'
@@ -29,7 +31,7 @@ import { AvatarCrowd } from './characters/AvatarCrowd'
 import { PerformanceProfiler } from './debug/PerformanceProfiler'
 import { SeededPRNG } from './utils/SeededPRNG'
 
-export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | null
+export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | null
 
 export interface RemotePilgrimInstance {
   id: string
@@ -156,6 +158,7 @@ export class TempleStage {
     MapLayout.LANDMARKS.INCENSE_BURNER.center.y,
     MapLayout.LANDMARKS.INCENSE_BURNER.center.z
   )
+  private static readonly PROX_HALL_INCENSE = new THREE.Vector3(0, 1.35, -15.9)
   private static readonly PROX_MERIT = new THREE.Vector3(
     MapLayout.LANDMARKS.MERIT_BOX.center.x,
     MapLayout.LANDMARKS.MERIT_BOX.center.y,
@@ -234,7 +237,9 @@ export class TempleStage {
   public treeSystem!: TreeSystem
   public terrainSystem!: TerrainSystem
   public distantMountains!: DistantMountains
+  public mountainParkourInstance!: MountainParkourSystem
   public petalParticleSystem!: PetalParticleSystem
+  public loveTreeInstance!: LoveTreeProp
   private mandalaHalo!: THREE.Mesh
 
   // Giai đoạn 1: Dedicated Collision System & Character Controller & Camera Spring Arm
@@ -313,6 +318,8 @@ export class TempleStage {
     this.buildSacredBuddha()
     this.buildBellPavilionAndPond()
     this.buildVegetationAndParticles()
+    this.buildMountainParkour()
+    this.buildLoveTree()
     this.buildDetailedIncenseAltar()
     this.buildMeritAndFortuneStations()
 
@@ -485,6 +492,8 @@ export class TempleStage {
     if (this.cameraMode === 'fpp') {
       this.cameraMode = 'tpp_back'
       this.distance = 4.2
+      this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -0.68, 1.45)
+      this.pitch = THREE.MathUtils.clamp(this.pitch, -0.68, 1.45)
     } else {
       this.cameraMode = 'fpp'
       this.distance = 0.5
@@ -496,8 +505,13 @@ export class TempleStage {
 
   public setCameraMode(mode: 'fpp' | 'tpp_back') {
     this.cameraMode = mode
-    if (mode === 'fpp') this.distance = 0.5
-    else this.distance = 4.2
+    if (mode === 'fpp') {
+      this.distance = 0.5
+    } else {
+      this.distance = 4.2
+      this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -0.68, 1.45)
+      this.pitch = THREE.MathUtils.clamp(this.pitch, -0.68, 1.45)
+    }
     if (this.onCameraModeChange) {
       this.onCameraModeChange(this.cameraMode)
     }
@@ -507,8 +521,12 @@ export class TempleStage {
     // Độ nhạy chuột mượt mà kiểu Minecraft
     const sens = 0.0022
     this.targetYaw -= dx * sens
-    // Pitch: Đẩy chuột lên nhìn trời (-85°), Kéo chuột xuống nhìn đất (+85°)
-    this.targetPitch = THREE.MathUtils.clamp(this.targetPitch + dy * sens, -1.48, 1.48)
+    // Pitch: Đẩy chuột lên nhìn trời, Kéo chuột xuống nhìn đất
+    // FPP: Nhìn ngửa lên trời thoải mái (-85° ~ -1.48 rad)
+    // TPP: Giới hạn ngửa (-39° ~ -0.68 rad) để camera sau lưng không bị cắm xuống sàn đất
+    const minPitch = this.cameraMode === 'fpp' ? -1.48 : -0.68
+    const maxPitch = 1.45
+    this.targetPitch = THREE.MathUtils.clamp(this.targetPitch + dy * sens, minPitch, maxPitch)
   }
 
   public toggleStatsOverlay(): boolean {
@@ -789,21 +807,64 @@ export class TempleStage {
     this.scene.add(this.petalParticleSystem.root)
   }
 
+  private buildMountainParkour() {
+    // Hệ thống Parkour Leo Núi "Đường Lên Đỉnh Phù Vân" phía sau Chùa
+    this.mountainParkourInstance = new MountainParkourSystem(this.collisionWorld)
+    this.scene.add(this.mountainParkourInstance.root)
+  }
+
+  private buildLoveTree() {
+    // Cây Nguyệt Lão & Án Thư Gieo Quẻ Tơ Duyên bên bờ Hồ Sen Bát Nhã
+    this.loveTreeInstance = new LoveTreeProp(this.collisionWorld)
+    this.scene.add(this.loveTreeInstance.root)
+  }
+
   private buildDetailedIncenseAltar() {
     this.incenseBurner = new THREE.Group()
     const pos = MapLayout.LANDMARKS.INCENSE_BURNER.center
     this.incenseBurner.position.set(pos.x, pos.y, pos.z)
 
-    // Lư hương low-poly: thân bát giác, miệng vàng, tro (cao hơn mặt vàng 3cm để không Z-fighting), 3 nén hương và đốm than phát sáng
+    // Đại Đỉnh Hương Đồng Cổ sân chùa: Bệ đá tam cấp chạm sen, 3 chân quỳ nghê đúc đồng, thân đỉnh chạm nổi, 2 tai mây rồng
     const b = new SlotBatch()
-    b.cylinder('woodDark', 1.3, 0.95, 1.5, 8, 0, 0.9, 0)
-    b.cylinder('gold', 1.38, 1.38, 0.12, 8, 0, 1.62, 0)
-    b.cylinder('stone', 0.6, 0.8, 0.3, 8, 0, 0.15, 0)
-    b.cylinder('stone', 1.1, 1.1, 0.05, 8, 0, 1.685, 0)
-    for (let i = -1; i <= 1; i++) {
-      b.cylinder('roofDark', 0.025, 0.025, 1.0, 5, i * 0.18, 2.1, 0)
-      b.addEmissive('lantern', LowPolyBuilder.sphere(0.05, 0), { position: [i * 0.18, 2.6, 0] })
+    // 1. Bệ đá hoa sen 2 tầng
+    b.cylinder('stone', 1.85, 1.95, 0.18, 16, 0, 0.09, 0)
+    b.cylinder('stone', 1.55, 1.65, 0.14, 16, 0, 0.25, 0)
+
+    // 2. 3 chân quỳ đúc nghê bằng đồng kiên cố (góc 120 độ)
+    for (const angle of [0, 2.0944, 4.1888]) {
+      const legX = Math.sin(angle) * 0.82
+      const legZ = Math.cos(angle) * 0.82
+      b.cylinder('gold', 0.16, 0.24, 0.52, 8, legX, 0.58, legZ, 0.22 * Math.cos(angle), 0, -0.22 * Math.sin(angle))
     }
+
+    // 3. Thân Đỉnh Đồng phình tròn phúc hậu & Cổ thắt loe vành
+    b.cylinder('gold', 1.15, 0.85, 0.36, 16, 0, 0.95, 0) // Đáy đỉnh tròn
+    b.cylinder('gold', 1.30, 1.15, 0.44, 16, 0, 1.35, 0) // Bụng đỉnh phình tròn uy nghiêm
+    b.cylinder('gold', 1.08, 1.30, 0.18, 16, 0, 1.66, 0) // Cổ thắt gờ chỉ
+    b.cylinder('gold', 1.35, 1.08, 0.12, 16, 0, 1.81, 0) // Miệng loe vành đồng đúc nổi
+
+    // 4. Hai tai mây / quai rồng vươn cao hai bên đỉnh
+    b.box('gold', 0.14, 0.58, 0.32, -1.35, 1.92, 0, 0, 0, 0.35)
+    b.box('gold', 0.14, 0.58, 0.32, 1.35, 1.92, 0, 0, 0, -0.35)
+
+    // 5. Cát vàng tro mịn trong lòng đỉnh
+    b.cylinder('stone', 1.06, 1.06, 0.04, 16, 0, 1.82, 0)
+
+    // 6. Chùm nhang trầm đỏ thắm (nén chính vươn cao + 4 nén xung quanh)
+    b.cylinder('roofDark', 0.022, 0.022, 1.15, 6, 0, 2.40, 0)
+    b.addEmissive('lantern', LowPolyBuilder.sphere(0.045, 0), { position: [0, 2.97, 0] })
+
+    const sideSticks = [
+      [-0.22, 0, 0.98],
+      [0.22, 0, 1.02],
+      [0, -0.20, 0.95],
+      [0, 0.20, 1.00]
+    ]
+    for (const [sx, sz, sh] of sideSticks) {
+      b.cylinder('roofDark', 0.018, 0.018, sh, 5, sx, 1.82 + sh / 2, sz)
+      b.addEmissive('lantern', LowPolyBuilder.sphere(0.035, 0), { position: [sx, 1.82 + sh, sz] })
+    }
+
     this.incenseBurner.add(b.build({ name: 'incense_burner' }))
     this.scene.add(this.incenseBurner)
   }
@@ -827,17 +888,44 @@ export class TempleStage {
 
     this.scene.add(this.meritBox)
 
-    // Bàn xóc quẻ (tọa độ từ MapLayout): mặt bàn gỗ, ống thẻ vàng, vài thẻ xăm
+    // Bàn xóc quẻ (tọa độ từ MapLayout): mặt bàn gỗ, ống thẻ tre sơn son, thẻ tre xòe tự nhiên, quẻ âm dương
     this.fortuneTable = new THREE.Group()
     const fortunePos = MapLayout.LANDMARKS.FORTUNE_TABLE.center
     this.fortuneTable.position.set(fortunePos.x, fortunePos.y, fortunePos.z)
     const f = new SlotBatch()
     f.box('woodDark', 1.6, 1.15, 1.05, 0, 0.58, 0)
     f.box('wood', 1.7, 0.08, 1.15, 0, 1.19, 0)
-    f.cylinder('gold', 0.26, 0.26, 0.7, 6, 0, 1.58, 0)
-    for (let i = -1; i <= 1; i++) {
-      f.box('wall', 0.04, 0.5, 0.02, i * 0.07, 2.1, 0)
-    }
+    f.box('roofDark', 0.9, 0.015, 0.9, 0, 1.24, 0) // Khăn lụa gieo quẻ đỏ son ở giữa bàn
+
+    // Ống thẻ xăm bằng tre mộc đai đồng cổ truyền
+    f.cylinder('gold', 0.19, 0.23, 0.06, 12, 0, 1.28, 0) // Đế đồng
+    f.cylinder('woodDark', 0.17, 0.19, 0.45, 12, 0, 1.53, 0) // Thân ống tre tiện tròn
+    f.cylinder('gold', 0.19, 0.17, 0.05, 12, 0, 1.78, 0) // Miệng ống bọc đai đồng
+
+    // Bó thẻ tre sơn son vươn xòe tự nhiên từ miệng ống
+    f.box('wall', 0.024, 0.48, 0.015, 0, 2.02, 0) // Thẻ giữa
+    f.box('roofDark', 0.026, 0.08, 0.017, 0, 2.22, 0) // Đầu thẻ sơn son đỏ
+
+    f.box('wall', 0.024, 0.46, 0.015, -0.06, 2.00, 0.02, 0, 0, 0.12)
+    f.box('roofDark', 0.026, 0.08, 0.017, -0.08, 2.19, 0.02, 0, 0, 0.12)
+
+    f.box('wall', 0.024, 0.46, 0.015, 0.06, 2.00, -0.02, 0, 0, -0.12)
+    f.box('roofDark', 0.026, 0.08, 0.017, 0.08, 2.19, -0.02, 0, 0, -0.12)
+
+    f.box('wall', 0.024, 0.44, 0.015, -0.02, 1.98, 0.06, -0.12, 0, 0)
+    f.box('roofDark', 0.026, 0.08, 0.017, -0.02, 2.16, 0.08, -0.12, 0, 0)
+
+    f.box('wall', 0.024, 0.44, 0.015, 0.02, 1.98, -0.06, 0.12, 0, 0)
+    f.box('roofDark', 0.026, 0.08, 0.017, 0.02, 2.16, -0.08, 0.12, 0, 0)
+
+    // Cặp quẻ âm dương bằng gỗ mun hình bán nguyệt úp ngửa
+    f.cylinder('woodDark', 0.07, 0.07, 0.025, 8, -0.42, 1.26, 0.15, 0, 0.4, 0)
+    f.cylinder('woodDark', 0.07, 0.07, 0.025, 8, -0.32, 1.26, 0.22, 0, -0.5, 0)
+
+    // Sách Bói Quẻ Kinh Dịch cổ bìa đỏ thẻ tre
+    f.box('roofDark', 0.28, 0.035, 0.38, 0.42, 1.26, 0.10, 0, 0.2, 0)
+    f.box('wall', 0.26, 0.03, 0.36, 0.42, 1.265, 0.10, 0, 0.2, 0)
+
     this.fortuneTable.add(f.build({ name: 'fortune_table' }))
 
     // Bảng tên 3D gắn mặt trước bàn xem quẻ
@@ -1057,9 +1145,16 @@ export class TempleStage {
     }
   }
 
+  public get currentIncenseLocation(): 'hall' | 'courtyard' {
+    const distHall = this.playerPos.distanceTo(TempleStage.PROX_HALL_INCENSE)
+    return distHall < 3.2 ? 'hall' : 'courtyard'
+  }
+
   private checkProximity() {
     let nearest: InteractionTarget = null
-    const distIncense = this.playerPos.distanceTo(TempleStage.PROX_INCENSE)
+    const distIncenseCourtyard = this.playerPos.distanceTo(TempleStage.PROX_INCENSE)
+    const distIncenseHall = this.playerPos.distanceTo(TempleStage.PROX_HALL_INCENSE)
+    const distIncense = Math.min(distIncenseCourtyard, distIncenseHall)
     const distMerit = this.playerPos.distanceTo(TempleStage.PROX_MERIT)
     const distFortune = this.playerPos.distanceTo(TempleStage.PROX_FORTUNE)
     // Ban thờ Tam Bảo & Phật Thích Ca bên trong Chánh điện tại (0, 1.35, -13.5)
@@ -1072,10 +1167,22 @@ export class TempleStage {
           this.playerPos.distanceTo(this.hauDongSanctuary.meritBoxWorldPos)
         )
       : Infinity
+    const distParkourStart = this.mountainParkourInstance
+      ? this.playerPos.distanceTo(this.mountainParkourInstance.startChestPos)
+      : Infinity
+    const distParkourSummit = this.mountainParkourInstance
+      ? this.playerPos.distanceTo(this.mountainParkourInstance.summitPos)
+      : Infinity
+    const distLoveTree = this.loveTreeInstance
+      ? this.playerPos.distanceTo(this.loveTreeInstance.interactPos)
+      : Infinity
 
     if (distIncense < 2.6) nearest = 'incense'
     else if (distMerit < 2.4) nearest = 'merit_box'
     else if (distFortune < 2.4) nearest = 'fortune'
+    else if (distLoveTree < 2.8) nearest = 'love_tree'
+    else if (distParkourStart < 3.0) nearest = 'parkour_start'
+    else if (distParkourSummit < 3.8) nearest = 'parkour_summit'
     else if (distHauDong < 5.2) nearest = 'hau_dong'
     else if (distDoor < 3.2 && (this.sanctuaryHall ? this.sanctuaryHall.doorAngle < 0.4 : false)) nearest = 'door'
     else if (distBuddha < 4.8) nearest = 'meditation'
@@ -1085,6 +1192,16 @@ export class TempleStage {
       this.currentNearTarget = nearest
       if (this.onNearTarget) this.onNearTarget(nearest)
     }
+  }
+
+  public isNearParkourStart(maxDist = 3.2): boolean {
+    if (!this.mountainParkourInstance) return false
+    return this.playerPos.distanceTo(this.mountainParkourInstance.startChestPos) < maxDist
+  }
+
+  public isNearParkourSummit(maxDist = 4.0): boolean {
+    if (!this.mountainParkourInstance) return false
+    return this.playerPos.distanceTo(this.mountainParkourInstance.summitPos) < maxDist
   }
 
   public isInsideHauDongZone(): boolean {
@@ -1464,6 +1581,176 @@ export class TempleStage {
   }
 
   /**
+   * Dẫn đường tới Đài Tơ Duyên Nguyệt Lão (Bên bờ Hồ Sen Bát Nhã & Cầu Kiều)
+   */
+  public walkToLoveTree(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const target = { x: -10.5, z: 15.5 }
+    const waypoints: Array<{ x: number; z: number }> = []
+
+    if (this.playerPos.z < 0.5 && this.playerPos.x > -17.0) {
+      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+        this.sanctuaryHall.toggleDoor()
+      }
+      waypoints.push({ x: 0, z: 0.5 })
+      waypoints.push({ x: 0, z: 4.5 })
+    }
+    waypoints.push({ x: -10.5, z: 8.5 })
+    waypoints.push(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: 0,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
+   * Dẫn đường ra Cổng Tam Quan
+   */
+  public walkToTamQuanGate(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const target = { x: 0, z: 21.0 }
+    const waypoints: Array<{ x: number; z: number }> = []
+
+    if (this.playerPos.z < 0.5) {
+      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+        this.sanctuaryHall.toggleDoor()
+      }
+      waypoints.push({ x: 0, z: 0.5 })
+      waypoints.push({ x: 0, z: 4.5 })
+    }
+    waypoints.push({ x: 0, z: 12.0 })
+    waypoints.push(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: 0,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
+   * Dẫn đường vào Đại Hùng Bảo Điện (trước Kim Thân Phật Tổ)
+   */
+  public walkToSanctuary(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+      this.sanctuaryHall.toggleDoor()
+    }
+
+    const target = { x: 0, z: -14.0 }
+    const waypoints: Array<{ x: number; z: number }> = []
+
+    if (this.playerPos.z > 3.0) {
+      waypoints.push({ x: 0, z: 3.5 })
+      waypoints.push({ x: 0, z: 0.5 })
+    }
+    waypoints.push({ x: 0, z: -4.0 })
+    waypoints.push(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.0,
+      startDelay: 0.05,
+      finalYaw: Math.PI,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
+   * Dẫn đường tới Cổng Leo Núi Parkour (phía sau Chánh Điện)
+   */
+  public walkToParkourGate(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const target = { x: 0, z: -31.5 }
+    const waypoints: Array<{ x: number; z: number }> = []
+
+    // Đi vòng qua hành lang phía Tây Chùa nếu đang ở sân trước
+    if (this.playerPos.z > -10.0) {
+      waypoints.push({ x: -18.0, z: 5.0 })
+      waypoints.push({ x: -18.0, z: -20.0 })
+      waypoints.push({ x: -10.0, z: -28.0 })
+    }
+    waypoints.push(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: Math.PI,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
+   * Trả về true nếu nhân vật đang trong trạng thái tự động bước đi (auto-walk)
+   */
+  public get isAutoWalking(): boolean {
+    return this.autoWalk !== null
+  }
+
+  /**
    * Xả thiền: đứng dậy, cho phép người chơi di chuyển tự do trở lại
    */
   public standUpFromMeditation() {
@@ -1539,6 +1826,9 @@ export class TempleStage {
     }
     if (this.petalParticleSystem) {
       this.petalParticleSystem.update(delta)
+    }
+    if (this.loveTreeInstance) {
+      this.loveTreeInstance.update(elapsed)
     }
   }
 
@@ -1644,9 +1934,36 @@ export class TempleStage {
     }
   }
 
-  public triggerLocalEmote(action: 'standing' | 'walking' | 'bowing' | 'meditating') {
+  public setPlayerFacingAngle(angle: number) {
+    this.playerFacingAngle = angle
+    this.player.rotation.y = angle
     if (this.avatar) {
-      this.avatar.setAction(action)
+      this.avatar.root.rotation.set(0, 0, 0)
+    }
+  }
+
+  public faceTowards(targetPos: { x: number; z: number }, updateCamera = false) {
+    const dx = targetPos.x - this.playerPos.x
+    const dz = targetPos.z - this.playerPos.z
+    const angle = Math.atan2(dx, dz)
+    this.playerFacingAngle = angle
+    this.player.rotation.y = angle
+    if (this.avatar) {
+      this.avatar.root.rotation.set(0, 0, 0)
+    }
+    if (updateCamera || this.cameraMode === 'fpp') {
+      this.yaw = angle
+      this.targetYaw = angle
+    }
+  }
+
+  public triggerLocalEmote(
+    action: 'standing' | 'walking' | 'bowing' | 'meditating',
+    duration = 1.8,
+    holdDuration = 0.5
+  ) {
+    if (this.avatar) {
+      this.avatar.setAction(action, duration, holdDuration)
     }
   }
 
@@ -1975,6 +2292,13 @@ export class TempleStage {
     }
     if (this.petalParticleSystem) {
       this.petalParticleSystem.dispose()
+    }
+    if (this.mountainParkourInstance) {
+      this.scene.remove(this.mountainParkourInstance.root)
+      this.mountainParkourInstance.dispose()
+    }
+    if (this.loveTreeInstance) {
+      this.scene.remove(this.loveTreeInstance.root)
     }
     if (this.terrainSystem) {
       this.terrainSystem.dispose()

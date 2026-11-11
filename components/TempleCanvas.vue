@@ -6,6 +6,7 @@ import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
 import { useMeditationStore } from '~/stores/meditation'
 import { useHauDongStore } from '~/stores/hauDong'
+import { useParkourStore } from '~/stores/parkour'
 import { MultiplayerClient, type PilgrimPresence, type ZenChatMessage } from '~/lib/network/MultiplayerClient'
 import SanctuaryDrawer, { type DrawerTab } from '~/components/SanctuaryDrawer.vue'
 import UiChip from '~/components/ui/UiChip.vue'
@@ -15,6 +16,7 @@ import UiButton from '~/components/ui/UiButton.vue'
 import UiStatCell from '~/components/ui/UiStatCell.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import { DEV_HINTS, INTERACT_HINT, hintsFor } from '~/lib/ui/controlHints'
+import { loadSavedProfile } from '~/lib/boi/ProfileService'
 
 const user = useUserStore()
 const economy = useEconomyStore()
@@ -22,6 +24,8 @@ const wallet = useWalletStore()
 const hydra = useHydraStore()
 const meditation = useMeditationStore()
 const hauDong = useHauDongStore()
+const parkour = useParkourStore()
+const playerAltitude = ref(0)
 
 // Gợi ý phím dùng chung (lib/ui/controlHints.ts)
 const loadingHints = hintsFor('loading')
@@ -37,8 +41,16 @@ let multiplayer: MultiplayerClient | null = null
 
 // Đăng nhập/đăng xuất ví: đổi tên hiển thị theo tài khoản và join lại để server gắn danh tính đã xác thực.
 watch(() => wallet.accountId, () => {
-  if (wallet.displayName) user.name = wallet.displayName
+  const sp = loadSavedProfile()
+  if (sp?.fullName) {
+    user.name = sp.fullName
+    if (sp.gender === 'nu') user.setGender('female')
+    else if (sp.gender === 'nam') user.setGender('male')
+  } else if (wallet.displayName) {
+    user.name = wallet.displayName
+  }
   void multiplayer?.rejoin()
+  parkour.fetchStatus()
 })
 
 // Khi người chơi bấm nút "Nạp MC" từ Cửa Hàng / Bói Quẻ / Hòm Công Đức -> mở ngay modal Ví Cardano (tab Mua MC)
@@ -87,12 +99,17 @@ function syncHauDongToStage() {
       stageElapsedSec: s.secInGia || 0,
       sponsorName: s.sponsorName
     }
-    zenAudio.syncChauVanAudio(isInsideHauDong.value, s.deityId, s.stepId)
+    zenAudio.syncChauVanAudio(isInsideHauDong.value, s.deityId, s.stepId, s.secInGia || 0)
   } else {
     if (stage.hauDongVisualState) {
       stage.hauDongVisualState.active = false
     }
-    zenAudio.stopChauVanAudio()
+    // Dù không có session nào đang hoạt động thì khi người chơi đứng trong Nhà Hầu Đồng vẫn phát nhạc Chầu Văn
+    if (isInsideHauDong.value) {
+      zenAudio.syncChauVanAudio(true, 'quan_lon_de_tam', 4, 0)
+    } else {
+      zenAudio.stopChauVanAudio()
+    }
   }
 }
 
@@ -111,6 +128,40 @@ const showWalletModal = ref(false)
 const showEmoteWheel = ref(false)
 const showDisclaimer = ref(false)
 const isAudioMuted = ref(false)
+const showMiniMap = ref(false)
+const livePlayerPos = ref({ x: 0, y: 0, z: 10 })
+const livePlayerYaw = ref(0)
+const isAutoWalking = ref(false)
+const activeNavTargetName = ref<string | null>(null)
+
+function toSvgCoords(x: number, z: number): { u: number; v: number } {
+  const u = Math.min(390, Math.max(10, ((x + 36) / 90) * 400))
+  const v = Math.min(250, Math.max(10, ((z + 56) / 90) * 260))
+  return { u, v }
+}
+
+const miniMapPlayerU = computed(() => {
+  const x = livePlayerPos.value.x
+  return Math.min(390, Math.max(10, ((x + 36) / 90) * 400))
+})
+
+const miniMapPlayerV = computed(() => {
+  const z = livePlayerPos.value.z
+  return Math.min(250, Math.max(10, ((z + 56) / 90) * 260))
+})
+
+const miniMapPlayerRotDeg = computed(() => {
+  return ((livePlayerYaw.value * 180) / Math.PI) + 180
+})
+
+function cancelNavigation() {
+  if (stage) {
+    stage.cancelAutoWalk()
+    isAutoWalking.value = false
+    activeNavTargetName.value = null
+    showToast('Đã dừng bước', 'Bạn có thể di chuyển tự do', 'pagoda')
+  }
+}
 
 function openDrawer(tab: DrawerTab) {
   if (stage) {
@@ -138,15 +189,15 @@ function openWalletModal() {
 }
 
 // Toast notification banner state
-const toastMessage = ref<{ title: string; desc: string; icon: string } | null>(null)
+const toastMessage = ref<{ title: string; desc: string; icon: string; hydra?: any } | null>(null)
 let toastTimer: any = null
 
-function showToast(title: string, desc: string, icon = 'pagoda') {
+function showToast(title: string, desc: string, icon = 'pagoda', hydra?: any) {
   if (toastTimer) clearTimeout(toastTimer)
-  toastMessage.value = { title, desc, icon }
+  toastMessage.value = { title, desc, icon, hydra }
   toastTimer = setTimeout(() => {
     toastMessage.value = null
-  }, 4000)
+  }, 4500)
 }
 
 const countries: { id: CountryId; name: string; code: string }[] = [
@@ -162,10 +213,17 @@ const countries: { id: CountryId; name: string; code: string }[] = [
 ]
 
 onMounted(() => {
+  const sp = loadSavedProfile()
+  if (sp?.fullName) {
+    user.name = sp.fullName
+    if (sp.gender === 'nu') user.setGender('female')
+    else if (sp.gender === 'nam') user.setGender('male')
+  }
   if (canvasContainer.value) {
     stage = new TempleStage(canvasContainer.value)
     stage.setCountry(user.currentCountry as any)
     stage.setGender(user.gender)
+    zenAudio.updatePlayerPosition(stage.playerPos.x, stage.playerPos.z)
     stage.onNearTarget = (target) => {
       nearTarget.value = target
     }
@@ -185,6 +243,10 @@ onMounted(() => {
 
     stage.onLocalMove = (pos, yaw, isMoving) => {
       multiplayer?.streamMove(pos, yaw, isMoving)
+      zenAudio.updatePlayerPosition(pos[0], pos[2])
+      playerAltitude.value = Math.max(0, pos[1])
+      livePlayerPos.value = { x: pos[0], y: pos[1], z: pos[2] }
+      livePlayerYaw.value = yaw
       if (stage) {
         isNearFortune.value = stage.isNearFortune()
         isNearMerit.value = stage.isNearMerit()
@@ -262,6 +324,7 @@ onMounted(() => {
     void economy.loadCatalog()
     void wallet.restore()
     void meditation.refreshStatus()
+    void parkour.fetchStatus()
     void hauDong.refreshStatus().then(() => {
       syncHauDongToStage()
     })
@@ -387,6 +450,10 @@ function onGlobalKeyDown(e: KeyboardEvent) {
       drawerOpen.value = false
       return
     }
+    if (showMiniMap.value) {
+      showMiniMap.value = false
+      return
+    }
     if (showEmoteWheel.value) {
       showEmoteWheel.value = false
       return
@@ -400,6 +467,10 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   } else if (e.code === 'KeyG') {
     toggleGender()
   } else if (e.code === 'KeyM') {
+    e.preventDefault()
+    showMiniMap.value = !showMiniMap.value
+    if (showMiniMap.value) showHotkeysMenu.value = false
+  } else if (e.code === 'KeyT') {
     toggleMeditationPose()
   } else if (e.code === 'KeyC') {
     if (stage) stage.exitPointerLock()
@@ -526,13 +597,19 @@ function handleBowToPilgrim(id: string) {
 
 function handleGuideToFortune() {
   if (!stage) return
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Bàn Xin Xăm'
   showToast('Dẫn đường', 'Đang bước tới Bàn Xin Xăm & Pháp Bảo...', 'fortune')
   stage.walkToFortuneTable(
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       isNearFortune.value = true
       showToast('Đã đến Bàn Xin Xăm', 'Bạn đã đến bàn gieo quẻ. Hãy thỉnh quẻ cầu an.', 'fortune')
     },
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển lại gần bàn xem quẻ.', 'info')
     }
   )
@@ -540,13 +617,19 @@ function handleGuideToFortune() {
 
 function handleGuideToMerit() {
   if (!stage) return
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Hòm Công Đức'
   showToast('Dẫn đường', 'Đang bước tới Hòm Công Đức Tam Bảo...', 'coin')
   stage.walkToMeritBox(
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       isNearMerit.value = true
       showToast('Đã đến Hòm Công Đức', 'Bạn đã đến trước hòm công đức. Hãy phát tâm cúng dường.', 'coin')
     },
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển lại gần hòm công đức.', 'info')
     }
   )
@@ -555,15 +638,101 @@ function handleGuideToMerit() {
 function handleGuideToHauDong() {
   if (!stage) return
   drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Nhà Hầu Đồng'
   showToast('Dẫn đường', 'Đang bước sang Điện Thờ Tứ Phủ (Nhà Hầu Đồng phía Đông)...', 'pagoda')
   stage.walkToHauDongHall(
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       isInsideHauDong.value = stage?.isInsideHauDongZone() ?? true
       syncHauDongToStage()
       showToast('Đã tới Nhà Hầu Đồng', 'Bạn đã vào khu vực Chiếu Hầu Tứ Phủ. Đợi Bước 5 mỗi giá để thỉnh lộc MC!', 'sparkles')
     },
     () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
       showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển sang phía Đông sân chùa.', 'info')
+    }
+  )
+}
+
+function handleGuideToLoveTree() {
+  if (!stage) return
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Cây Nguyệt Lão'
+  showToast('Dẫn đường', 'Đang bước tới Hồ Sen Bát Nhã & Đài Tơ Duyên...', 'lotus')
+  stage.walkToLoveTree(
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Đài Tơ Duyên', 'Bạn đã đến bên Hồ Sen & Cây Nguyệt Lão Thần Mộc', 'lotus')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển sang phía Tây Nam hồ sen.', 'info')
+    }
+  )
+}
+
+function handleGuideToSanctuary() {
+  if (!stage) return
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Chánh Điện'
+  showToast('Dẫn đường', 'Đang bước vào Đại Hùng Bảo Điện...', 'pagoda')
+  stage.walkToSanctuary(
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Chánh Điện', 'Bạn đã đến trước Kim Thân Đức Phật Bổn Sư', 'lotus')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển vào Chánh Điện.', 'info')
+    }
+  )
+}
+
+function handleGuideToParkour() {
+  if (!stage) return
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Leo Núi Parkour'
+  showToast('Dẫn đường', 'Đang bước tới Cổng Leo Núi Phù Vân...', 'pagoda')
+  stage.walkToParkourGate(
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Cổng Leo Núi', 'Bạn đã đến Hòm Đăng Ký Đường Lên Đỉnh Phù Vân', 'sparkles')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển ra phía sau Chánh Điện.', 'info')
+    }
+  )
+}
+
+function handleGuideToTamQuan() {
+  if (!stage) return
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Cổng Tam Quan'
+  showToast('Dẫn đường', 'Đang bước ra Cổng Tam Quan...', 'pagoda')
+  stage.walkToTamQuanGate(
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Cổng Tam Quan', 'Bạn đã đến Cổng Tam Quan mặt Nam chùa', 'pagoda')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Chưa thể tự bước', 'Đường đi bị cản trở, xin tự di chuyển ra phía Nam.', 'info')
     }
   )
 }
@@ -680,11 +849,145 @@ function handleCountrySelect(cId: CountryId) {
 const IDLE_WOODEN_FISH_COOLDOWN_MS = 1000
 let lastIdleWoodenFishAt = 0
 
+// Trạng thái dâng hương thành tâm (cúi đầu 2 giây & lời vàng Pháp Cú)
+const isIncenseBowing = ref(false)
+const currentScriptureVerse = ref<string | null>(null)
+const incenseRewardMc = ref<number>(0)
+const incenseHydraProof = ref<any>(null)
+let scriptureTimeout: ReturnType<typeof setTimeout> | null = null
+
+async function handleIncenseOffering() {
+  if (isIncenseBowing.value) return
+  isIncenseBowing.value = true
+
+  const loc = stage?.currentIncenseLocation || 'hall'
+
+  // Xoay nhân vật hướng về phía án thờ / tượng Phật khi dâng hương
+  if (stage) {
+    if (loc === 'hall') {
+      stage.faceTowards({ x: 0, z: -19.0 })
+    } else {
+      stage.faceTowards({ x: 0, z: 5.0 })
+    }
+    // Hoạt ảnh cúi đầu thành kính giữ yên đúng 2.0 giây (tổng 3.0s, hold 2.0s)
+    stage.triggerLocalEmote('bowing', 3.0, 2.0)
+  }
+
+  // Tiếng chuông chùa ngân nga
+  zenAudio.playTempleBell()
+
+  try {
+    const res = await $fetch<{
+      success: boolean
+      firstToday: boolean
+      rewardMc: number
+      newBalance?: number
+      verse: string
+      message?: string
+      hydra?: any
+    }>('/api/mc/incense/offer', {
+      method: 'POST',
+      body: { location: loc }
+    })
+
+    if (res && res.verse) {
+      currentScriptureVerse.value = res.verse
+      incenseRewardMc.value = res.rewardMc || 0
+      incenseHydraProof.value = res.hydra || null
+      if (scriptureTimeout) clearTimeout(scriptureTimeout)
+      scriptureTimeout = setTimeout(() => {
+        currentScriptureVerse.value = null
+        incenseRewardMc.value = 0
+        incenseHydraProof.value = null
+      }, 7000)
+    }
+
+    if (res.firstToday && res.rewardMc > 0) {
+      if (typeof res.newBalance === 'number') {
+        economy.syncBalanceFromServer(res.newBalance)
+      } else {
+        economy.meritCoins += res.rewardMc
+      }
+      showToast(
+        loc === 'hall' ? 'Dâng Hương Chánh Điện (+15 MC)' : 'Dâng Hương Sân Chùa (+15 MC)',
+        `"${res.verse}" — Lộc Phật đầu ngày, thân tâm thanh tịnh!`,
+        'sparkles',
+        res.hydra
+      )
+    } else {
+      showToast(
+        loc === 'hall' ? 'Dâng Hương Tam Bảo' : 'Dâng Hương Đại Đỉnh',
+        `"${res.verse}" — Lòng thành dâng Phật, nguyện gia đạo bình an!`,
+        'incense',
+        res.hydra
+      )
+    }
+  } catch {
+    zenAudio.playWoodenFish()
+    showToast(
+      'Dâng Hương Tam Bảo',
+      'Tâm hương một nén kính dâng Phật, nguyện thân tâm an lạc!',
+      'incense'
+    )
+  } finally {
+    setTimeout(() => {
+      isIncenseBowing.value = false
+    }, 3200)
+  }
+}
+
+async function handleParkourStart() {
+  if (!wallet.isConnected) {
+    showToast('Đăng Ký Leo Núi', 'Vui lòng kết nối ví để nhận MC và ghi nhận kỷ lục!', 'wallet')
+    openWalletModal()
+    return
+  }
+  if (parkour.isClimbing) {
+    showToast('Đang Trong Thử Thách', 'Bạn đang trên đường leo núi! Hãy nhảy qua các thớt đá lên đỉnh.', 'pagoda')
+    return
+  }
+  if (!parkour.canClaimFreeToday && economy.meritCoins < 5) {
+    showToast('Chưa Đủ MC', 'Bạn cần tối thiểu 5 MC cho lượt leo núi tiếp theo hôm nay.', 'wallet')
+    return
+  }
+  const res = await parkour.startChallenge()
+  if (res) {
+    zenAudio.playMindfulnessBell()
+    if (res.isFree) {
+      showToast('Đăng Ký Thành Công', 'Lượt chơi miễn phí hôm nay! Hãy leo lên đỉnh núi để mở rương nhận 50 MC.', 'sparkles')
+    } else {
+      zenAudio.playCoinDrop()
+      showToast('Bắt Đầu Lượt Mới (-5 MC)', 'Đã kích hoạt lượt leo núi mới! Chinh phục đỉnh núi để nhận 50 MC.', 'sparkles')
+    }
+  } else if (parkour.noticeMessage) {
+    showToast('Thông Báo', parkour.noticeMessage, 'wallet')
+  }
+}
+
+async function handleParkourSummit() {
+  if (!parkour.isClimbing) {
+    showToast('Đỉnh Núi Phù Vân', 'Hãy bắt đầu thử thách tại Hòm Đăng Ký ở chân núi để kích hoạt rương báu!', 'pagoda')
+    return
+  }
+  const res = await parkour.completeSummit()
+  if (res) {
+    zenAudio.playTempleBell()
+    zenAudio.playCoinDrop()
+    const recordText = res.isNewRecord ? ' (KỶ LỤC MỚI!)' : ''
+    showToast(
+      `Chinh Phục Đỉnh Núi! (+${res.rewardMc} MC)`,
+      `Thời gian: ${res.timeTakenSec.toFixed(1)}s${recordText}. Bạn đã nhận 50 MC phần thưởng vượt đỉnh!`,
+      'sparkles',
+      res.hydra
+    )
+  } else if (parkour.noticeMessage) {
+    showToast('Chưa Đạt Yêu Cầu', parkour.noticeMessage, 'wallet')
+  }
+}
+
 function handleRightClickAction(target: InteractionTarget) {
   if (target === 'incense') {
-    zenAudio.playTempleBell()
-    zenAudio.playWoodenFish()
-    showToast('Dâng Hương Tam Bảo', 'Bạn đã thành kính dâng 3 nén hương trầm lên Tam Bảo. Nguyện thân tâm an lạc!', 'incense')
+    void handleIncenseOffering()
   } else if (target === 'merit_box') {
     openDrawer('merit')
   } else if (target === 'fortune') {
@@ -693,8 +996,14 @@ function handleRightClickAction(target: InteractionTarget) {
     openDrawer('meditation')
   } else if (target === 'hau_dong') {
     openDrawer('hau_dong')
+  } else if (target === 'love_tree') {
+    openDrawer('love_couple')
   } else if (target === 'lantern') {
     openDrawer('shop')
+  } else if (target === 'parkour_start') {
+    void handleParkourStart()
+  } else if (target === 'parkour_summit') {
+    void handleParkourSummit()
   } else if (target === 'door') {
     const isOpen = stage?.toggleSanctuaryDoor()
     zenAudio.playWoodenFish()
@@ -718,13 +1027,24 @@ function handleAction() {
 }
 
 function getInteractionPrompt(target: InteractionTarget): string {
-  if (target === 'incense') return 'Dâng Hương Trầm Tam Bảo'
+  if (target === 'incense') {
+    return stage?.currentIncenseLocation === 'hall'
+      ? 'Dâng Hương Tam Bảo (Chánh Điện)'
+      : 'Dâng Hương Đại Đỉnh (Sân Chùa)'
+  }
   if (target === 'merit_box') return 'Mở Hòm Công Đức (ADA / Cúng Dường)'
   if (target === 'fortune') return 'Rút Quẻ Xăm Linh Tự'
+  if (target === 'love_tree') return 'Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)'
   if (target === 'meditation') return 'Tọa Thiền Tĩnh Tâm'
   if (target === 'hau_dong') return 'Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)'
   if (target === 'lantern') return 'Thả Hoa Đăng Cầu An'
   if (target === 'door') return 'Mở / Đóng Cửa Bức Bàn'
+  if (target === 'parkour_start') {
+    return parkour.canClaimFreeToday
+      ? 'Đăng Ký Leo Núi (Lượt Miễn Phí)'
+      : 'Thử Thách Leo Núi (5 MC / Lượt)'
+  }
+  if (target === 'parkour_summit') return 'Rung Đại Hồng Chung & Mở Rương Báu (+100 MC)'
   return 'Tương Tác'
 }
 
@@ -789,6 +1109,7 @@ function simulateLoading() {
       clearInterval(interval)
       setTimeout(() => {
         isSceneLoading.value = false
+        zenAudio.startTempleBgm()
       }, 450)
     } else {
       loadingProgress.value = p
@@ -1059,11 +1380,10 @@ function simulateLoading() {
       </div>
     </div>
 
-    <!-- Right-Click Action Toast Pill -->
+    <!-- Right-Click Action Toast Pill (Luôn ghim ở mép dưới màn hình để không che tầm nhìn của người chơi) -->
     <div
       v-if="nearTarget"
-      :class="user.cameraMode === 'fpp' ? 'top-[54%]' : 'bottom-20'"
-      class="pointer-events-none absolute left-1/2 -translate-x-1/2 z-20 transition-all duration-150 transform scale-100"
+      class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-20 z-20 transition-all duration-150 transform scale-100"
     >
       <div class="bg-surface-card border border-gold px-4 py-2 rounded-md shadow-2xl flex items-center gap-2.5">
         <template v-for="(k, ki) in interactHint.keys" :key="k">
@@ -1073,6 +1393,32 @@ function simulateLoading() {
         <span class="text-white text-sm font-semibold">{{ getInteractionPrompt(nearTarget) }}</span>
       </div>
     </div>
+
+    <!-- Banner Lời Vàng Pháp Cú (Hiện trang nghiêm khi Dâng Hương Tam Bảo) -->
+    <Transition name="fade">
+      <div
+        v-if="currentScriptureVerse"
+        class="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-30 max-w-md w-[92%] px-5 py-3.5 rounded-lg bg-surface-card/95 border border-[var(--primary,#fcd535)] shadow-[0_8px_32px_rgba(0,0,0,0.85)] text-center backdrop-blur-md space-y-1.5 transition-all duration-300"
+      >
+        <div class="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+          <ZenIcon name="sparkles" class="w-3.5 h-3.5" />
+          <span>Lời Vàng Pháp Cú</span>
+          <ZenIcon name="sparkles" class="w-3.5 h-3.5" />
+        </div>
+        <p class="text-white text-sm font-medium italic leading-relaxed">
+          "{{ currentScriptureVerse }}"
+        </p>
+        <div class="text-xs text-secondary">
+          Lòng thành dâng Phật • Nguyện thân tâm an lạc
+        </div>
+        <div v-if="incenseRewardMc > 0 || incenseHydraProof" class="pt-1.5 flex flex-wrap items-center justify-center gap-2 border-t border-hairline/60">
+          <UiBadge v-if="incenseRewardMc > 0" variant="warning" class="font-numbers font-bold">
+            +{{ incenseRewardMc }} MC Lộc Phật
+          </UiBadge>
+          <HydraBadge v-if="incenseHydraProof" :proof="incenseHydraProof" />
+        </div>
+      </div>
+    </Transition>
 
     <!-- Chip nhắc lấy lại điều khiển khi mất pointer lock -->
     <div
@@ -1143,6 +1489,59 @@ function simulateLoading() {
       </div>
     </div>
 
+    <!-- ========================================================================= -->
+    <!-- BẢNG HUD LEO NÚI PARKOUR "ĐƯỜNG LÊN ĐỈNH PHÙ VÂN" (KHI ĐANG TRONG THỬ THÁCH) -->
+    <!-- ========================================================================= -->
+    <div
+      v-if="parkour.isClimbing"
+      class="pointer-events-auto absolute top-16 left-4 z-20 w-80 p-3 rounded-md bg-surface-card border border-[var(--primary,#fcd535)] shadow-2xl space-y-2.5"
+    >
+      <div class="flex items-center justify-between gap-2 border-b border-hairline pb-2">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-[var(--primary,#fcd535)] animate-ping" />
+          <span class="text-xs font-bold uppercase tracking-wider text-primary font-numbers">
+            ĐƯỜNG LÊN ĐỈNH PHÙ VÂN
+          </span>
+        </div>
+        <span class="text-xs font-numbers text-secondary">
+          Lượt {{ parkour.attemptsToday }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="bg-surface-elevated/70 p-2 rounded border border-hairline">
+          <div class="text-secondary text-xs">Thời gian leo</div>
+          <div class="text-sm font-bold text-white font-numbers">
+            {{ parkour.elapsedSec.toFixed(1) }}s
+          </div>
+        </div>
+        <div class="bg-surface-elevated/70 p-2 rounded border border-hairline">
+          <div class="text-secondary text-xs">Độ cao</div>
+          <div class="text-sm font-bold text-primary font-numbers">
+            {{ playerAltitude.toFixed(1) }}m / 70.0m
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs text-secondary px-0.5">
+        <span>Kỷ lục tốt nhất:</span>
+        <span class="font-numbers text-white font-medium">
+          {{ parkour.bestTimeSec ? `${parkour.bestTimeSec.toFixed(1)}s` : 'Chưa có' }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 pt-1">
+        <UiButton
+          variant="secondary"
+          size="sm"
+          class="w-full justify-center text-xs"
+          @click="parkour.stopTimer(); showToast('Đã Dừng Thử Thách', 'Bạn có thể quay lại Hòm Đăng Ký để bắt đầu lượt mới bất kỳ lúc nào.', 'pagoda')"
+        >
+          Hủy / Xuống Núi
+        </UiButton>
+      </div>
+    </div>
+
     <!-- Bottom Controls: Hotkeys Popover (Left) & 3 Drop-up Menus (Right) -->
     <div class="absolute bottom-3 inset-x-3 flex items-center justify-between gap-3 pointer-events-none z-20">
       <!-- Left: Compact Hotkey Pill + ALT Indicator -->
@@ -1167,6 +1566,170 @@ function simulateLoading() {
           <span class="text-xs font-medium hidden sm:inline">
             {{ isAltHeld ? 'Đang hiện con trỏ chuột' : 'Giữ ALT để hiện chuột' }}
           </span>
+        </div>
+
+        <!-- Cục Mini Map (Widget Radar thu nhỏ trên thanh HUD) -->
+        <button
+          type="button"
+          @click="showMiniMap = !showMiniMap; if (showMiniMap) showHotkeysMenu = false"
+          class="min-h-[40px] px-2.5 py-1.5 rounded-md bg-surface-card text-xs border flex items-center gap-2 transition cursor-pointer select-none shadow-md group"
+          :class="showMiniMap ? 'border-primary text-white bg-surface-elevated ring-1 ring-primary/40' : 'text-secondary border-hairline hover:text-white hover:border-primary/60'"
+          title="Nhấp hoặc bấm phím M để mở Sơ đồ Chùa"
+        >
+          <!-- Radar tròn thu nhỏ trực tiếp trên cục HUD -->
+          <div class="relative w-6 h-6 rounded-full bg-[#12161c] border border-primary/60 overflow-hidden flex items-center justify-center shadow-inner">
+            <svg viewBox="0 0 24 24" class="w-full h-full">
+              <!-- Vòng tròn radar -->
+              <circle cx="12" cy="12" r="10" fill="none" stroke="#2b3139" stroke-width="1" />
+              <line x1="12" y1="2" x2="12" y2="22" stroke="#2b3139" stroke-width="0.8" opacity="0.6" />
+              <line x1="2" y1="12" x2="22" y2="12" stroke="#2b3139" stroke-width="0.8" opacity="0.6" />
+              <!-- Chấm vị trí & Mũi tên la bàn theo hướng nhìn -->
+              <circle cx="12" cy="12" r="2.2" fill="#fcd535" />
+              <g :transform="'translate(12,12) rotate(' + miniMapPlayerRotDeg + ')'">
+                <path d="M 0 -8 L 2.2 -3 L -2.2 -3 Z" fill="#fcd535" />
+              </g>
+            </svg>
+          </div>
+          <span class="text-xs font-medium hidden sm:inline">Bản đồ</span>
+          <UiKeycap>M</UiKeycap>
+        </button>
+
+        <!-- Mini Map Popover Modal (Hiện bé bé ngay trên Cục Mini Map) -->
+        <div
+          v-if="showMiniMap"
+          class="absolute bottom-14 left-0 sm:left-24 w-88 sm:w-[420px] p-3.5 rounded-lg bg-surface-card/95 backdrop-blur-md border border-hairline shadow-2xl z-50 flex flex-col gap-2.5 pointer-events-auto"
+        >
+          <!-- Header -->
+          <div class="flex items-center justify-between border-b border-hairline pb-2">
+            <div class="flex items-center gap-2">
+              <ZenIcon name="pagoda" :size="16" class="text-primary" />
+              <span class="text-xs font-bold text-white uppercase tracking-wider">Sơ Đồ Thiền Tự</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-numbers text-secondary">
+                X: {{ livePlayerPos.x.toFixed(1) }} · Z: {{ livePlayerPos.z.toFixed(1) }} (Cao: {{ livePlayerPos.y.toFixed(1) }}m)
+              </span>
+              <button
+                type="button"
+                aria-label="Đóng bản đồ"
+                @click="showMiniMap = false"
+                class="w-7 h-7 rounded flex items-center justify-center text-secondary hover:text-white hover:bg-surface-elevated cursor-pointer"
+              >
+                <ZenIcon name="x" :size="14" />
+              </button>
+            </div>
+          </div>
+
+          <!-- Thanh trạng thái Dẫn đường tự động nếu đang auto-walk -->
+          <div v-if="isAutoWalking" class="flex items-center justify-between p-2 rounded bg-surface-elevated border border-primary/40 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-primary animate-ping" />
+              <span class="text-white">Đang tự bước tới: <strong>{{ activeNavTargetName }}</strong></span>
+            </div>
+            <UiButton variant="danger" size="sm" class="text-xs h-6 px-2" @click="cancelNavigation">
+              Dừng bước
+            </UiButton>
+          </div>
+
+          <!-- Bản đồ SVG 2D trực quan tương tác 400x260 -->
+          <div class="relative w-full h-64 rounded-md bg-[#0e1217] border border-hairline overflow-hidden select-none">
+            <svg viewBox="0 0 400 260" class="w-full h-full">
+              <!-- Sân gạch & Ngự đạo chính -->
+              <rect x="70" y="75" width="180" height="105" fill="#181d24" stroke="#252b33" stroke-width="1" rx="4" />
+              <rect x="150" y="150" width="20" height="80" fill="#222832" />
+
+              <!-- Cổng Tam Quan (Nam) -->
+              <g class="cursor-pointer" @click="handleGuideToTamQuan(); showMiniMap = false">
+                <rect x="134" y="226" width="52" height="12" fill="#2b3139" stroke="#606c7d" stroke-width="1" rx="2" />
+                <text x="160" y="235" font-size="8.5" fill="#848e9c" text-anchor="middle" font-family="sans-serif">Cổng Tam Quan</text>
+              </g>
+
+              <!-- Đại Hùng Bảo Điện (Chánh Điện) -->
+              <g class="cursor-pointer" @click="handleGuideToSanctuary(); showMiniMap = false">
+                <rect x="98" y="98" width="124" height="64" fill="#241b12" stroke="#f0b90b" stroke-width="1.4" rx="3" />
+                <!-- Thềm và Kim Thân Phật Tổ -->
+                <circle cx="160" cy="112" r="5" fill="#fcd535" />
+                <text x="160" y="136" font-size="9.5" font-weight="bold" fill="#fcd535" text-anchor="middle" font-family="sans-serif">Đại Hùng Bảo Điện</text>
+              </g>
+
+              <!-- Nhà Hầu Đồng — Điện Thờ Tứ Phủ (Đông) -->
+              <g class="cursor-pointer" @click="handleGuideToHauDong(); showMiniMap = false">
+                <rect x="271" y="98" width="88" height="60" fill="#1b1c26" stroke="#63587d" stroke-width="1.2" rx="3" />
+                <text x="315" y="132" font-size="9" font-weight="bold" fill="#c3a6ff" text-anchor="middle" font-family="sans-serif">Nhà Hầu Đồng</text>
+              </g>
+
+              <!-- Hồ Sen Bát Nhã & Cây Nguyệt Lão (Tây Nam) -->
+              <g class="cursor-pointer" @click="handleGuideToLoveTree(); showMiniMap = false">
+                <circle cx="82" cy="200" r="23" fill="#0b241e" stroke="#0ecb81" stroke-width="1.2" />
+                <text x="74" y="203" font-size="8.5" fill="#0ecb81" text-anchor="middle" font-family="sans-serif">Hồ Sen</text>
+                <!-- Cây Thần Mộc Nguyệt Lão -->
+                <circle cx="106" cy="198" r="6" fill="#f6465d" stroke="#ffffff" stroke-width="0.8" />
+                <text x="106" y="214" font-size="8" fill="#f6465d" font-weight="bold" text-anchor="middle" font-family="sans-serif">Nguyệt Lão</text>
+              </g>
+
+              <!-- Hòm Công Đức & Bàn Xin Xăm (Trước sân) -->
+              <g class="cursor-pointer" @click="handleGuideToFortune(); showMiniMap = false">
+                <rect x="131" y="186" width="14" height="9" fill="#fcd535" rx="1.5" />
+                <text x="138" y="182" font-size="7.5" fill="#848e9c" text-anchor="middle" font-family="sans-serif">Xin Xăm</text>
+              </g>
+              <g class="cursor-pointer" @click="handleGuideToMerit(); showMiniMap = false">
+                <rect x="175" y="186" width="14" height="9" fill="#fcd535" rx="1.5" />
+                <text x="182" y="182" font-size="7.5" fill="#848e9c" text-anchor="middle" font-family="sans-serif">Công Đức</text>
+              </g>
+
+              <!-- Đường Leo Núi Parkour Đỉnh Phù Vân (Bắc sau chùa) -->
+              <g class="cursor-pointer" @click="handleGuideToParkour(); showMiniMap = false">
+                <rect x="85" y="8" width="150" height="58" fill="#161a22" stroke="#333b47" stroke-dasharray="3,3" rx="4" />
+                <circle cx="160" cy="52" r="4.5" fill="#e0a020" />
+                <text x="160" y="32" font-size="9" font-weight="bold" fill="#e0a020" text-anchor="middle" font-family="sans-serif">Đỉnh Phù Vân (Parkour)</text>
+              </g>
+
+              <!-- Đồng tu online khác (Multiplayer Sangha Presence) -->
+              <g v-for="rp in remotePilgrimsList" :key="rp.id" :transform="'translate(' + toSvgCoords(rp.position[0], rp.position[2]).u + ',' + toSvgCoords(rp.position[0], rp.position[2]).v + ')'">
+                <circle r="4" fill="#a855f7" stroke="#ffffff" stroke-width="1" opacity="0.9" />
+                <title>{{ rp.name }}</title>
+              </g>
+
+              <!-- Marker vị trí Người Chơi Realtime -->
+              <g :transform="'translate(' + miniMapPlayerU + ',' + miniMapPlayerV + ')'">
+                <circle r="8" fill="#fcd535" opacity="0.35" class="animate-ping" />
+                <circle r="4.5" fill="#fcd535" stroke="#0b0e11" stroke-width="1.8" />
+                <path
+                  :transform="'rotate(' + miniMapPlayerRotDeg + ')'"
+                  d="M 0 -9 L 3.5 -2.5 L -3.5 -2.5 Z"
+                  fill="#fcd535"
+                />
+              </g>
+            </svg>
+            <div class="absolute bottom-1 right-2 text-xs font-numbers text-secondary/70 pointer-events-none">
+              N: Bắc &uarr; · Đồng tu: {{ onlinePilgrimCount }}
+            </div>
+          </div>
+
+          <!-- Nút Dẫn đường nhanh đến các địa danh -->
+          <div class="space-y-1.5">
+            <span class="text-xs text-secondary font-medium">Bấm để tự động bước tới:</span>
+            <div class="grid grid-cols-3 gap-1.5 text-xs font-numbers">
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToSanctuary(); showMiniMap = false">
+                Chánh Điện
+              </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToFortune(); showMiniMap = false">
+                Bàn Xin Xăm
+              </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToMerit(); showMiniMap = false">
+                Hòm Công Đức
+              </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToLoveTree(); showMiniMap = false">
+                Cây Nguyệt Lão
+              </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToHauDong(); showMiniMap = false">
+                Nhà Hầu Đồng
+              </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-8" @click="handleGuideToParkour(); showMiniMap = false">
+                Leo Núi Parkour
+              </UiButton>
+            </div>
+          </div>
         </div>
 
         <!-- Full Hotkey Cheat Sheet Popover -->
@@ -1409,9 +1972,12 @@ function simulateLoading() {
       <div v-if="toastMessage" class="fixed top-20 right-3 z-50 pointer-events-none">
         <div class="bg-surface-card border border-hairline px-4 py-3 rounded-md shadow-2xl flex items-start gap-3 max-w-sm">
           <ZenIcon name="circle-check" :size="20" class="text-trading-up shrink-0 mt-0.5" />
-          <div>
+          <div class="space-y-1 flex-1">
             <div class="text-sm font-bold text-white leading-snug">{{ toastMessage.title }}</div>
             <div class="text-xs text-secondary leading-snug mt-0.5">{{ toastMessage.desc }}</div>
+            <div v-if="toastMessage.hydra" class="pt-1">
+              <HydraBadge :proof="toastMessage.hydra" compact />
+            </div>
           </div>
         </div>
       </div>

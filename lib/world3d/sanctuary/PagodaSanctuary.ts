@@ -8,6 +8,7 @@ import { LowPolyBuilder } from '../style/LowPolyBuilder'
 import { SlotBatch } from '../style/SlotBatch'
 import { createCurvedHipRoof } from '../style/RoofBuilder'
 import { createPlaqueTexture } from '../utils/PlaqueTexture'
+import { PixelCandleSystem } from '../fx/PixelCandleSystem'
 
 /**
  * PagodaSanctuaryHall (Chánh Điện low-poly phẳng màu 28 x 22 m):
@@ -116,6 +117,9 @@ export class PagodaSanctuaryHall {
 
     // 5. Ánh sáng nội thất
     this.setupInteriorLighting()
+
+    // 6. Ngọn nến lung linh Pixel Art (Bệ Tam Bảo & Bàn Lễ)
+    this.initPixelCandles()
 
     if (collisionWorld) {
       this.registerColliders(collisionWorld)
@@ -314,21 +318,130 @@ export class PagodaSanctuaryHall {
     // Đài sen nhỏ dưới chân tượng
     b.cylinder('lotus', 1.7, 1.9, 0.0001, 8, 0, ALTAR_TOP_Y, ALTAR_LOCAL_Z) // giữ slot lotus hiện diện trong batch
 
-    // Nến & bình hoa trên bệ
+    // =========================================================================
+    // 1. ĐỒ THỜ TRÊN BỆ TAM BẢO (Chân nến đồng đúc & Bình gốm cắm hoa sen)
+    // =========================================================================
     for (const sx of [-1, 1]) {
-      b.cylinder('gold', 0.12, 0.2, 0.5, 6, sx * 3.7, ALTAR_TOP_Y + 0.25, ALTAR_LOCAL_Z + 0.9)
-      b.addEmissive('lantern', LowPolyBuilder.box(0.1, 0.2, 0.1), { position: [sx * 3.7, ALTAR_TOP_Y + 0.6, ALTAR_LOCAL_Z + 0.9] })
-      b.cylinder('woodDark', 0.15, 0.22, 0.5, 6, sx * 2.9, ALTAR_TOP_Y + 0.25, ALTAR_LOCAL_Z + 1.0)
-      b.cone('lotus', 0.28, 0.35, 6, sx * 2.9, ALTAR_TOP_Y + 0.65, ALTAR_LOCAL_Z + 1.0)
+      // --- Chân nến đồng đại cổ truyền (sx * 3.7) ---
+      const nx = sx * 3.7
+      const nz = ALTAR_LOCAL_Z + 0.9
+      b.cylinder('gold', 0.16, 0.28, 0.12, 12, nx, ALTAR_TOP_Y + 0.06, nz) // Đế chuông đồng loe rộng
+      b.cylinder('gold', 0.09, 0.14, 0.18, 12, nx, ALTAR_TOP_Y + 0.21, nz) // Cột tiện thắt eo
+      b.cylinder('gold', 0.18, 0.18, 0.08, 12, nx, ALTAR_TOP_Y + 0.34, nz) // Bầu tròn giữa cột
+      b.cylinder('gold', 0.09, 0.12, 0.12, 12, nx, ALTAR_TOP_Y + 0.44, nz) // Cổ vuốt thon
+      b.cylinder('gold', 0.22, 0.14, 0.04, 14, nx, ALTAR_TOP_Y + 0.50, nz) // Đĩa sen đồng hứng sáp loe tròn
+      b.cylinder('gold', 0.08, 0.08, 0.04, 10, nx, ALTAR_TOP_Y + 0.53, nz) // Cốc nến đúc đứng
+
+      // --- Bình gốm sứ men lam cắm hoa sen dâng Phật (sx * 2.85) ---
+      const vx = sx * 2.85
+      const vz = ALTAR_LOCAL_Z + 1.0
+      b.cylinder('gold', 0.18, 0.22, 0.06, 12, vx, ALTAR_TOP_Y + 0.03, vz) // Đế đôn đồng viền bình
+      b.cylinder('wall', 0.24, 0.17, 0.18, 14, vx, ALTAR_TOP_Y + 0.15, vz) // Đáy bụng bình gốm
+      b.cylinder('wall', 0.26, 0.24, 0.18, 14, vx, ALTAR_TOP_Y + 0.33, vz) // Thân bình phình bầu bĩnh
+      b.cylinder('wall', 0.16, 0.26, 0.14, 14, vx, ALTAR_TOP_Y + 0.49, vz) // Vai bình thắt nhẹ
+      b.cylinder('wall', 0.12, 0.15, 0.16, 12, vx, ALTAR_TOP_Y + 0.64, vz) // Cổ bình vuốt thon
+      b.cylinder('gold', 0.19, 0.12, 0.05, 14, vx, ALTAR_TOP_Y + 0.74, vz) // Miệng bình loe viền kim
+
+      // Bó hoa sen thanh khiết vươn lên từ miệng bình:
+      // Cành 1: Cành sen cao ở giữa với búp sen hồng
+      b.cylinder('leaf', 0.016, 0.016, 0.52, 6, vx, ALTAR_TOP_Y + 0.98, vz)
+      b.cone('leaf', 0.06, 0.08, 8, vx, ALTAR_TOP_Y + 1.24, vz) // Đài sen xanh
+      b.cone('lotus', 0.075, 0.18, 10, vx, ALTAR_TOP_Y + 1.34, vz) // Búp sen hồng vươn đỉnh
+
+      // Cành 2: Đóa sen hồng hé nở nghiêng về phía tượng Phật
+      const sxOff = sx * -0.09
+      b.cylinder('leaf', 0.014, 0.014, 0.42, 6, vx + sxOff, ALTAR_TOP_Y + 0.92, vz + 0.04, 0, 0, sx * 0.22)
+      b.cylinder('lotus', 0.11, 0.05, 0.08, 10, vx + sxOff * 1.3, ALTAR_TOP_Y + 1.13, vz + 0.04) // Đài cánh sen xòe
+      b.cylinder('gold', 0.04, 0.04, 0.03, 8, vx + sxOff * 1.3, ALTAR_TOP_Y + 1.17, vz + 0.04) // Nhụy hoa vàng
+
+      // Cành 3: Lá sen tròn xanh ngọc vươn nghiêng sang bên
+      const lxOff = sx * 0.10
+      b.cylinder('leaf', 0.014, 0.014, 0.38, 6, vx + lxOff, ALTAR_TOP_Y + 0.90, vz - 0.04, 0, 0, -sx * 0.25)
+      b.cylinder('leaf', 0.13, 0.13, 0.018, 10, vx + lxOff * 1.4, ALTAR_TOP_Y + 1.07, vz - 0.04, 0.2, 0, -sx * 0.3)
     }
-    // Bàn lễ + lư hương
+
+    // =========================================================================
+    // 2. BÀN LỄ DÂNG HƯƠNG (Bát hương đồng Tam Bảo, Ngũ Quả, Kỷ Nước, Chuông Mõ)
+    // =========================================================================
     const tableZ = ALTAR_LOCAL_Z + 3.0
-    b.box('wood', 3.0, 0.8, 0.9, 0, FLOOR_Y + 0.4, tableZ)
-    b.cylinder('gold', 0.22, 0.3, 0.3, 8, 0, FLOOR_Y + 0.95, tableZ)
+    // Thân bàn gỗ hương cổ truyền chạm khắc
+    b.box('woodDark', 3.3, 0.78, 1.05, 0, FLOOR_Y + 0.39, tableZ)
+    // Mặt bàn gỗ mít / gỗ hương màu nâu ấm (top tại FLOOR_Y + 0.82)
+    b.box('wood', 3.42, 0.04, 1.14, 0, FLOOR_Y + 0.80, tableZ)
+    // Nẹp chỉ vàng chạy viền mép bàn (chỉ dày 2cm viền quanh cạnh bàn)
+    b.box('gold', 3.46, 0.02, 0.04, 0, FLOOR_Y + 0.80, tableZ + 0.56)
+    b.box('gold', 3.46, 0.02, 0.04, 0, FLOOR_Y + 0.80, tableZ - 0.56)
+    b.box('gold', 0.04, 0.02, 1.14, 1.72, FLOOR_Y + 0.80, tableZ)
+    b.box('gold', 0.04, 0.02, 1.14, -1.72, FLOOR_Y + 0.80, tableZ)
+
+    // Khăn trải thêu nhung đỏ sẫm ở giữa bàn (dày 1.6cm, top tại FLOOR_Y + 0.836, cao hơn mặt gỗ 1.6cm, triệt tiêu hoàn toàn z-fighting)
+    b.box('roofDark', 1.45, 0.016, 1.12, 0, FLOOR_Y + 0.828, tableZ)
+    b.box('gold', 1.47, 0.018, 0.03, 0, FLOOR_Y + 0.828, tableZ + 0.55) // Tua rua gấm vàng viền trước
+    b.box('gold', 1.47, 0.018, 0.03, 0, FLOOR_Y + 0.828, tableZ - 0.55) // Tua rua gấm vàng viền sau
+
+    // --- Bát Hương Đồng Tam Bảo uy nghi ở trung tâm ---
+    const ihX = 0
+    const ihZ = tableZ + 0.05
+    b.cylinder('gold', 0.28, 0.34, 0.07, 14, ihX, FLOOR_Y + 0.871, ihZ) // Đế chân quỳ tam tinh đặt trên khăn
+    b.cylinder('gold', 0.35, 0.26, 0.19, 14, ihX, FLOOR_Y + 0.99, ihZ) // Thân bát hương phình tròn
+    b.cylinder('gold', 0.37, 0.32, 0.06, 14, ihX, FLOOR_Y + 1.11, ihZ) // Miệng loe gờ chỉ nổi
+    b.cylinder('wall', 0.31, 0.31, 0.02, 12, ihX, FLOOR_Y + 1.11, ihZ) // Lòng tro cát vàng mịn
+    // Quai rồng / tai mây cong hai bên bát hương
+    b.cylinder('gold', 0.035, 0.035, 0.24, 6, -0.40, FLOOR_Y + 1.05, ihZ, 0, 0, 0.35)
+    b.cylinder('gold', 0.035, 0.035, 0.24, 6, 0.40, FLOOR_Y + 1.05, ihZ, 0, 0, -0.35)
+
+    // 3 nén nhang trầm đỏ thắm (Tam Bảo Hương) vươn cao với tàn than hồng
+    b.cylinder('roofDark', 0.012, 0.012, 0.46, 6, 0, FLOOR_Y + 1.33, ihZ)
+    b.cylinder('roofDark', 0.012, 0.012, 0.42, 6, -0.06, FLOOR_Y + 1.31, ihZ)
+    b.cylinder('roofDark', 0.012, 0.012, 0.42, 6, 0.06, FLOOR_Y + 1.31, ihZ)
+    b.addEmissive('lantern', LowPolyBuilder.sphere(0.018, 0), { position: [0, FLOOR_Y + 1.57, ihZ] })
+    b.addEmissive('lantern', LowPolyBuilder.sphere(0.016, 0), { position: [-0.06, FLOOR_Y + 1.53, ihZ] })
+    b.addEmissive('lantern', LowPolyBuilder.sphere(0.016, 0), { position: [0.06, FLOOR_Y + 1.53, ihZ] })
+
+    // --- Hai Chân Nến Đồng Cung Đình trên bàn lễ (sx * 1.1, đứng trên mặt gỗ ngoài khăn) ---
     for (const sx of [-1, 1]) {
-      b.cylinder('gold', 0.1, 0.14, 0.4, 6, sx * 1.0, FLOOR_Y + 1.0, tableZ)
-      b.addEmissive('lantern', LowPolyBuilder.box(0.08, 0.16, 0.08), { position: [sx * 1.0, FLOOR_Y + 1.28, tableZ] })
+      const cx = sx * 1.1
+      b.cylinder('gold', 0.12, 0.18, 0.08, 12, cx, FLOOR_Y + 0.86, tableZ) // Đáy đế tiếp xúc mặt gỗ 0.82
+      b.cylinder('gold', 0.07, 0.10, 0.15, 10, cx, FLOOR_Y + 0.97, tableZ)
+      b.cylinder('gold', 0.13, 0.13, 0.06, 12, cx, FLOOR_Y + 1.07, tableZ)
+      b.cylinder('gold', 0.07, 0.09, 0.10, 10, cx, FLOOR_Y + 1.15, tableZ)
+      b.cylinder('gold', 0.17, 0.11, 0.03, 14, cx, FLOOR_Y + 1.21, tableZ) // Đĩa sen hứng sáp nến
+      b.cylinder('gold', 0.07, 0.07, 0.03, 8, cx, FLOOR_Y + 1.23, tableZ) // Cốc nến đúc
     }
+
+    // --- Mâm Bồng Ngũ Quả dâng Phật (phía trước bát hương, trên khăn) ---
+    const fruitZ = tableZ + 0.35
+    b.cylinder('gold', 0.09, 0.15, 0.07, 10, 0, FLOOR_Y + 0.871, fruitZ) // Chân đế đĩa bồng
+    b.cylinder('gold', 0.28, 0.16, 0.04, 14, 0, FLOOR_Y + 0.92, fruitZ) // Đĩa bồng chân cao loe tròn
+    b.sphere('leaf', 0.10, 1, 0, FLOOR_Y + 1.01, fruitZ) // Quả bưởi xanh tròn phúc hậu
+    b.sphere('gold', 0.062, 1, -0.09, FLOOR_Y + 0.98, fruitZ + 0.02) // Quýt vàng óng
+    b.sphere('gold', 0.062, 1, 0.09, FLOOR_Y + 0.98, fruitZ + 0.02)
+    b.sphere('gold', 0.062, 1, 0, FLOOR_Y + 0.98, fruitZ + 0.10)
+    b.sphere('gold', 0.062, 1, 0, FLOOR_Y + 0.98, fruitZ - 0.08)
+
+    // --- Bộ Kỷ Tam Chén Nước Thanh Tịnh (phía sau bát hương, trên khăn) ---
+    const waterZ = tableZ - 0.25
+    b.box('woodDark', 0.52, 0.03, 0.16, 0, FLOOR_Y + 0.851, waterZ) // Khay gỗ hương chạm hoa sen
+    for (const cx of [-0.15, 0, 0.15]) {
+      b.cylinder('wall', 0.042, 0.028, 0.05, 10, cx, FLOOR_Y + 0.885, waterZ) // Chén ngọc trắng
+      b.cylinder('water', 0.036, 0.036, 0.005, 8, cx, FLOOR_Y + 0.905, waterZ) // Nước thanh tịnh
+    }
+
+    // --- Mõ Gỗ Tụng Kinh hình cá hóa long (bên phải bàn lễ, trên khăn) ---
+    const moX = 0.58
+    const moZ = tableZ + 0.15
+    b.cylinder('lotus', 0.14, 0.15, 0.03, 10, moX, FLOOR_Y + 0.851, moZ) // Đệm gấm đỏ thêu hoa sen
+    b.cylinder('woodDark', 0.11, 0.13, 0.10, 12, moX, FLOOR_Y + 0.91, moZ) // Thân mõ gỗ mít
+    b.box('woodDark', 0.05, 0.04, 0.10, moX, FLOOR_Y + 0.96, moZ - 0.06) // Quai mõ chạm khắc
+    b.cylinder('roofDark', 0.012, 0.012, 0.16, 6, moX + 0.09, FLOOR_Y + 0.89, moZ + 0.05, 0.3, 0, 0.4) // Dùi gõ mõ
+
+    // --- Chuông Đồng Gia Trì nhỏ (bên trái bàn lễ, trên khăn) ---
+    const bellX = -0.58
+    const bellZ = tableZ + 0.15
+    b.cylinder('lotus', 0.14, 0.15, 0.03, 10, bellX, FLOOR_Y + 0.851, bellZ) // Đệm gấm đỏ đỡ chuông
+    b.cylinder('gold', 0.11, 0.06, 0.13, 12, bellX, FLOOR_Y + 0.92, bellZ) // Thân chuông đồng gia trì
+    b.cylinder('gold', 0.12, 0.10, 0.03, 12, bellX, FLOOR_Y + 0.865, bellZ) // Miệng chuông loe viền
+    b.cylinder('wood', 0.012, 0.012, 0.16, 6, bellX - 0.09, FLOOR_Y + 0.89, bellZ + 0.05, -0.3, 0, 0.4) // Dùi thỉnh chuông
 
     this.colliderBoxes.push({
       id: 'hall_altar_collider',
@@ -608,10 +721,47 @@ export class PagodaSanctuaryHall {
     }
 
     this.buddhaStatue.update(delta)
+
+    const elapsed = typeof arg2 === 'number' ? arg2 : undefined
+    PixelCandleSystem.getInstance().update(delta, elapsed)
+  }
+
+  private initPixelCandles() {
+    const candleSys = PixelCandleSystem.getInstance()
+
+    // 2 ngọn nến trên Bệ Tam Bảo hai bên Tôn tượng Phật Thích Ca Mâu Ni
+    for (const sx of [-1, 1]) {
+      candleSys.addCandle({
+        parent: this.group,
+        position: [sx * 3.7, ALTAR_TOP_Y + 0.52, ALTAR_LOCAL_Z + 0.9],
+        height: 0.65,
+        withLight: true,
+        lightIntensity: 0.85,
+        lightDistance: 5.5,
+        lightColor: 0xffa83e,
+        timeOffset: sx > 0 ? 0.0 : 1.8
+      })
+    }
+
+    // 2 ngọn nến trên Bàn Lễ phía trước hai bên lư hương đồng
+    const tableZ = ALTAR_LOCAL_Z + 3.0
+    for (const sx of [-1, 1]) {
+      candleSys.addCandle({
+        parent: this.group,
+        position: [sx * 1.1, FLOOR_Y + 1.22, tableZ],
+        height: 0.52,
+        withLight: true,
+        lightIntensity: 0.7,
+        lightDistance: 4.2,
+        lightColor: 0xff9832,
+        timeOffset: sx > 0 ? 0.9 : 2.7
+      })
+    }
   }
 
   public dispose() {
     this.buddhaStatue.dispose()
+    PixelCandleSystem.getInstance().dispose()
     this.group.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (m.isMesh && m.geometry) m.geometry.dispose()
