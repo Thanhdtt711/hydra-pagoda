@@ -21,7 +21,8 @@ export function removeDbFiles(dbPath) {
 export async function startTestServer({ port, dbPath, env = {} }) {
   removeDbFiles(dbPath)
   let stderrTail = ''
-  const proc = spawn(process.execPath, ['.output/server/index.mjs'], {
+  // SERVER_ENTRY cho phép trỏ tới bản build ở thư mục khác (ví dụ .nuxt-verify/.output) mà không ghi đè .output.
+  const proc = spawn(process.execPath, [process.env.SERVER_ENTRY || '.output/server/index.mjs'], {
     env: {
       ...process.env,
       PORT: String(port),

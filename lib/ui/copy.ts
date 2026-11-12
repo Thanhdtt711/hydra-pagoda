@@ -55,6 +55,10 @@ export const COPY = {
   'btn.more': 'Xem thêm',
   'btn.topupConfirm': 'Nạp {mc} MC',
   'btn.donate': 'Cúng dường',
+  'btn.streakMark': 'Ghi dấu',
+  'btn.streakConnect': 'Kết nối ví',
+  'btn.deedGo': 'Dẫn tới',
+  'btn.deedClaim': 'Nhận quà',
 
   // ---- Tiêu đề màn / drawer (<= 3 từ) ----
   'title.appName': 'Vạn Cảnh Chùa',
@@ -77,6 +81,10 @@ export const COPY = {
   'title.hdSponsor': 'Mở đàn riêng',
   'title.hdCrowd': 'Quỹ Bách Gia',
   'title.legal': 'Pháp lý',
+  'title.streak': 'Sổ Tu Tập',
+  'title.streakDeeds': 'Việc ghi dấu',
+  'title.deeds': 'Ba việc lành',
+  'title.streakMilestones': 'Cột mốc',
 
   // ---- Mô tả mặc định (<= 12 từ, 1 câu) ----
   'desc.appTagline': 'Chùa 3D và bói quẻ',
@@ -115,6 +123,20 @@ export const COPY = {
   'desc.charmReceived': 'Đã cất vào túi đồ.',
   'desc.altHint': 'Giữ ALT để hiện con trỏ.',
   'desc.nonCustodial': 'Không giữ khóa riêng, không tự chuyển tiền.',
+  'desc.streakIntro': 'Mỗi ngày một việc lành, nối thành chuỗi.',
+  'desc.streakNeedWallet': 'Kết nối ví để giữ sổ tu tập.',
+  'desc.streakNoDeed': 'Làm một việc lành bên dưới rồi ghi dấu.',
+  'desc.streakReady': 'Hôm nay đã có việc lành, ghi dấu vào sổ.',
+  'desc.streakDone': 'Hôm nay đã ghi dấu. Hẹn bạn ngày mai.',
+  'desc.streakRest': 'Mỗi tuần có một ngày nghỉ giữ chuỗi.',
+  'desc.streakRestUsed': 'Ngày nghỉ tuần này đã dùng.',
+  'desc.streakHalve': 'Bỏ lỡ lâu thì chuỗi về nửa, không về 0.',
+  'desc.streakAllDone': 'Bạn đã qua mọi cột mốc.',
+  'desc.deedsIntro': 'Làm đủ ba việc hôm nay để nhận một món quà.',
+  'desc.deedsNeedWallet': 'Kết nối ví để nhận ba việc lành mỗi ngày.',
+  'desc.deedsReady': 'Đủ ba việc rồi, nhận quà của bạn.',
+  'desc.deedsDone': 'Đã nhận quà hôm nay. Hẹn bạn ngày mai.',
+  'desc.deedsRoute': 'Bấm Dẫn tới, nhân vật sẽ tự bước đến điểm.',
 
   // ---- Chú giải ngắn (<= 12 từ) ----
   'tip.coupleHint': 'Hai người, so khớp Bát Tự',

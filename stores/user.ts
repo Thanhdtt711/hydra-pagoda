@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { getVietnamDayKey } from '~/lib/time/vietnamDay'
 
 export type CountryId =
   | 'vietnam'
@@ -36,9 +35,7 @@ export interface UserState {
   gender: UserGender
   selectedOutfit: string
   unlockedOutfits: string[]
-  streakDays: number
   totalMinutesMeditated: number
-  lastMeditatedDate: string | null
   cameraMode: CameraMode
 }
 
@@ -50,9 +47,7 @@ export const useUserStore = defineStore('user', {
     gender: loadInitialGender(),
     selectedOutfit: 'ao_lam',
     unlockedOutfits: ['ao_lam', 'samue', 'phap_phuc_trang', 'temple_stay_grey'],
-    streakDays: 3,
-    totalMinutesMeditated: 45,
-    lastMeditatedDate: null,
+    totalMinutesMeditated: 0,
     cameraMode: 'tpp_back'
   }),
 
@@ -87,13 +82,9 @@ export const useUserStore = defineStore('user', {
     setCameraMode(mode: CameraMode) {
       this.cameraMode = mode
     },
+    /** Chỉ cộng số phút. Chuỗi ngày tu do server giữ (stores/streak.ts), không tính ở client. */
     recordMeditation(minutes: number) {
       this.totalMinutesMeditated += minutes
-      const today = getVietnamDayKey()
-      if (this.lastMeditatedDate !== today) {
-        this.streakDays += 1
-        this.lastMeditatedDate = today
-      }
     }
   }
 })

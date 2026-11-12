@@ -1,0 +1,155 @@
+
+> dev
+> nuxt dev --host 0.0.0.0 --port 3012
+
+│
+●  [32mNuxt [1m3.21.11[22m[39m[90m (with [39m[90mNitro [1m2.13.6[22m[39m[90m, Vite [1m7.3.7[22m[39m[90m and Vue [1m3.5.44[22m[39m[90m)[39m
+
+ 
+              █▀▀▀▀▀▀▀███▀█▀▀████▀▀▀▀▀▀▀█
+              █ █▀▀▀█ █▄█▄█▀▄▄▄▀█ █▀▀▀█ █
+              █ █   █ █▄ ▄█▄▄▀▄▄█ █   █ █
+              █ ▀▀▀▀▀ █ ▄▀▄ █▀▄ █ ▀▀▀▀▀ █
+              █▀▀▀▀▀█▀▀▀ ▄ █▀▄▀ ▀█▀█▀█▀██
+              █  ▄▄ ▄▀▀██ █▄ ▄▀▀▄▀▀▀▀█ ▀█
+              █▄█▄▄▀▀▀ ▄▀▀█ ▀█ ▀█▀ ▀█▀▀ █
+              █ ▄▀██▄▀▄▀█▀▀▀▀▄▀█▀█▀█ █ ▀█
+              █ █▄▀ ▀▀██ █ ▀▀▄█ ▀▀▀▀▄▀█▄█
+              █▀▀▀▀▀▀▀█ ███▄█▄▄ █▀█   ▀▀█
+              █ █▀▀▀█ █▀█▄ ▀▀█  ▀▀▀  ▀▄▄█
+              █ █   █ █  ▄▄ █▄ ▄▀▄▄▄█ ▄ █
+              █ ▀▀▀▀▀ █ ▄▀▄▄▀▄▀▄█▄   ▀▀ █
+              ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+ 
+[32m  ➜ Local:   [39m [36m[4mhttp://0.0.0.0:[1m3012[22m/[24m[39m
+[35m  ➜ Network: [39m [36m[4mhttp://172.22.176.1:[1m3012[22m/[24m[39m[90m [QR code][39m
+[35m  ➜ Network: [39m [36m[4mhttp://172.26.128.1:[1m3012[22m/[24m[39m
+[35m  ➜ Network: [39m [36m[4mhttp://192.168.31.37:[1m3012[22m/[24m[39m
+
+[33m  ➜ DevTools: [39m[2mpress [22m[32mShift[39m[2m + [22m[32mAlt[39m[2m + [22m[32mD[39m[2m in the browser (v3.4.4)[22m
+
+[32m✔[39m Vite client built in 376ms
+[32m✔[39m Vite server built in 2181ms
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mplugins.server.mjs[39m in 757.35ms
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mplugins.client.mjs[39m in 796.49ms
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mtypes/plugins.d.ts[39m in 818.97ms
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (266:0): A comment
+
+"// export const sha3_224 = /** @__PURE__ */ gen(0x06, 144, 224 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (271:0): A comment
+
+"// export const sha3_256 = /** @__PURE__ */ gen(0x06, 136, 256 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (272:0): A comment
+
+"// export const sha3_384 = /** @__PURE__ */ gen(0x06, 104, 384 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (273:0): A comment
+
+"// export const sha3_512 = /** @__PURE__ */ gen(0x06, 72, 512 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (288:0): A comment
+
+"// export const shake128 = /** @__PURE__ */ genShake(0x1f, 168, 128 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (289:0): A comment
+
+"// export const shake256 = /** @__PURE__ */ genShake(0x1f, 136, 256 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.2.5/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (266:0): A comment
+
+"// export const sha3_224 = /** @__PURE__ */ gen(0x06, 144, 224 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (271:0): A comment
+
+"// export const sha3_256 = /** @__PURE__ */ gen(0x06, 136, 256 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (272:0): A comment
+
+"// export const sha3_384 = /** @__PURE__ */ gen(0x06, 104, 384 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (273:0): A comment
+
+"// export const sha3_512 = /** @__PURE__ */ gen(0x06, 72, 512 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (288:0): A comment
+
+"// export const shake128 = /** @__PURE__ */ genShake(0x1f, 168, 128 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js (289:0): A comment
+
+"// export const shake256 = /** @__PURE__ */ genShake(0x1f, 136, 256 / 8);"
+
+in "node_modules/.pnpm/@harmoniclabs+crypto@0.3.0-dev0/node_modules/@harmoniclabs/crypto/dist/noble/keccak.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+
+[43m[30m WARN [39m[49m "node:sqlite" is imported by "server/utils/wallet/db.ts", but could not be resolved – treating it as an external dependency.
+
+[90m[[90mnitro[90m][39m [32m✔[39m Nuxt Nitro server built in 19834ms
+[36mℹ[39m Vite client warmed up in 4ms
+[hydra:l2] Chế độ Hybrid BẬT -> hydra-node ws://127.0.0.1:4001
+[wallet:watcher] Đang theo dõi địa chỉ treasury addr_test1vp359gtw53aj0xnxyykfezqvel76muu8gdl5fgwrd2r3cegrdxf7e trên mạng PREPROD qua Blockfrost (yêu cầu >= 1 xác nhận)
+[hydra:l2] Đã kết nối hydra-node ws://127.0.0.1:4001
+[hydra:l2] HeadStatus = Open
+[43m[30m WARN [39m[49m [h3] Please prefer using [36mmessage[39m for longer error messages instead of [36mstatusMessage[39m. In the future, [36mstatusMessage[39m will be sanitized by default.
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x2)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mrouter.options.mjs[39m in 818.89ms
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x2)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css[22m[2m (x2)[22m
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mplugins.server.mjs[39m in 705.52ms
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mplugins.client.mjs[39m in 710.34ms
+[90m[[90mnuxt[90m][39m [36mℹ[39m Compiled [36mtypes/plugins.d.ts[39m in 713.6ms
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x2)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x3)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x4)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x5)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x6)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x7)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x8)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x9)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x10)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x11)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x12)[22m
+[36mℹ[39m [32mhmr update [39m[2m/assets/css/main.css, /D:/Vtechcom/hydra-pagoda/assets/css/main.css?direct[22m[2m (x13)[22m

@@ -48,6 +48,8 @@ import UiBadge from '~/components/ui/UiBadge.vue'
 import UiInput from '~/components/ui/UiInput.vue'
 import ZenIcon, { type WhitelistedIconName } from '~/components/ZenIcon.vue'
 import HauDongPanel from '~/components/HauDongPanel.vue'
+import StreakPanel from '~/components/StreakPanel.vue'
+import { useStreakStore } from '~/stores/streak'
 import { useHauDongStore } from '~/stores/hauDong'
 import CardPackCard from '~/components/cards/CardPackCard.vue'
 import CardRevealModal from '~/components/cards/CardRevealModal.vue'
@@ -65,6 +67,7 @@ export type DrawerTab =
   | 'sangha'
   | 'temple_detail'
   | 'love_couple'
+  | 'streak'
 
 type DivinationType = 'stick' | 'love' | 'family' | 'wealth' | 'health' | 'star'
 type DivinationTier = 'basic' | 'auspicious' | 'golden'
@@ -90,6 +93,7 @@ const emit = defineEmits<{
   (e: 'guideToFortune'): void
   (e: 'guideToMerit'): void
   (e: 'guideToHauDong'): void
+  (e: 'guideToDeed', landmark: string): void
   (e: 'triggerBow'): void
 }>()
 
@@ -98,6 +102,7 @@ const user = useUserStore()
 const wallet = useWalletStore()
 const cards = useCardsStore()
 const hauDong = useHauDongStore()
+const streakStore = useStreakStore()
 
 const currentTab = computed({
   get: () => props.activeTab,
@@ -116,6 +121,8 @@ watch(() => props.modelValue, (open) => {
       void economy.loadMeditationStatus().catch(() => undefined)
     } else if (currentTab.value === 'hau_dong') {
       void hauDong.refreshStatus()
+    } else if (currentTab.value === 'streak') {
+      void streakStore.refreshStatus()
     }
   }
 })
@@ -128,6 +135,8 @@ watch(currentTab, (tab) => {
     void economy.loadCatalog()
   } else if (tab === 'hau_dong') {
     void hauDong.refreshStatus()
+  } else if (tab === 'streak') {
+    void streakStore.refreshStatus()
   }
 })
 
@@ -142,6 +151,7 @@ const TAB_NAV: Array<{ id: DrawerTab; label: string; name: string; badge: string
   { id: 'shop', label: 'Cửa Hàng', name: 'Cửa Hàng Pháp Bảo & Cổ Phục', badge: 'Pháp bảo & Cổ phục', subtitle: 'Trang phục hành hương 9 quốc gia, nhang trầm và lễ phẩm cúng dường' },
   { id: 'merit', label: 'Công Đức', name: 'Hòm Công Đức Tam Bảo', badge: 'Phước đức tâm an', subtitle: 'Cúng dường tự nguyện bằng MC và lưu danh Bảng vàng công đức' },
   { id: 'cards', label: 'Thẻ Bài', name: 'Thẻ Bài Di Sản Cổ Tự', badge: 'Triết lý & Kiến trúc', subtitle: 'Bộ sưu tập cổ tự 3D, thuyết minh âm thanh và khai quang bằng MC' },
+  { id: 'streak', label: 'Sổ Tu Tập', name: 'Sổ Tu Tập Chuỗi Ngày An Lạc', badge: 'Mỗi ngày một việc lành', subtitle: 'Ghi dấu mỗi ngày, nối thành chuỗi và nhận quà ở các cột mốc' },
   { id: 'meditation', label: 'Thiền', name: 'Hội Thiền Định Tâm 432Hz', badge: 'Chánh niệm định tâm', subtitle: 'Chuông xoay 432Hz và vòng điều hòa hơi thở 4-4-6' },
   { id: 'soundscape', label: 'Âm Cảnh', name: 'Bộ Trộn Âm Cảnh Không Gian', badge: 'Âm cảnh thiền tự', subtitle: 'Tùy chỉnh 6 kênh âm thanh thiên nhiên và pháp khí thời gian thực' },
   { id: 'sangha', label: 'Đồng Tu', name: 'Pháp Đàm & Đồng Tu Hiện Diện', badge: 'Cộng đồng đồng tu', subtitle: 'Gửi lời nguyện chánh niệm và kết nối cùng hành giả đang trực tuyến' }
@@ -2595,7 +2605,7 @@ function sendMantraMessage(text: string) {
               <div class="rounded-lg border border-hairline bg-surface-elevated p-2.5">
                 <div class="text-xs text-secondary font-medium">Chuỗi tu tập</div>
                 <div class="text-sm font-numbers font-bold text-white mt-0.5">
-                  {{ user.streakDays }} ngày
+                  {{ streakStore.status?.currentStreak ?? 0 }} ngày
                 </div>
               </div>
             </div>
@@ -2969,6 +2979,10 @@ function sendMantraMessage(text: string) {
         <!-- =============================================================== -->
         <!-- TAB: NHÀ HẦU ĐỒNG (ĐIỆN THỜ TỨ PHỦ & TRẦN TRIỀU)                -->
         <!-- =============================================================== -->
+        <div v-else-if="currentTab === 'streak'">
+          <StreakPanel @guide-to-deed="(lm: string) => emit('guideToDeed', lm)" />
+        </div>
+
         <div v-else-if="currentTab === 'hau_dong'">
           <HauDongPanel
             :is-inside-hau-dong="isInsideHauDong"

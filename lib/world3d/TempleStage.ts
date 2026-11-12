@@ -1692,6 +1692,46 @@ export class TempleStage {
   }
 
   /**
+   * Dẫn đường tới một điểm bất kỳ ngoài sân (dùng cho Ba Việc Lành). Nếu đang trong Chánh Điện thì mở cửa
+   * và đi ra qua cửa chính trước.
+   */
+  public walkToPoint(target: { x: number; z: number }, onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const waypoints: Array<{ x: number; z: number }> = []
+    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
+      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+        this.sanctuaryHall.toggleDoor()
+      }
+      waypoints.push({ x: 0, z: -2.5 })
+      waypoints.push({ x: 0, z: 0.5 })
+      waypoints.push({ x: 0, z: 4.5 })
+    }
+    waypoints.push(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: null,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
    * Dẫn đường ra Cổng Tam Quan
    */
   public walkToTamQuanGate(onArrive?: () => void, onAbort?: () => void) {

@@ -397,5 +397,55 @@ CREATE INDEX IF NOT EXISTS idx_card_pack_acc ON card_pack_openings (account_id, 
 -- tách biệt với display_name mặc định theo ví để có thể khôi phục khi xóa hồ sơ.
 ALTER TABLE accounts ADD COLUMN fortune_name TEXT;
 `
+  },
+  {
+    version: 11,
+    name: 'account_streaks_and_rewards',
+    sql: `
+-- Sổ Tu Tập: chuỗi ngày an lạc của từng tài khoản. Ngày tính theo giờ Việt Nam (YYYY-MM-DD).
+-- rest_week_key: khóa tuần (thứ Hai) đã dùng "ngày nghỉ" bảo vệ chuỗi, mỗi tuần dùng tối đa một lần.
+-- title: danh hiệu mở ở cột mốc cuối (hiển thị cạnh tên).
+CREATE TABLE account_streaks (
+  account_id     INTEGER PRIMARY KEY REFERENCES accounts(id),
+  current_streak INTEGER NOT NULL DEFAULT 0 CHECK (current_streak >= 0),
+  best_streak    INTEGER NOT NULL DEFAULT 0 CHECK (best_streak >= 0),
+  last_day_key   TEXT,
+  rest_week_key  TEXT,
+  title          TEXT,
+  updated_at     INTEGER NOT NULL
+);
+
+-- Mỗi cột mốc chỉ phát thưởng một lần cho mỗi tài khoản (chuỗi về nửa rồi lên lại không phát lại).
+CREATE TABLE streak_rewards (
+  account_id INTEGER NOT NULL REFERENCES accounts(id),
+  milestone  INTEGER NOT NULL CHECK (milestone > 0),
+  granted_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, milestone)
+);
+`
+  },
+  {
+    version: 12,
+    name: 'daily_deeds_and_rewards',
+    sql: `
+-- Ba Việc Lành mỗi ngày: chỉ lưu việc "đến điểm" đã hoàn thành. Việc thiền, thắp hương, gieo quẻ tự tính từ
+-- các bảng sẵn có nên không cần lưu. Ngày theo giờ Việt Nam (YYYY-MM-DD).
+CREATE TABLE daily_deeds (
+  account_id   INTEGER NOT NULL REFERENCES accounts(id),
+  day_key      TEXT    NOT NULL,
+  deed_id      TEXT    NOT NULL,
+  completed_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, day_key, deed_id)
+);
+
+-- Mỗi tài khoản nhận quà đủ ba việc tối đa một lần mỗi ngày.
+CREATE TABLE daily_deed_rewards (
+  account_id INTEGER NOT NULL REFERENCES accounts(id),
+  day_key    TEXT    NOT NULL,
+  item_id    TEXT    NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, day_key)
+);
+`
   }
 ]

@@ -7,6 +7,9 @@ import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
 import { useMeditationStore } from '~/stores/meditation'
 import { useHauDongStore } from '~/stores/hauDong'
+import { useStreakStore } from '~/stores/streak'
+import { useDeedsStore } from '~/stores/deeds'
+import { MapLayout } from '~/lib/world3d/world/MapLayout'
 import { useParkourStore } from '~/stores/parkour'
 import { MultiplayerClient, type PilgrimPresence, type ZenChatMessage } from '~/lib/network/MultiplayerClient'
 import type { DrawerTab } from '~/components/SanctuaryDrawer.vue'
@@ -31,6 +34,7 @@ const hydra = useHydraStore()
 const meditation = useMeditationStore()
 const hauDong = useHauDongStore()
 const parkour = useParkourStore()
+const streak = useStreakStore()
 const playerAltitude = ref(0)
 
 // Gợi ý phím dùng chung (lib/ui/controlHints.ts)
@@ -76,6 +80,8 @@ watch(() => wallet.accountId, async (newAccountId) => {
   user.name = resolveDisplayNameFromProfileAndWallet()
   scheduleMultiplayerRejoin()
   parkour.fetchStatus()
+  void streak.refreshStatus()
+  void useDeedsStore().refreshStatus()
 })
 
 // Khi tên người chơi thay đổi (lưu hoặc xóa họ tên quẻ bói), phát sóng lại ngay cho mọi người chơi khác thấy.
@@ -314,6 +320,7 @@ onMounted(() => {
       playerAltitude.value = Math.max(0, pos[1])
       livePlayerPos.value = { x: pos[0], y: pos[1], z: pos[2] }
       livePlayerYaw.value = yaw
+      checkDeedVisits(pos[0], pos[2])
       if (stage) {
         isNearFortune.value = stage.isNearFortune()
         isNearMerit.value = stage.isNearMerit()
@@ -401,6 +408,8 @@ onMounted(() => {
     void wallet.restore()
     void meditation.refreshStatus()
     void parkour.fetchStatus()
+    void streak.refreshStatus()
+    void useDeedsStore().refreshStatus()
     void hauDong.refreshStatus().then(() => {
       syncHauDongToStage()
     })
@@ -759,6 +768,59 @@ function handleGuideToLoveTree() {
       isAutoWalking.value = false
       activeNavTargetName.value = null
       showToast('Đài Tơ Duyên', '', 'lotus')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Bị cản, hãy tự bước', '', 'info')
+    }
+  )
+}
+
+// Ba Việc Lành: điểm bước tới (ngoài vùng vật cản) và bán kính tính là "đã tới" quanh tâm mỗi điểm.
+const DEED_APPROACH: Record<string, { x: number; z: number }> = {
+  lotus_pond: { x: -10.5, z: 8.5 },
+  bell_tower: { x: 17.5, z: 8.5 },
+  love_tree_shrine: { x: -10.5, z: 15.5 },
+  bodhi_tree: { x: -9.0, z: 4.8 },
+  banyan_tree: { x: 9.0, z: 4.8 }
+}
+const DEED_REACH_MARGIN = 3.5
+
+function deedLandmarkOf(mapKey: string) {
+  const def = MapLayout.LANDMARKS[mapKey]
+  if (!def) return null
+  const radius = def.radius ?? (def.footprint.type === 'circle' ? def.footprint.radius : 3)
+  return { x: def.center.x, z: def.center.z, reach: radius + DEED_REACH_MARGIN }
+}
+
+/** Gọi mỗi lần nhân vật di chuyển: tới gần điểm của một việc lành chưa xong thì báo server. */
+function checkDeedVisits(x: number, z: number) {
+  const deeds = useDeedsStore()
+  const list = deeds.status?.deeds
+  if (!list) return
+  for (const d of list) {
+    if (d.kind !== 'visit' || d.done || !d.landmark || !d.mapKey) continue
+    const lm = deedLandmarkOf(d.mapKey)
+    if (!lm) continue
+    if (Math.hypot(x - lm.x, z - lm.z) <= lm.reach) void deeds.reportVisit(d.landmark)
+  }
+}
+
+function handleGuideToDeed(landmark: string) {
+  if (!stage) return
+  const target = DEED_APPROACH[landmark]
+  if (!target) return
+  const name = useDeedsStore().status?.deeds.find(d => d.landmark === landmark)?.label ?? 'Điểm việc lành'
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = name
+  stage.walkToPoint(
+    target,
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      checkDeedVisits(target.x, target.z)
     },
     () => {
       isAutoWalking.value = false
@@ -1301,7 +1363,7 @@ function simulateLoading() {
         <!-- Daily Streak Stat -->
         <UiStatCell
           label="Ngày Tu"
-          :value="user.streakDays"
+          :value="streak.status?.currentStreak ?? 0"
           size="sm"
           class="hud-stat-cell hud-hide-sm"
         />
@@ -1979,10 +2041,21 @@ function simulateLoading() {
             </button>
             <button
               type="button"
+              @click="openDrawerFromDropup('streak')"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
+            >
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">04</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Sổ Tu Tập</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">Mỗi ngày một việc lành, nối thành chuỗi</div>
+              </div>
+            </button>
+            <button
+              type="button"
               @click="openDrawerFromDropup('hau_dong')"
               class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
             >
-              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">04</span>
+              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">05</span>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-semibold text-primary leading-snug whitespace-nowrap">Nhà Hầu Đồng (Điện Tứ Phủ)</div>
                 <div class="text-xs text-secondary leading-snug mt-0.5">Hầu đồng 5 Giá (8p), Thỉnh Lộc MC &amp; Mở Đàn</div>
@@ -1993,7 +2066,7 @@ function simulateLoading() {
               @click="openAbbotChat()"
               class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
             >
-              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">05</span>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">06</span>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Thầy Trụ Trì (Hiên Tiền Điện)</div>
                 <div class="text-xs text-secondary leading-snug mt-0.5">Hỏi đáp Phật pháp, Nghi lễ &amp; Văn hóa chùa</div>
@@ -2122,6 +2195,7 @@ function simulateLoading() {
       @send-mantra="handleSendChat"
       @guide-to-fortune="handleGuideToFortune"
       @guide-to-merit="handleGuideToMerit"
+      @guide-to-deed="handleGuideToDeed"
       @guide-to-hau-dong="handleGuideToHauDong"
       @trigger-bow="triggerBowAction"
       @update:active-tab="(t) => drawerTab = t"

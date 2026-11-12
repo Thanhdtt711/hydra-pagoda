@@ -4,6 +4,19 @@ Tài liệu này giải thích chi tiết:
 1. **Bản chất của MC Coin & Cơ chế Mua / Tiêu MC hiện tại** trong dự án **Vạn Cảnh Thiền Tự (`hydra-pagoda`)**.
 2. **Tính năng "Tọa Thiền 432Hz Nhận Thưởng MC Coin" (Đã Triển Khai)** (chống AFK/gian lận, giới hạn trần mỗi ngày) và **Cơ chế Nhận Lộc MC (Hầu đồng, Thắp hương, Leo núi) trên Cardano Hydra L2**.
 3. **Cơ chế Dự phòng Kép: Đưa MC Coin lên Cardano Hydra L2 + SQLite Fallback (Đã Triển Khai)**: giá trị của Hydra L2, kiến trúc Hybrid thực tế đã code, mô hình khóa server HMAC-SHA256, State UTxO với Inline Datum, hàng đợi tuần tự, giao diện hiển thị và bộ kiểm thử 11/11 ca.
+4. **Lớp Giữ Chân Không Dùng MC: Sổ Tu Tập & Ba Việc Lành (Đã Triển Khai)**: chuỗi ngày an lạc, cột mốc, ba việc lành mỗi ngày, quà là vật phẩm (không cộng MC, không qua Hydra L2), các bảng, endpoint và giới hạn đã biết.
+
+5. **Hey Sumale, hiện tại game chưa dùng hợp đồng thông minh (Smart Contract / Plutus / Aiken script) nào cả.**
+
+Cơ chế blockchain hiện nay của game đang chạy theo mô hình Sổ cái DB + Giao dịch thường (Key-based) trên Cardano L1 & Hydra L2:
+
+Xác thực ví (CIP-30 / CIP-8): Người chơi ký thông điệp bằng ví Cardano để chứng minh quyền sở hữu địa chỉ ví (chỉ kiểm tra chữ ký mật mã, không qua smart contract).
+Nạp ADA trên L1: Người chơi chuyển ADA trực tiếp tới địa chỉ ví kho bạc (NUXT_TREASURY_ADDRESS) như giao dịch chuyển tiền bình thường, không khóa tiền vào script/contract; backend kiểm tra giao dịch qua Blockfrost/Koios rồi cộng MC vào DB.
+Hydra L2 (Notary Mode — l2TxBuilder.ts):
+Dùng các địa chỉ khóa công khai thông thường (EnterpriseAddress từ keyhash, không phải địa chỉ script).
+Có đính kèm inline Plutus datum (Constr 0 [balanceAfter, ledgerId, deltaMc, accountId]) và metadata CIP-20 (nhãn 674) vào UTxO trong Hydra Head để ghi nhận / công chứng biến động số dư (phí 0), nhưng không có validator/smart contract on-chain nào đứng ra khóa hay kiểm duyệt logic giao dịch.
+
+Nói ngắn gọn: DB (PostgreSQL / SQLite) vẫn là nguồn sự thật chính, còn Cardano L1 dùng để nạp ADA và Hydra L2 đóng vai trò sổ công chứng tức thì (không dùng smart contract). Nếu sau này muốn mint NFT Thẻ Di Sản (CIP-68) hoặc khóa quỹ công đức minh bạch on-chain thì mới cần viết thêm smart contract (ví dụ bằng Aiken).
 
 > Nội dung tài liệu được đối chiếu lại với mã nguồn hiện tại (`server/utils/wallet/*`, `server/utils/hydra/*`, `server/api/*`, `stores/*`, `components/*`). Các tính năng chưa có trong code được ghi rõ là "Dự kiến".
 
@@ -159,12 +172,12 @@ Cả 3 hoạt động nhận lộc đều gọi hàm trung tâm `credit(accountI
 | Hoạt động | `reason` | `refType` / `refId` | Quy tắc thưởng |
 |---|---|---|---|
 | **Hầu Đồng Tứ Phủ** (`hauDongService.ts`) | `hau_dong_blessing` | `hau_dong_blessing` / `hd_loc_{sessionId}_gia{giaIndex}_u{accountId}` | Mỗi giá nhận `25 MC` cơ bản, `+5 MC` nếu đang cúi lạy (bowing), `+15 MC` nếu là người bảo trợ (tối đa `45 MC/giá`). Trần `250 MC/ngày` (`dailyMaxClaimMc`). Số thực nhận là `min(thưởng, còn lại trong ngày, max(10, quỹ lộc còn lại của phiên))`. Mỗi giá chỉ nhận 1 lần |
-| **Thắp Hương Đầu Ngày** (`server/api/mc/incense/offer.post.ts`) | `incense_daily` | `incense` / `incense_{accountId}_{YYYY-MM-DD}` | `+15 MC` mỗi ngày (ngày tính theo UTC `toISOString()`), kèm Pháp Cú chúc phúc |
+| **Thắp Hương Đầu Ngày** (`server/api/mc/incense/offer.post.ts`) | `incense_daily` | `incense` / `incense_{accountId}_{YYYY-MM-DD}` | `+15 MC` mỗi ngày (ngày tính theo giờ Việt Nam qua `getVietnamDayKey`), kèm Pháp Cú chúc phúc |
 | **Leo núi Parkour** (`parkourService.ts`) | `custom_service` | `parkour_summit_reward` / `pk_win_{runToken}` | `+50 MC` khi lên đỉnh. Thời gian tối thiểu `6 giây` (nhanh hơn bị từ chối `too_fast`) |
 
 Chi tiết từng hoạt động:
 - **Hầu Đồng**: một phiên diễn ra `480 giây` gồm `5 giá`, mỗi giá `96 giây`. Lộc chỉ nhận được ở bước chúc phúc (bước 5) hoặc bước 6 nếu đã xem tối thiểu `15 giây` (`minWatchSecToClaim`). Có phiên theo lịch hằng ngày lúc `11:00 (GMT+7)` với quỹ `900 MC` (`scheduled_lunar`), hoặc phiên bảo trợ khi người chơi dâng công đức (`hau_dong_donation`, ngưỡng cộng đồng `2.500 MC`, tối thiểu `50 MC` mỗi đóng góp). Hàm `claimHauDongBlessing` gọi `credit()` rồi mới cập nhật `hau_dong_attendance` và quỹ phiên trong một transaction riêng, nên hai bước này không nguyên tử với nhau.
-- **Parkour**: lượt leo **đầu tiên mỗi ngày miễn phí** (ngày tính theo UTC); từ lượt thứ 2 tốn **`5 MC`** phí (`spend(accountId, 5, 'custom_service', runToken, { refType: 'parkour_fee' })`). Phần thưởng `50 MC` chỉ trả khi hoàn thành đúng `runToken`.
+- **Parkour**: lượt leo **đầu tiên mỗi ngày miễn phí** (ngày tính theo giờ Việt Nam); từ lượt thứ 2 tốn **`5 MC`** phí (`spend(accountId, 5, 'custom_service', runToken, { refType: 'parkour_fee' })`). Phần thưởng `50 MC` chỉ trả khi hoàn thành đúng `runToken`.
 - **Thắp hương**: khách vãng lai chưa đăng nhập chỉ nhận thông báo `rewardMc: 15, authenticated: false` mà **không** có bút toán MC. Người chơi đã đăng nhập nhận MC một lần mỗi ngày và kèm bằng chứng `hydra` (`getHydraProof`).
 
 > Lưu ý: mã nguồn **không** có khái niệm "Treasury Reward Faucet UTxO". MC nhận thưởng được cộng thẳng qua `credit()` vào sổ cái SQLite; trên L2, giao dịch chỉ dùng **Fuel UTxO** của máy chủ (trả phí đầu vào) và **State UTxO** của từng tài khoản (mang số dư mới trong inline datum).
@@ -398,3 +411,174 @@ Các script liên quan trong `package.json`: `hydra:mock`, `hydra:prepare`, `hyd
 11. Đối soát bảo toàn: Tổng `SUM(delta_mc)` luôn bằng `accounts.mc_balance` (SQLite là nguồn sự thật).
 
 Ngoài 11 ca đánh số trên, script có thêm một nhánh dự phòng: nếu kịch bản ném ngoại lệ bất ngờ, script ghi một dòng kết quả thất bại "Test chạy không phát sinh ngoại lệ" kèm 40 dòng log cuối của server để dễ chẩn đoán. Khi chạy bình thường dòng này không xuất hiện.
+
+---
+
+## Phần 4. Lớp Giữ Chân Không Dùng MC: Sổ Tu Tập & Ba Việc Lành (Đã Triển Khai)
+
+Phần 2 và Phần 3 mô tả những nguồn **MC** (có bút toán `mc_ledger`, có thể phản chiếu lên Hydra L2). Phần này mô tả một lớp khác chạy song song: **Sổ Tu Tập** (chuỗi ngày an lạc) và **Ba Việc Lành mỗi ngày**. Hai cơ chế này thuộc nhóm đề xuất giữ chân 3.1 và 3.2 trong `DE_XUAT_TRO_CHOI_GIU_CHAN.md`, kế hoạch triển khai nằm ở `KE_HOACH_GIU_CHAN_DOT_1.md`.
+
+### 4.1. Nguyên tắc thiết kế: quà là vật phẩm, tuyệt đối không cộng MC
+
+| | Nguồn MC (Phần 2) | Sổ Tu Tập & Ba Việc Lành (Phần 4) |
+|---|---|---|
+| Phần thưởng | `+N MC` | Vật phẩm, thẻ di sản hoặc danh hiệu |
+| Ghi `mc_ledger` | Có (`credit()`) | **Không** |
+| Đụng trần MC theo ngày | Có (thiền 200, hầu đồng 250) | **Không** |
+| Sinh giao dịch Hydra L2 | Có khi `HYDRA_L2_ENABLED=true` | **Không** |
+| Nguồn sự thật | `mc_ledger` + `accounts.mc_balance` | Bảng riêng: `account_streaks`, `streak_rewards`, `daily_deeds`, `daily_deed_rewards`, `account_inventory` |
+
+Lý do chọn cách này:
+- Không làm lạm phát MC: thêm động lực quay lại mà không mở thêm đường kiếm MC, nên bảng định mức và trần ngày ở Phần 2 giữ nguyên.
+- Không đụng vào bài toán đối soát: `SUM(delta_mc)` luôn bằng `accounts.mc_balance` như ca kiểm thử số 11 ở mục 3.9, vì hai tính năng này không tạo bút toán nào.
+- Hydra L2 vẫn chỉ công chứng các biến động MC. Bật hay tắt Hydra **không ảnh hưởng** tới hai tính năng này.
+- Quà nhận được cộng thẳng vào kho đồ `account_inventory` (hoặc `card_inventory` với thẻ di sản), cùng kho mà Cửa hàng đang dùng.
+
+> Lưu ý: vật phẩm quà tặng như Trầm Hương Xứ Quảng có giá niêm yết `50 MC` trong cửa hàng, nhưng khi nhận làm quà thì **không** có bút toán MC nào và vật phẩm không đổi ngược ra MC hay ADA.
+
+### 4.2. Ngày nào tính là "một ngày"?
+
+Cả hai tính năng dùng chung `lib/time/vietnamDay.ts`: ngày là khóa `YYYY-MM-DD` theo **giờ Việt Nam (UTC+7)**, tuần bắt đầu từ thứ Hai (`getVietnamWeekKey`). Đây là cùng mốc với trần thiền 200 MC, thắp hương và parkour, nên người chơi không gặp tình trạng mỗi tính năng reset vào một giờ khác nhau.
+
+### 4.3. Sổ Tu Tập (chuỗi ngày an lạc)
+
+Quy tắc thuần nằm ở `lib/streak/streakRules.ts` (không đụng DB, không đọc đồng hồ, dùng chung cho server và test). Logic có DB nằm ở `server/utils/wallet/streakService.ts`.
+
+#### A. Điều kiện để ghi dấu một ngày
+
+Server tự kiểm tra, client **không gửi** việc lành nào lên. Hôm nay cần có ít nhất một việc trong bốn việc, đọc từ dữ liệu sẵn có (`getTodayDeeds`):
+
+| Việc lành | Nguồn dữ liệu server đọc |
+|---|---|
+| Thiền xong một thời | `meditation_sessions` có `status = 'completed'` và `day_key` hôm nay |
+| Thắp hương đầu ngày | `mc_ledger` có `reason = 'incense_daily'` và `ref_id = incense_{accountId}_{dayKey}` |
+| Gieo một quẻ | `fortune_records` tạo trong khoảng 00:00 đến 24:00 giờ Việt Nam hôm nay |
+| Công đức | `merit_donations` tạo trong khoảng 00:00 đến 24:00 giờ Việt Nam hôm nay |
+
+Nếu chưa có việc nào, `POST /api/mc/streak/claim` trả `400 no_good_deed`. Công đức chỉ tính cho Sổ Tu Tập, **không** nằm trong bộ ba của Ba Việc Lành (xem mục 4.4).
+
+#### B. Luật chuỗi
+
+```mermaid
+flowchart TD
+    A["Ghi dấu ngày hôm nay"] --> B{"So với dấu gần nhất"}
+    B -->|"Đã ghi hôm nay"| C["already: giữ nguyên"]
+    B -->|"Chưa có dấu nào"| D["first: chuỗi = 1"]
+    B -->|"Hôm qua có dấu (gap = 1)"| E["continued: chuỗi + 1"]
+    B -->|"Lỡ đúng 1 ngày (gap = 2)"| F{"Tuần của ngày bị lỡ<br/>đã dùng ngày nghỉ chưa?"}
+    F -->|"Chưa"| G["rested: giữ chuỗi, +1,<br/>ghi rest_week_key"]
+    F -->|"Rồi"| H["halved: chuỗi = floor(chuỗi / 2) + 1"]
+    B -->|"Lỡ từ 2 ngày trở lên (gap > 2)"| H
+```
+
+- Mỗi tuần có **một ngày nghỉ tự động** bảo vệ chuỗi, chỉ có nghĩa khi người chơi lỡ **đúng một ngày**.
+- Lỡ nhiều hơn hoặc đã dùng ngày nghỉ tuần đó thì chuỗi **về một nửa (làm tròn xuống) rồi cộng dấu hôm nay**. Chuỗi **không bao giờ về 0** sau lần ghi dấu đầu tiên.
+- `bestStreak` luôn giữ mức cao nhất từng đạt.
+
+#### C. Cột mốc & quà
+
+| Cột mốc | Loại | Quà |
+|---|---|---|
+| 3 ngày | Vật phẩm lễ phẩm | Đàn Hương Kyoto (`incense_japan`) |
+| 7 ngày | Vật phẩm lễ phẩm | Hoa Đăng Cầu An (`lotus_lantern`) |
+| 21 ngày | Thẻ di sản | Một thẻ bậc `rare`, ưu tiên thẻ chưa sở hữu |
+| 49 ngày | Trang phục | Pháp Phục Nâu Làng Mai (`western`) |
+| 108 ngày | Danh hiệu | Hành Giả Bền Tâm (lưu ở `account_streaks.title`) |
+
+- **Mỗi cột mốc chỉ phát đúng một lần cho mỗi tài khoản**: khóa chính `(account_id, milestone)` của bảng `streak_rewards`, nên chuỗi về nửa rồi lên lại không phát lại quà.
+- Trang phục đã sở hữu thì không cộng thêm nhưng vẫn tính là đã nhận cột mốc (`alreadyOwned: true`).
+- Thẻ di sản được ghi vào `card_inventory` và `account_inventory` (category `heritage_card`).
+
+#### D. Chống ghi trùng và chạy song song
+
+- Toàn bộ `claimStreakMark` chạy trong `withTransaction`, nên hai request cùng lúc không thể ghi hai lần.
+- `UPDATE account_streaks ... WHERE last_day_key = ?` là lớp bảo vệ thêm; nếu không có dòng nào đổi thì trả `already`.
+- Gọi lại trong cùng ngày là idempotent: trả `outcome: 'already'`, `rewards: []`.
+
+### 4.4. Ba Việc Lành mỗi ngày
+
+Danh mục và cách chọn nằm ở `lib/streak/deedCatalog.ts` (thuần hàm, dùng chung server, client và test). Logic có DB nằm ở `server/utils/wallet/deedService.ts`.
+
+#### A. Danh mục 8 việc
+
+| Mã | Việc | Loại | Cách ghi nhận |
+|---|---|---|---|
+| `meditation` | Ngồi thiền trọn một thời | `auto` | Server tự tính từ `meditation_sessions` |
+| `incense` | Thắp hương đầu ngày | `auto` | Server tự tính từ `mc_ledger` (`incense_daily`) |
+| `fortune` | Gieo một quẻ cầu an | `auto` | Server tự tính từ `fortune_records` |
+| `visit_lotus_pond` | Ngắm Hồ Sen Bát Nhã | `visit` | Client báo, lưu `daily_deeds` |
+| `visit_bell_tower` | Đến Lầu Chuông | `visit` | Client báo, lưu `daily_deeds` |
+| `visit_love_tree_shrine` | Đến Đài Tơ Duyên | `visit` | Client báo, lưu `daily_deeds` |
+| `visit_bodhi_tree` | Đứng dưới Cây Bồ Đề | `visit` | Client báo, lưu `daily_deeds` |
+| `visit_banyan_tree` | Đứng dưới Cây Đa | `visit` | Client báo, lưu `daily_deeds` |
+
+- **Không đưa việc tốn MC (cúng dường) vào bộ ba** để người mới chưa có MC không bị chặn.
+- Công đức không nằm trong danh mục nhưng vẫn giúp ghi dấu Sổ Tu Tập (mục 4.3.A).
+
+#### B. Cách chọn bộ ba mỗi ngày
+
+- Bộ ba là hàm thuần của `accountId` và khóa ngày: `createSeededRng(hashSeedString("daily-deeds|accountId|dayKey"))` rồi xáo Fisher-Yates và lấy 3 việc đầu. **Không phải lưu danh sách việc** vào DB.
+- Cùng một người, cùng một ngày thì luôn ra cùng bộ ba; mỗi người một bộ khác nhau; không trùng việc trong cùng một bộ.
+
+#### C. Quà đủ ba việc
+
+- Quà cố định: **Trầm Hương Xứ Quảng** (`incense_quang`, nhóm lễ phẩm), cộng `+1` vào `account_inventory` (cộng dồn số lượng nếu đã có).
+- Mỗi tài khoản nhận tối đa **một lần mỗi ngày**: khóa chính `(account_id, day_key)` của `daily_deed_rewards`, kèm `ON CONFLICT DO NOTHING`.
+- `claimDailyDeedReward` chạy trong `withTransaction`, gọi lại trong ngày trả `granted: false`, chưa đủ ba việc trả `400 deeds_incomplete`.
+
+#### D. Việc "đến điểm" và giới hạn tin cậy
+
+Server **không biết vị trí** người chơi trong 3D, nên việc `visit` do client báo qua `POST /api/mc/deeds/visit { landmark }`. Server chỉ kiểm tra:
+1. `landmark` có trong danh mục (không thì `400 invalid_landmark`).
+2. Điểm đó nằm trong **bộ ba của chính tài khoản hôm nay** (không thì `400 deed_not_today`), để không ai điền sẵn việc ngày khác.
+
+Chấp nhận tin lời client vì phần thưởng chỉ là một vật phẩm tượng trưng và **không có MC**: người gian lận cùng lắm tự báo đã đến điểm, không rút được tiền hay điểm có giá trị quy đổi. Đây là điểm khác với thiền 432Hz ở Phần 2, nơi server tự đo thời gian vì có MC.
+
+Phía client (`components/TempleCanvas.vue`):
+- `checkDeedVisits(x, z)` chạy mỗi lần nhân vật di chuyển, nếu tới gần điểm của một việc chưa xong thì gọi `deeds.reportVisit(landmark)`. Bán kính tính là bán kính điểm cộng `3.5`.
+- Nút **"Dẫn tới"** trong thẻ việc lành gọi `stage.walkToPoint` để nhân vật tự đi tới `DEED_APPROACH[landmark]` rồi kiểm tra đã tới chưa.
+
+### 4.5. Cơ sở dữ liệu (migration 11 và 12)
+
+| Bảng | Khóa chính | Vai trò |
+|---|---|---|
+| `account_streaks` | `account_id` | `current_streak`, `best_streak`, `last_day_key`, `rest_week_key`, `title`, `updated_at` |
+| `streak_rewards` | `(account_id, milestone)` | Đánh dấu cột mốc đã phát, không bao giờ phát lại |
+| `daily_deeds` | `(account_id, day_key, deed_id)` | Chỉ lưu việc `visit` đã xong; việc `auto` không lưu vì tính từ bảng sẵn có |
+| `daily_deed_rewards` | `(account_id, day_key)` | Mỗi ngày nhận quà tối đa một lần |
+
+### 4.6. Các Endpoint
+
+| Endpoint | Giới hạn tần suất | Cần đăng nhập | Chức năng |
+|---|---|---|---|
+| `GET /api/mc/streak/status` | 60 lần / phút | Không (khách chỉ thấy danh sách cột mốc) | Chuỗi hiện tại, việc lành hôm nay, cột mốc đã nhận |
+| `POST /api/mc/streak/claim` | 20 lần / phút | Có | Ghi dấu hôm nay, trả `outcome`, `rewards`, `status`, `inventory` |
+| `GET /api/mc/deeds/status` | 60 lần / phút | Không (khách nhận khung rỗng) | Ba việc hôm nay và tiến độ |
+| `POST /api/mc/deeds/visit` | 30 lần / phút | Có | Ghi nhận đã tới một điểm |
+| `POST /api/mc/deeds/claim` | 20 lần / phút | Có | Nhận quà khi đủ ba việc |
+
+Các `POST` đều qua `assertSameOrigin`, và mọi phản hồi gắn `Cache-Control: no-store`.
+
+### 4.7. Giao diện
+
+- HUD và tab **Hội Thiền** đọc số ngày từ `streak.status?.currentStreak ?? 0` của server. Trước đây store `user` giữ riêng `streakDays` nên hiện sai "3 ngày tu" khi chưa thiền lần nào; trường này đã gỡ và `totalMinutesMeditated` bắt đầu từ `0`.
+- Tab **Sổ Tu Tập** (`components/StreakPanel.vue`, mở từ `SanctuaryDrawer.vue` và mục 04 của menu "Thiền & Công Đức" trong `TempleCanvas.vue`) gồm khung chuỗi, cột mốc, và thẻ **Ba Việc Lành** với nút "Dẫn tới" và nút nhận quà.
+- Store `stores/deeds.ts` giữ trạng thái và gọi API; việc `auto` chỉ làm mới khi mở lại tab Sổ Tu Tập.
+
+### 4.8. Kiểm thử
+
+```bash
+npm run wallet:test:streak        # Sổ Tu Tập qua API thật (ghi dấu, ngày nghỉ, cột mốc, idempotent)
+npm run wallet:test:streak-rules  # Luật chuỗi thuần (không cần server)
+npm run wallet:test:deeds         # Ba Việc Lành qua API thật (19 ca)
+npm run wallet:test:deeds-rules   # Danh mục và cách chọn bộ ba (thuần, 12 ca)
+```
+
+Kiểm thử Hydra (`wallet:test:hydra`, 11/11 ca) và đối soát (`wallet:reconcile`) không bị ảnh hưởng, vì hai tính năng này không tạo bút toán MC.
+
+### 4.9. Giới hạn đã biết và hướng đi tiếp
+
+- Tọa độ `DEED_APPROACH` (5 điểm) **chưa được thử trong cảnh 3D thật**, có thể nằm trong vật cản. Khi đó nhân vật dừng và hiện "Bị cản, hãy tự bước"; cần thử trên trình duyệt ở 375, 768 và 1440 px.
+- Việc `auto` chỉ cập nhật khi mở lại tab Sổ Tu Tập, chưa cập nhật tức thì ngay sau khi thiền hoặc thắp hương xong.
+- Việc `visit` dựa vào lời client báo (mục 4.4.D); nếu sau này quà có giá trị quy đổi thì cần thêm kiểm tra vị trí phía server.
+- Chưa triển khai: 3.3 (album và gacha pity) và 3.4. Hai mục này cần quyết định riêng về ngưỡng pity, việc công bố tỉ lệ rơi và bảng quy đổi bụi.
