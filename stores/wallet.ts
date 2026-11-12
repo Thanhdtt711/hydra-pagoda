@@ -261,11 +261,14 @@ export const useWalletStore = defineStore('wallet', {
           return false
         }
 
-        const res = await $fetch<{ account: AuthAccount }>('/api/auth/verify', {
+        const res = await $fetch<{ account: AuthAccount; sessionToken?: string }>('/api/auth/verify', {
           method: 'POST',
           body: { address, nonce: issued.nonce, signature: signed.signature, key: signed.key }
         })
 
+        if (res.sessionToken) {
+          try { sessionStorage.setItem('pagoda_session_token', res.sessionToken) } catch { /* bỏ qua */ }
+        }
         walletApi = api
         this.walletName = injected.name || key
         this.applyAccount(res.account)
@@ -331,7 +334,7 @@ export const useWalletStore = defineStore('wallet', {
           return false
         }
 
-        const res = await $fetch<{ account: AuthAccount }>('/api/auth/verify', {
+        const res = await $fetch<{ account: AuthAccount; sessionToken?: string }>('/api/auth/verify', {
           method: 'POST',
           body: {
             address: targetAddress,
@@ -341,6 +344,9 @@ export const useWalletStore = defineStore('wallet', {
           }
         })
 
+        if (res.sessionToken) {
+          try { sessionStorage.setItem('pagoda_session_token', res.sessionToken) } catch { /* bỏ qua */ }
+        }
         this.applyAccount(res.account)
         if (bridge.balanceLovelace.value !== null) {
           this.balanceLovelace = bridge.balanceLovelace.value
@@ -598,6 +604,18 @@ export const useWalletStore = defineStore('wallet', {
         }
 
         try {
+          // Tự động xác thực phiên (CIP-8 signData) nếu mới đồng bộ địa chỉ từ HydraOne mà chưa đăng nhập backend
+          if (!this.accountId) {
+            this.purchasePhase = 'awaiting_signature'
+            this.purchaseStatusText = 'Đang xác thực chữ ký ví HydraOne trước khi tạo đơn nạp...'
+            await this.loginWithHydraBridge(bridge.address.value)
+            if (!this.accountId) {
+              this.purchasePhase = 'error'
+              this.purchaseStatusText = 'Cần ký xác nhận ví trên HydraOne để xác thực tài khoản trước khi nạp MC.'
+              return false
+            }
+          }
+
           // Bước 1: Tạo đơn trên server
           this.purchasePhase = 'creating_order'
           this.purchaseStatusText = 'Đang khởi tạo đơn hàng & dựng giao dịch Cardano...'
@@ -910,6 +928,7 @@ export const useWalletStore = defineStore('wallet', {
       try { await $fetch('/api/auth/logout', { method: 'POST' }) } catch { /* vẫn xóa cục bộ */ }
       walletApi = null
       try { localStorage.removeItem(HINT_KEY) } catch { /* bỏ qua */ }
+      try { sessionStorage.removeItem('pagoda_session_token') } catch { /* bỏ qua */ }
       this.status = 'disconnected'
       this.walletKey = null
       this.walletName = null

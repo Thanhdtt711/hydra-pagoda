@@ -174,8 +174,23 @@ export function verifyLogin(event: H3Event, input: LoginInput): PublicAccount {
   })
 }
 
-/** Tạo phiên mới và đặt cookie httpOnly. Token ngẫu nhiên 256-bit; DB chỉ giữ hash. */
-export function startSession(event: H3Event, accountId: number) {
+function isRequestHttps(event: H3Event): boolean {
+  return getRequestProtocol(event, { xForwardedProto: true }) === 'https'
+}
+
+function extractSessionToken(event: H3Event): string | null {
+  const auth = getRequestHeader(event, 'authorization')
+  if (auth && auth.startsWith('Bearer ')) {
+    const t = auth.slice(7).trim()
+    if (t && t.length <= 200) return t
+  }
+  const cookieToken = getCookie(event, SESSION_COOKIE)
+  if (cookieToken && cookieToken.length <= 200) return cookieToken
+  return null
+}
+
+/** Tạo phiên mới và đặt cookie httpOnly (hỗ trợ cả iframe cross-site SameSite=None). Token ngẫu nhiên 256-bit; DB chỉ giữ hash. */
+export function startSession(event: H3Event, accountId: number): string {
   const cfg = getWalletConfig()
   const now = Date.now()
   // Xoay phiên: hủy phiên cũ của trình duyệt này (chống session fixation).
@@ -183,19 +198,21 @@ export function startSession(event: H3Event, accountId: number) {
   const token = randomBytes(32).toString('base64url')
   getDb().prepare('INSERT INTO sessions (token_hash, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
     .run(sha256Hex(token), accountId, now, now + cfg.sessionTtlMs)
+  const isHttps = isRequestHttps(event)
   setCookie(event, SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'strict',
-    secure: getRequestProtocol(event, { xForwardedProto: cfg.trustProxy }) === 'https',
+    sameSite: isHttps ? 'none' : 'lax',
+    secure: isHttps,
     path: '/',
     maxAge: Math.floor(cfg.sessionTtlMs / 1000)
   })
+  return token
 }
 
 /** Trả tài khoản của phiên hiện tại, hoặc null nếu không có/hết hạn. */
 export function getSessionAccount(event: H3Event): PublicAccount | null {
-  const token = getCookie(event, SESSION_COOKIE)
-  if (!token || token.length > 200) return null
+  const token = extractSessionToken(event)
+  if (!token) return null
   const row = getDb().prepare(
     `SELECT a.id, a.address, a.display_name, a.mc_balance, s.expires_at
        FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ?`
@@ -213,9 +230,10 @@ export function requireSession(event: H3Event): PublicAccount {
 
 /** Xóa phiên hiện tại ở DB và cookie (đăng xuất an toàn). */
 export function destroySession(event: H3Event) {
-  const token = getCookie(event, SESSION_COOKIE)
+  const token = extractSessionToken(event)
   if (token) getDb().prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256Hex(token))
-  deleteCookie(event, SESSION_COOKIE, { path: '/' })
+  const isHttps = isRequestHttps(event)
+  deleteCookie(event, SESSION_COOKIE, { path: '/', sameSite: isHttps ? 'none' : 'lax', secure: isHttps })
 }
 
 /** Phát vé WS một lần (60s) cho tài khoản đã đăng nhập. */

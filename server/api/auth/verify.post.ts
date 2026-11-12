@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   rateLimit(event, 'auth:verify', 10, 60_000)
   const body = await readBody(event)
   const account = verifyLogin(event, body ?? {})
-  startSession(event, account.id)
+  const sessionToken = startSession(event, account.id)
 
   // Hydra L2: chữ ký CIP-8 vừa xác minh ủy quyền cho Session Ephemeral Key của tài khoản (không cần popup ví khi tiêu MC).
   let l2: { sessionVkey: string; l2Address: string } | null = null
@@ -25,6 +25,6 @@ export default defineEventHandler(async (event) => {
   }
 
   setResponseHeader(event, 'Cache-Control', 'no-store')
-  return { account, l2 }
+  return { account, sessionToken, l2 }
 })
 

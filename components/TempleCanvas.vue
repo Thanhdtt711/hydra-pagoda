@@ -1243,10 +1243,10 @@ function simulateLoading() {
             :class="wallet.isConnected ? 'hud-status-dot--success' : 'hud-status-dot--warning'"
             aria-hidden="true"
           />
-          <span class="text-sm font-semibold" :class="wallet.isConnected ? 'font-numbers' : ''">
-            {{ wallet.isConnected ? (wallet.isIframeMode ? `HydraOne: ${wallet.shortAddress}` : wallet.shortAddress) : (wallet.isIframeMode ? 'Kết nối trên HydraOne' : 'Ví Cardano') }}
+          <span class="text-sm font-semibold" :class="wallet.isConnected && !wallet.isIframeMode ? 'font-numbers' : ''">
+            {{ wallet.isConnected ? (wallet.isIframeMode ? 'HydraOne' : wallet.shortAddress) : (wallet.isIframeMode ? 'Kết nối trên HydraOne' : 'Ví Cardano') }}
           </span>
-          <UiBadge v-if="wallet.isTestnet" variant="warning">TESTNET</UiBadge>
+          <UiBadge v-if="wallet.isTestnet && !wallet.isIframeMode" variant="warning">TESTNET</UiBadge>
         </button>
           
           <!-- Chỉ báo chế độ sổ cái: Hydra L2 hay SQLite -->
