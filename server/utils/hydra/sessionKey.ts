@@ -18,38 +18,39 @@ export interface AccountL2Session {
 }
 
 /** Bí mật dẫn xuất khóa: ưu tiên env, nếu không có thì tự sinh một lần và lưu trong `hydra_kv`. */
-export function getHydraSecret(): string {
+export async function getHydraSecret(): Promise<string> {
     const fromEnv = getHydraConfig().sessionSecret
     if (fromEnv) return fromEnv
-    const db = getDb()
-    const row = db.prepare("SELECT v FROM hydra_kv WHERE k = 'session_secret'").get() as { v: string } | undefined
+    const db = await getDb()
+    const row = await db.prepare("SELECT v FROM hydra_kv WHERE k = 'session_secret'").get<{ v: string }>()
     if (row?.v) return row.v
     const fresh = randomBytes(32).toString('hex')
-    db.prepare("INSERT OR IGNORE INTO hydra_kv (k, v, updated_at) VALUES ('session_secret', ?, ?)").run(fresh, Date.now())
-    const again = db.prepare("SELECT v FROM hydra_kv WHERE k = 'session_secret'").get() as { v: string }
-    return again.v
+    await db.prepare("INSERT INTO hydra_kv (k, v, updated_at) VALUES ('session_secret', ?, ?) ON CONFLICT (k) DO NOTHING").run(fresh, Date.now())
+    const again = await db.prepare("SELECT v FROM hydra_kv WHERE k = 'session_secret'").get<{ v: string }>()
+    return again!.v
 }
 
-export function getFuelKey(): L2Key {
-    return deriveFuelKey(getHydraSecret())
+export async function getFuelKey(): Promise<L2Key> {
+    return deriveFuelKey(await getHydraSecret())
 }
 
-export function getSessionKeyForAccount(accountId: number): { key: L2Key; l1Address: string } {
-    const db = getDb()
-    const acc = db.prepare('SELECT address FROM accounts WHERE id = ?').get(accountId) as { address: string } | undefined
+export async function getSessionKeyForAccount(accountId: number): Promise<{ key: L2Key; l1Address: string }> {
+    const db = await getDb()
+    const acc = await db.prepare('SELECT address FROM accounts WHERE id = ?').get<{ address: string }>(accountId)
     if (!acc) throw new Error('account_not_found')
-    return { key: deriveSessionKey(getHydraSecret(), accountId, acc.address), l1Address: acc.address }
+    return { key: deriveSessionKey(await getHydraSecret(), accountId, acc.address), l1Address: acc.address }
 }
 
 /** Tạo (nếu chưa có) và trả về thông tin công khai của khóa phiên L2. Idempotent. */
-export function ensureAccountSession(accountId: number): AccountL2Session {
-    const { key } = getSessionKeyForAccount(accountId)
-    const db = getDb()
-    const row = db.prepare('SELECT l2_session_vkey, l2_address FROM accounts WHERE id = ?').get(accountId) as
-        | { l2_session_vkey: string | null; l2_address: string | null }
-        | undefined
+export async function ensureAccountSession(accountId: number): Promise<AccountL2Session> {
+    const { key } = await getSessionKeyForAccount(accountId)
+    const db = await getDb()
+    const row = await db.prepare('SELECT l2_session_vkey, l2_address FROM accounts WHERE id = ?').get<{
+        l2_session_vkey: string | null
+        l2_address: string | null
+    }>(accountId)
     if (!row || row.l2_session_vkey !== key.vkeyHex || row.l2_address !== key.bech32) {
-        db.prepare('UPDATE accounts SET l2_session_vkey = ?, l2_address = ? WHERE id = ?').run(key.vkeyHex, key.bech32, accountId)
+        await db.prepare('UPDATE accounts SET l2_session_vkey = ?, l2_address = ? WHERE id = ?').run(key.vkeyHex, key.bech32, accountId)
     }
     return { sessionVkey: key.vkeyHex, l2Address: key.bech32 }
 }

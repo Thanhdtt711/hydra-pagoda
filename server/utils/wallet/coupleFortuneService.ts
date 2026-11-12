@@ -9,13 +9,13 @@ import {
 } from '../../../lib/boi/CoupleDivinationLogic'
 import { generateFortune } from '../../../lib/boi/FortuneEngine'
 import type { PersonProfile } from '../../../lib/boi/types'
+import { getStartOfVietnamDayMs, getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from './auth'
-import { getDb, withTransaction } from './db'
+import { withTransaction, type DbConn } from './db'
 import { spend, getAccountInventory } from './mcService'
 
-function getAccountBalance(accountId: number): number {
-  const db = getDb()
-  const row = db.prepare(`SELECT mc_balance FROM accounts WHERE id = ?`).get(accountId) as { mc_balance: number } | undefined
+async function getAccountBalance(db: DbConn, accountId: number): Promise<number> {
+  const row = await db.prepare(`SELECT mc_balance FROM accounts WHERE id = ?`).get(accountId) as { mc_balance: number } | undefined
   return row ? Number(row.mc_balance) : 0
 }
 
@@ -27,15 +27,15 @@ export { calculateCoupleCompatibility, type CoupleCompatibilityResult, type Coup
  * - Lượt 2 trở đi: 50 MC
  * - Tặng 1 Bùa Chỉ Đỏ Uyên Ương vào kho đồ
  */
-export function drawCoupleFortune(
+export async function drawCoupleFortune(
   accountId: number,
   profile: PersonProfile,
   partnerProfile: PersonProfile,
   paymentMode: 'free_daily' | 'mc',
   requestId = ''
-): CoupleFortuneResultDto {
-  const today = new Date().toISOString().slice(0, 10)
+): Promise<CoupleFortuneResultDto> {
   const now = Date.now()
+  const today = getVietnamDayKey(now)
   const cleanReqId = requestId ? requestId.trim() : `pk_love_${now}_${accountId}`
 
   // 1. Tính độ tương hợp
@@ -50,9 +50,9 @@ export function drawCoupleFortune(
     dateStr: today
   })
 
-  return withTransaction((conn) => {
+  return withTransaction(async (conn) => {
     // Kiểm tra idempotency
-    const existing = conn
+    const existing = await conn
       .prepare(`SELECT fortune_json, receipt_hash, cost_mc FROM fortune_records WHERE request_id = ? AND account_id = ?`)
       .get(cleanReqId, accountId) as { fortune_json: string; receipt_hash: string; cost_mc: number } | undefined
 
@@ -61,18 +61,18 @@ export function drawCoupleFortune(
         ok: true,
         spentMc: existing.cost_mc,
         paymentMode: existing.cost_mc === 0 ? 'free_daily' : 'mc',
-        currentBalanceMc: getAccountBalance(accountId),
+        currentBalanceMc: await getAccountBalance(conn, accountId),
         compatibility,
         fortune: JSON.parse(existing.fortune_json),
         receiptHash: existing.receipt_hash,
         awardedCharm: false,
-        inventory: getAccountInventory(accountId)
+        inventory: await getAccountInventory(accountId)
       }
     }
 
     // Kiểm tra lượt miễn phí hôm nay
-    const dayStart = new Date(today + 'T00:00:00.000Z').getTime()
-    const freeCount = conn
+    const dayStart = getStartOfVietnamDayMs(now)
+    const freeCount = await conn
       .prepare(
         `SELECT COUNT(*) as count FROM fortune_records 
          WHERE account_id = ? AND category = 'love_couple' AND cost_mc = 0 AND created_at >= ?`
@@ -90,11 +90,11 @@ export function drawCoupleFortune(
       }
     } else {
       spentMc = 50
-      const bal = getAccountBalance(accountId)
+      const bal = await getAccountBalance(conn, accountId)
       if (bal < 50) {
         throw apiError(400, 'insufficient_mc', 'Số dư không đủ 50 MC để thỉnh thêm lượt Tơ Duyên.')
       }
-      spend(accountId, 50, 'custom_service', cleanReqId, {
+      await spend(accountId, 50, 'custom_service', cleanReqId, {
         refType: 'couple_divination',
         metadata: {
           note: `Thỉnh quẻ Đài Tơ Duyên Nguyệt Lão: ${profile.fullName} & ${partnerProfile.fullName}`,
@@ -104,7 +104,7 @@ export function drawCoupleFortune(
     }
 
     // Tặng 1 Bùa Chỉ Đỏ Uyên Ương vào kho đồ
-    conn.prepare(
+    await conn.prepare(
       `INSERT INTO account_inventory (account_id, item_id, category, quantity, unlocked_at, updated_at)
        VALUES (?, 'love_knot_charm', 'charm', 1, ?, ?)
        ON CONFLICT(account_id, item_id) DO UPDATE SET
@@ -124,7 +124,7 @@ export function drawCoupleFortune(
       createdAt: now
     }
 
-    conn.prepare(
+    await conn.prepare(
       `INSERT INTO fortune_records (account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at)
        VALUES (?, ?, 'love_couple', ?, ?, ?, ?, ?)`
     ).run(
@@ -141,12 +141,12 @@ export function drawCoupleFortune(
       ok: true,
       spentMc,
       paymentMode,
-      currentBalanceMc: getAccountBalance(accountId),
+      currentBalanceMc: await getAccountBalance(conn, accountId),
       compatibility,
       fortune: generated,
       receiptHash,
       awardedCharm: true,
-      inventory: getAccountInventory(accountId)
+      inventory: await getAccountInventory(accountId)
     }
   })
 }

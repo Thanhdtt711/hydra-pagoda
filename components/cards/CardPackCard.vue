@@ -48,12 +48,10 @@ const rarityColor = computed(() => {
       <!-- Header gói thẻ: Tên & Badge -->
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-md bg-surface-elevated border border-hairline flex items-center justify-center shrink-0 text-gold">
-            <ZenIcon name="cards" :size="16" />
-          </div>
-          <span class="text-xs font-bold text-white tracking-wide">{{ pack.name }}</span>
+          <ZenIcon name="cards" :size="18" class="text-gold shrink-0" />
+          <span class="text-xs font-bold text-white">{{ pack.name }}</span>
         </div>
-        <UiBadge v-if="pack.badge" :variant="pack.discountPercent ? 'warning' : 'primary'">
+        <UiBadge v-if="pack.badge" :variant="pack.discountPercent ? 'warning' : 'gold'">
           {{ pack.badge }}
         </UiBadge>
       </div>

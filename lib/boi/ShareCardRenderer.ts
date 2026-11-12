@@ -68,7 +68,7 @@ function wrapTextNfc(ctx: CanvasRenderingContext2D, text: string, maxWidth: numb
 function getMucBadgeColors(muc?: string): { border: string; bg: string; text: string; label: string } {
   switch (muc) {
     case 'dai_cat':
-      return { border: '#FCD535', bg: 'rgba(252, 213, 53, 0.22)', text: '#FCD535', label: 'ĐẠI CÁT' }
+      return { border: '#C9A24B', bg: 'rgba(201, 162, 75, 0.22)', text: '#C9A24B', label: 'ĐẠI CÁT' }
     case 'cat':
       return { border: '#0ECB81', bg: 'rgba(14, 203, 129, 0.22)', text: '#0ECB81', label: 'CÁT' }
     case 'binh':

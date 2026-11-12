@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { zenAudio, type AmbientChannel } from '~/lib/audio/ZenAudio'
+import { t } from '~/lib/ui/copy'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -76,35 +77,35 @@ function setValues(vals: Record<AmbientChannel, number>) {
     <div class="flex flex-col gap-4 text-xs font-sans">
       <!-- Presets Quick Bar -->
       <div class="p-3 bg-surface-card border border-hairline rounded-md flex flex-wrap items-center gap-1.5">
-        <span class="text-xs font-numbers text-secondary uppercase shrink-0 mr-1">Preset:</span>
+        <span class="text-xs font-numbers text-secondary shrink-0 mr-1">Preset:</span>
         <div class="flex flex-wrap items-center gap-1.5">
           <button 
             type="button"
             @click="applyPreset('zen_minimal')" 
             class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-elevated/80 border border-hairline text-xs text-primary transition-colors"
           >
-            Tối Giản 432Hz
+            {{ t('btn.presetMinimal') }}
           </button>
           <button 
             type="button"
             @click="applyPreset('rainy_night')" 
             class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-elevated/80 border border-hairline text-xs text-primary transition-colors"
           >
-            Đêm Mưa Mái Ngói
+            {{ t('btn.presetRain') }}
           </button>
           <button 
             type="button"
             @click="applyPreset('bamboo_stream')" 
             class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-elevated/80 border border-hairline text-xs text-primary transition-colors"
           >
-            Rừng Trúc Suối Reo
+            {{ t('btn.presetBamboo') }}
           </button>
           <button 
             type="button"
             @click="applyPreset('vajra_chant')" 
             class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-elevated/80 border border-hairline text-xs text-primary transition-colors"
           >
-            Khóa Lễ Mật Tông
+            {{ t('btn.presetVajra') }}
           </button>
         </div>
       </div>

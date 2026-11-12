@@ -9,9 +9,9 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'shop:orders:create', 15, 60_000)
-  const account = requireSession(event)
+  const account = await requireSession(event)
   const body = await readBody<{ adaAmount?: unknown; lovelace?: unknown }>(event)
-  const order = createMcOrder(account, body ?? {})
+  const order = await createMcOrder(account, body ?? {})
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return { order }
 })

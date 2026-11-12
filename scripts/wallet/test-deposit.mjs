@@ -1,5 +1,7 @@
 // Kiểm thử Bước 3: Mua MC coin bằng ADA (@hydra-sdk/cardano-wasm + Blockfrost + Idempotent Ledger)
-// Chạy: node scripts/wallet/test-deposit.mjs
+// Yêu cầu đã build: npm run build. Chạy: node scripts/wallet/test-deposit.mjs
+// Mặc định test tự dựng server (cổng 3016) với NUXT_CONFIRMATIONS_REQUIRED=2 vì kịch bản giả định đúng 2 xác nhận.
+// Đặt BASE_URL (và DB_PATH) để chạy với server có sẵn; khi đó server phải cấu hình 2 xác nhận.
 import http from 'node:http'
 import { DatabaseSync } from 'node:sqlite'
 import { ed25519 } from '@noble/curves/ed25519'
@@ -7,10 +9,13 @@ import { blake2b } from '@noble/hashes/blake2b'
 import { bech32 } from '@scure/base'
 import { encode as cborEncode } from 'cbor2'
 import { CardanoWASM as C } from '@hydra-sdk/cardano-wasm'
+import { startTestServer } from './_server.mjs'
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:3013'
+const SPAWN = !process.env.BASE_URL
+const PORT = Number(process.env.PORT || 3016)
+const BASE = process.env.BASE_URL || `http://127.0.0.1:${PORT}`
 const BF_PORT = Number(process.env.BF_PORT || 3099)
-const DB_PATH = process.env.DB_PATH
+const DB_PATH = process.env.DB_PATH || (SPAWN ? './.data/test-deposit.sqlite' : undefined)
 const results = []
 const hex = b => Buffer.from(b).toString('hex')
 const log = (name, ok, info = '') => {
@@ -97,6 +102,17 @@ const bfServer = http.createServer((req, res) => {
 })
 
 await new Promise(resolve => bfServer.listen(BF_PORT, '127.0.0.1', resolve))
+
+const testServer = SPAWN
+  ? await startTestServer({
+      port: PORT,
+      dbPath: DB_PATH,
+      env: {
+        NUXT_CONFIRMATIONS_REQUIRED: '2',
+        NUXT_BLOCKFROST_BASE_URL: `http://127.0.0.1:${BF_PORT}`
+      }
+    })
+  : null
 
 try {
   // ============================================================================
@@ -455,6 +471,7 @@ try {
   }
 } finally {
   bfServer.close()
+  await testServer?.stop()
 }
 
 const failed = results.filter(r => !r.ok).length

@@ -9,6 +9,7 @@ import { normalizeVietnameseText } from './SeedService'
 import type {
   BoiContentBlock,
   BuffDebuffEffect,
+  GenderType,
   KhoiNoiDung,
   LegacyCategoryId,
   MonId,

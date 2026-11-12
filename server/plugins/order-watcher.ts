@@ -24,11 +24,11 @@ export default defineNitroPlugin((nitroApp) => {
 
   let ticksWithoutPending = 0
 
-  const timer = setInterval(() => {
+  const timer = setInterval(async () => {
     try {
-      const db = getDb()
+      const db = await getDb()
       const hasPending = Boolean(
-        db.prepare(
+        await db.prepare(
           `SELECT 1 FROM mc_orders WHERE status IN ('signing', 'submitted', 'confirming') LIMIT 1`
         ).get()
       )

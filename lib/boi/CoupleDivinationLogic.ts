@@ -3,7 +3,7 @@
 
 import { createHash } from 'node:crypto'
 import { analyzeMetaphysics, formatQuanHeLabel } from './MetaphysicsService'
-import type { PersonProfile, FortuneResult } from './types'
+import type { PersonProfile, FortuneDrawResult } from './types'
 
 export interface CoupleCompatibilityResult {
   score: number
@@ -29,7 +29,7 @@ export interface CoupleFortuneResultDto {
   paymentMode: 'free_daily' | 'mc'
   currentBalanceMc: number
   compatibility: CoupleCompatibilityResult
-  fortune: FortuneResult
+  fortune: FortuneDrawResult
   receiptHash: string
   awardedCharm: boolean
   inventory?: any[]

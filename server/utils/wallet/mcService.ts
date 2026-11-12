@@ -12,13 +12,13 @@
  *    đảm bảo gửi lặp cùng `requestId` không bao giờ trừ MC hai lần.
  */
 import { createHash, randomBytes, randomInt } from 'node:crypto'
-import type { DatabaseSync } from 'node:sqlite'
 import { resolveLegacyCategory, resolveMonId } from '../../../lib/boi/ContentRepository'
 import { generateFortune } from '../../../lib/boi/FortuneEngine'
 import type { FortuneDrawInput, InputMode, PersonProfile, RecentDrawRef } from '../../../lib/boi/types'
 import { HallLayout } from '../../../lib/world3d/world/HallLayout'
+import { getStartOfVietnamDayMs, getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from './auth.ts'
-import { getDb, withTransaction } from './db.ts'
+import { getDb, withTransaction, type DbConn } from './db.ts'
 import { scheduleHydraRecord } from '../hydra/hydraQueue.ts'
 import { getCardPackById, rollCardGacha, type BuddhistCardItem } from '../cards/catalog.ts'
 
@@ -658,12 +658,12 @@ export interface SpendOptions<TExtra> {
    * Callback chạy bên trong CÙNG transaction SQLite ngay sau khi đã trừ `mc_balance`
    * và ghi `mc_ledger`. Nếu callback ném lỗi, toàn bộ việc trừ MC cũng được ROLLBACK.
    */
-  onSpent?: (conn: DatabaseSync, ctx: { ledgerId: number; balanceAfter: number; now: number }) => TExtra
+  onSpent?: (conn: DbConn, ctx: { ledgerId: number; balanceAfter: number; now: number }) => Promise<TExtra> | TExtra
   /**
    * Khi phát hiện request lặp lại (`idempotentReplay = true`), khôi phục dữ liệu `extra`
    * từ bản ghi đã lưu trước đó để trả về kết quả giống hệt lần đầu.
    */
-  onReplay?: (conn: DatabaseSync, existingLedger: { id: number; balanceAfter: number; metadataJson: string | null; createdAt: number }) => TExtra
+  onReplay?: (conn: DbConn, existingLedger: { id: number; balanceAfter: number; metadataJson: string | null; createdAt: number }) => Promise<TExtra> | TExtra
 }
 
 export function normalizeRequestId(raw: unknown): string {
@@ -680,13 +680,13 @@ export function normalizeRequestId(raw: unknown): string {
  * - Kiểm tra idempotency theo `(reason, refId)`: gửi trùng không bao giờ trừ tiền lần 2.
  * - Cập nhật có điều kiện `WHERE id = ? AND mc_balance >= ?` chống số dư âm kể cả khi đua luồng.
  */
-export function spend<TExtra = Record<string, unknown>>(
+export async function spend<TExtra = Record<string, unknown>>(
   accountId: number,
   amount: number,
   reason: SpendReason,
   refId: string,
   opts?: SpendOptions<TExtra>
-): SpendResult<TExtra> {
+): Promise<SpendResult<TExtra>> {
   if (!Number.isSafeInteger(accountId) || accountId <= 0) {
     apiError(401, 'unauthorized', 'Tài khoản không hợp lệ')
   }
@@ -696,9 +696,9 @@ export function spend<TExtra = Record<string, unknown>>(
   const cleanRefId = normalizeRequestId(refId)
   const refType = opts?.refType || reason
 
-  const result = withTransaction(conn => {
+  const result = await withTransaction(async conn => {
     // 1. Kiểm tra Idempotency trong mc_ledger theo UNIQUE(reason, ref_id)
-    const existing = conn
+    const existing = await conn
       .prepare(
         `SELECT id, account_id, delta_mc, balance_after, metadata_json, created_at
            FROM mc_ledger
@@ -720,10 +720,10 @@ export function spend<TExtra = Record<string, unknown>>(
         apiError(409, 'request_id_conflict', 'Mã requestId đã được sử dụng bởi một giao dịch khác')
       }
       // Lấy số dư hiện tại của tài khoản
-      const acc = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number } | undefined
+      const acc = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number } | undefined
       const currentBalance = acc ? acc.mc_balance : existing.balance_after
       const extra = opts?.onReplay
-        ? opts.onReplay(conn, {
+        ? await opts.onReplay(conn, {
           id: existing.id,
           balanceAfter: currentBalance,
           metadataJson: existing.metadata_json,
@@ -745,7 +745,7 @@ export function spend<TExtra = Record<string, unknown>>(
     }
 
     // 2. Trừ số dư có điều kiện nguyên tử: chỉ trừ khi mc_balance >= amount
-    const upd = conn
+    const upd = await conn
       .prepare(
         `UPDATE accounts
             SET mc_balance = mc_balance - ?
@@ -754,7 +754,7 @@ export function spend<TExtra = Record<string, unknown>>(
       .run(amount, accountId, amount)
 
     if (Number(upd.changes) === 0) {
-      const row = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number } | undefined
+      const row = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number } | undefined
       if (!row) {
         apiError(404, 'account_not_found', 'Không tìm thấy tài khoản người chơi')
       }
@@ -765,12 +765,12 @@ export function spend<TExtra = Record<string, unknown>>(
       )
     }
 
-    const afterRow = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
+    const afterRow = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
     const balanceAfter = afterRow.mc_balance
     const now = Date.now()
 
     // 3. Ghi bút toán âm (-amount) vào sổ cái bất biến mc_ledger
-    const ins = conn
+    const ins = await conn
       .prepare(
         `INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`
@@ -788,7 +788,7 @@ export function spend<TExtra = Record<string, unknown>>(
 
     const ledgerId = Number(ins.lastInsertRowid)
     const extra = opts?.onSpent
-      ? opts.onSpent(conn, { ledgerId, balanceAfter, now })
+      ? await opts.onSpent(conn, { ledgerId, balanceAfter, now })
       : ({} as TExtra)
 
     return {
@@ -824,12 +824,12 @@ export interface CreditResult {
  * Cộng MC nguyên tử (ví dụ `meditation_reward`): cập nhật `accounts.mc_balance` + ghi `mc_ledger` dương trong
  * CÙNG một transaction, idempotent theo UNIQUE(reason, ref_id). Sau commit, bút toán được phản chiếu lên Hydra L2.
  */
-export function credit(
+export async function credit(
   accountId: number,
   amount: number,
   reason: string,
   opts: { refType?: string; refId: string; metadata?: Record<string, unknown> }
-): CreditResult {
+): Promise<CreditResult> {
   if (!Number.isSafeInteger(accountId) || accountId <= 0) {
     apiError(401, 'unauthorized', 'Tài khoản không hợp lệ')
   }
@@ -837,8 +837,8 @@ export function credit(
     apiError(400, 'invalid_amount', 'Số lượng MC cần cộng phải là số nguyên dương')
   }
   const refId = normalizeRequestId(opts.refId)
-  const result = withTransaction((conn): CreditResult => {
-    const existing = conn
+  const result = await withTransaction(async (conn): Promise<CreditResult> => {
+    const existing = await conn
       .prepare('SELECT id, account_id, delta_mc, balance_after, created_at FROM mc_ledger WHERE reason = ? AND ref_id = ?')
       .get(reason, refId) as { id: number; account_id: number; delta_mc: number; balance_after: number; created_at: number } | undefined
     if (existing) {
@@ -856,11 +856,11 @@ export function credit(
         createdAt: existing.created_at
       }
     }
-    const upd = conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(amount, accountId)
+    const upd = await conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(amount, accountId)
     if (Number(upd.changes) === 0) apiError(404, 'account_not_found', 'Không tìm thấy tài khoản người chơi')
-    const row = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
+    const row = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
     const now = Date.now()
-    const ins = conn
+    const ins = await conn
       .prepare(
         `INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`
@@ -906,12 +906,8 @@ const MEDITATION_EARLY_TOLERANCE_SEC = 3
 /** Sau khi hết giờ, chỗ ngồi vẫn được giữ thêm một khoảng ngắn để client kịp gọi hoàn thành. */
 const MEDITATION_SLOT_GRACE_MS = 60_000
 
-function getVietnamDayKey(now = Date.now()): string {
-  return new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10)
-}
-
-function getMeditationEarnedToday(conn: DatabaseSync, accountId: number, dayKey: string): number {
-  const row = conn
+async function getMeditationEarnedToday(conn: DbConn, accountId: number, dayKey: string): Promise<number> {
+  const row = await conn
     .prepare(
       `SELECT COALESCE(SUM(credited_mc), 0) AS total
          FROM meditation_sessions
@@ -922,8 +918,8 @@ function getMeditationEarnedToday(conn: DatabaseSync, accountId: number, dayKey:
 }
 
 /** Các mã bồ đoàn đang có phiên thiền còn hiệu lực (của bất kỳ tài khoản nào), tùy chọn loại trừ một tài khoản. */
-function getMeditationOccupiedSlotIds(conn: DatabaseSync, now: number, excludeAccountId?: number): number[] {
-  const rows = conn
+async function getMeditationOccupiedSlotIds(conn: DbConn, now: number, excludeAccountId?: number): Promise<number[]> {
+  const rows = await conn
     .prepare(
       `SELECT slot_id, account_id, started_at, duration_sec
          FROM meditation_sessions
@@ -938,22 +934,22 @@ function getMeditationOccupiedSlotIds(conn: DatabaseSync, now: number, excludeAc
   return Array.from(ids).sort((a, b) => a - b)
 }
 
-export function getMeditationStatus(accountId: number | null) {
-  const conn = getDb()
+export async function getMeditationStatus(accountId: number | null) {
+  const conn = await getDb()
   const now = Date.now()
   const dayKey = getVietnamDayKey(now)
-  const dailyEarnedMc = accountId ? getMeditationEarnedToday(conn, accountId, dayKey) : 0
+  const dailyEarnedMc = accountId ? await getMeditationEarnedToday(conn, accountId, dayKey) : 0
   return {
     plans: MEDITATION_PLANS,
     dailyCapMc: DAILY_MEDITATION_CAP_MC,
     dailyEarnedMc,
     remainingDailyMc: Math.max(0, DAILY_MEDITATION_CAP_MC - dailyEarnedMc),
-    occupiedSlotIds: getMeditationOccupiedSlotIds(conn, now),
+    occupiedSlotIds: await getMeditationOccupiedSlotIds(conn, now),
     totalSlots: HallLayout.getTotalSlotCount()
   }
 }
 
-export function startMeditationSession(accountId: number, durationMinRaw: unknown, slotIdRaw?: unknown) {
+export async function startMeditationSession(accountId: number, durationMinRaw: unknown, slotIdRaw?: unknown) {
   const durationMin = Number(durationMinRaw)
   const plan = MEDITATION_PLANS.find(p => p.durationMin === durationMin)
   if (!plan) {
@@ -969,21 +965,21 @@ export function startMeditationSession(accountId: number, durationMinRaw: unknow
     slotId = n
   }
 
-  return withTransaction(conn => {
+  return withTransaction(async conn => {
     const now = Date.now()
     // Một tài khoản chỉ có một phiên đang chạy: phiên cũ bị hủy (đồng thời nhả chỗ ngồi cũ).
-    conn
+    await conn
       .prepare(`UPDATE meditation_sessions SET status = 'cancelled', completed_at = ? WHERE account_id = ? AND status = 'active'`)
       .run(now, accountId)
 
-    if (slotId !== null && getMeditationOccupiedSlotIds(conn, now, accountId).includes(slotId)) {
+    if (slotId !== null && (await getMeditationOccupiedSlotIds(conn, now, accountId)).includes(slotId)) {
       apiError(409, 'slot_taken', 'Bồ đoàn này vừa có đồng tu ngồi trước. Xin chọn chỗ khác.')
     }
 
     const dayKey = getVietnamDayKey(now)
-    const earned = getMeditationEarnedToday(conn, accountId, dayKey)
+    const earned = await getMeditationEarnedToday(conn, accountId, dayKey)
     const sessionToken = `med_${randomBytes(12).toString('hex')}`
-    conn
+    await conn
       .prepare(
         `INSERT INTO meditation_sessions
            (session_token, account_id, slot_id, duration_min, duration_sec, expected_reward_mc, status, day_key, started_at)
@@ -1022,33 +1018,33 @@ interface MeditationSessionRow {
   ledger_id: number | null
 }
 
-function loadMeditationSession(conn: DatabaseSync, accountId: number, sessionTokenRaw: unknown): MeditationSessionRow {
+async function loadMeditationSession(conn: DbConn, accountId: number, sessionTokenRaw: unknown): Promise<MeditationSessionRow> {
   const token = typeof sessionTokenRaw === 'string' ? sessionTokenRaw.trim() : ''
   if (token.length < 8 || token.length > 64 || !/^[a-zA-Z0-9_]+$/.test(token)) {
     apiError(400, 'invalid_session_token', 'Mã phiên thiền không hợp lệ')
   }
-  const row = conn
+  const row = await conn
     .prepare('SELECT * FROM meditation_sessions WHERE session_token = ? AND account_id = ?')
     .get(token, accountId) as unknown as MeditationSessionRow | undefined
   if (!row) apiError(404, 'session_not_found', 'Không tìm thấy phiên tọa thiền của bạn')
   return row
 }
 
-export function completeMeditationSession(accountId: number, sessionTokenRaw: unknown) {
-  const conn = getDb()
-  const row = loadMeditationSession(conn, accountId, sessionTokenRaw)
-  const balanceOf = () =>
-    (conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }).mc_balance
+export async function completeMeditationSession(accountId: number, sessionTokenRaw: unknown) {
+  const conn = await getDb()
+  const row = await loadMeditationSession(conn, accountId, sessionTokenRaw)
+  const balanceOf = async () =>
+    ((await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId)) as { mc_balance: number }).mc_balance
 
-  const buildResult = (creditedMc: number, ledgerId: number | null, idempotentReplay: boolean) => ({
+  const buildResult = async (creditedMc: number, ledgerId: number | null, idempotentReplay: boolean) => ({
     sessionToken: row.session_token,
     durationMin: row.duration_min,
     expectedRewardMc: row.expected_reward_mc,
     creditedMc,
     dailyCapReached: creditedMc < row.expected_reward_mc,
     ledgerId,
-    mcBalance: balanceOf(),
-    dailyEarnedMc: getMeditationEarnedToday(conn, accountId, row.day_key),
+    mcBalance: await balanceOf(),
+    dailyEarnedMc: await getMeditationEarnedToday(conn, accountId, row.day_key),
     dailyCapMc: DAILY_MEDITATION_CAP_MC,
     idempotentReplay
   })
@@ -1067,7 +1063,7 @@ export function completeMeditationSession(accountId: number, sessionTokenRaw: un
   }
 
   // Nếu lần gọi trước đã ghi sổ cái nhưng chưa kịp đánh dấu hoàn thành (sự cố giữa chừng) thì dùng lại bút toán đó.
-  const existingLedger = conn
+  const existingLedger = await conn
     .prepare("SELECT id, delta_mc FROM mc_ledger WHERE reason = 'meditation_reward' AND ref_id = ?")
     .get(row.session_token) as { id: number; delta_mc: number } | undefined
 
@@ -1077,10 +1073,10 @@ export function completeMeditationSession(accountId: number, sessionTokenRaw: un
     creditedMc = Number(existingLedger.delta_mc)
     ledgerId = existingLedger.id
   } else {
-    const earned = getMeditationEarnedToday(conn, accountId, row.day_key)
+    const earned = await getMeditationEarnedToday(conn, accountId, row.day_key)
     creditedMc = Math.min(row.expected_reward_mc, Math.max(0, DAILY_MEDITATION_CAP_MC - earned))
     if (creditedMc > 0) {
-      const res = credit(accountId, creditedMc, 'meditation_reward', {
+      const res = await credit(accountId, creditedMc, 'meditation_reward', {
         refType: 'meditation',
         refId: row.session_token,
         metadata: { durationMin: row.duration_min, sessionToken: row.session_token, slotId: row.slot_id }
@@ -1090,7 +1086,7 @@ export function completeMeditationSession(accountId: number, sessionTokenRaw: un
     }
   }
 
-  conn
+  await conn
     .prepare(
       `UPDATE meditation_sessions
           SET status = 'completed', credited_mc = ?, completed_at = ?, ledger_id = ?
@@ -1102,11 +1098,11 @@ export function completeMeditationSession(accountId: number, sessionTokenRaw: un
 }
 
 /** Xả thiền sớm: hủy phiên đang chạy (nhả chỗ ngồi), không nhận MC. */
-export function cancelMeditationSession(accountId: number, sessionTokenRaw: unknown) {
-  const conn = getDb()
-  const row = loadMeditationSession(conn, accountId, sessionTokenRaw)
+export async function cancelMeditationSession(accountId: number, sessionTokenRaw: unknown) {
+  const conn = await getDb()
+  const row = await loadMeditationSession(conn, accountId, sessionTokenRaw)
   if (row.status !== 'active') return { cancelled: false, status: row.status }
-  conn
+  await conn
     .prepare(`UPDATE meditation_sessions SET status = 'cancelled', completed_at = ? WHERE id = ? AND status = 'active'`)
     .run(Date.now(), row.id)
   return { cancelled: true, status: 'cancelled' as const }
@@ -1123,9 +1119,9 @@ export interface InventoryItemRecord {
   unlockedAt: number
 }
 
-export function getAccountInventory(accountId: number): InventoryItemRecord[] {
-  const db = getDb()
-  const rows = db
+export async function getAccountInventory(accountId: number): Promise<InventoryItemRecord[]> {
+  const db = await getDb()
+  const rows = await db
     .prepare(
       `SELECT item_id, category, quantity, unlocked_at
          FROM account_inventory
@@ -1161,7 +1157,7 @@ export function getAccountInventory(accountId: number): InventoryItemRecord[] {
  * Mua vật phẩm Cửa Hàng (Cổ phục 9 nước, Lễ vật & Nhang trầm) hoặc mở khóa Thẻ Bài Di Sản.
  * Giá luôn tra cứu từ `SHOP_CATALOG` phía server, bỏ qua mọi giá do client gửi lên.
  */
-export function purchaseShopItem(accountId: number, itemId: string, requestId: string) {
+export async function purchaseShopItem(accountId: number, itemId: string, requestId: string) {
   const cleanItemId = String(itemId || '').trim()
   const item = SHOP_CATALOG.find(i => i.id === cleanItemId)
   if (!item) {
@@ -1180,14 +1176,14 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
 
   // Trước khi trừ tiền (với vật phẩm không tiêu hao như cổ phục / thẻ bài): kiểm tra đã mở khóa chưa
   if (!item.consumable) {
-    const db = getDb()
+    const db = await getDb()
     // Nếu đây là replay của chính requestId đã mua thành công trước đó thì vẫn cho đi qua spend() để trả kết quả idempotent
-    const isReplay = db
+    const isReplay = await db
       .prepare('SELECT 1 FROM mc_ledger WHERE reason = ? AND ref_id = ? AND account_id = ?')
       .get(reason, normalizeRequestId(requestId), accountId)
 
     if (!isReplay) {
-      const owned = db
+      const owned = await db
         .prepare('SELECT quantity FROM account_inventory WHERE account_id = ? AND item_id = ?')
         .get(accountId, item.id) as { quantity: number } | undefined
       if (owned) {
@@ -1199,8 +1195,8 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
   return spend(accountId, item.priceMc, reason, requestId, {
     refType: item.category,
     metadata: { itemId: item.id, itemName: item.name, category: item.category, priceMc: item.priceMc },
-    onSpent: (conn, { now }) => {
-      conn
+    onSpent: async (conn, { now }) => {
+      await conn
         .prepare(
           `INSERT INTO account_inventory (account_id, item_id, category, quantity, unlocked_at, updated_at)
            VALUES (?, ?, ?, 1, ?, ?)
@@ -1210,7 +1206,7 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
         )
         .run(accountId, item.id, item.category, now, now)
 
-      const inv = conn
+      const inv = await conn
         .prepare('SELECT quantity, unlocked_at FROM account_inventory WHERE account_id = ? AND item_id = ?')
         .get(accountId, item.id) as { quantity: number; unlocked_at: number }
 
@@ -1220,8 +1216,8 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
         unlockedAt: inv.unlocked_at
       }
     },
-    onReplay: (conn) => {
-      const inv = conn
+    onReplay: async (conn) => {
+      const inv = await conn
         .prepare('SELECT quantity, unlocked_at FROM account_inventory WHERE account_id = ? AND item_id = ?')
         .get(accountId, item.id) as { quantity: number; unlocked_at: number } | undefined
       return {
@@ -1233,16 +1229,9 @@ export function purchaseShopItem(accountId: number, itemId: string, requestId: s
   })
 }
 
-function getStartOfVietnamDayMs(now = Date.now()): number {
-  const vnOffsetMs = 7 * 3600 * 1000
-  const vnNow = now + vnOffsetMs
-  const startOfVnDay = Math.floor(vnNow / 86_400_000) * 86_400_000
-  return startOfVnDay - vnOffsetMs
-}
-
-function getAccountDailyFreeUsedMap(conn: DatabaseSync, accountId: number, now = Date.now()): Record<string, number> {
+async function getAccountDailyFreeUsedMap(conn: DbConn, accountId: number, now = Date.now()): Promise<Record<string, number>> {
   const startMs = getStartOfVietnamDayMs(now)
-  const rows = conn
+  const rows = await conn
     .prepare(
       `SELECT category, COUNT(*) AS cnt
          FROM fortune_records
@@ -1265,8 +1254,8 @@ function getAccountDailyFreeUsedMap(conn: DatabaseSync, accountId: number, now =
   return out
 }
 
-function loadRecentDrawsForAccount(conn: DatabaseSync, accountId: number, fallbackMon: string): RecentDrawRef[] {
-  const recentRows = conn
+async function loadRecentDrawsForAccount(conn: DbConn, accountId: number, fallbackMon: string): Promise<RecentDrawRef[]> {
+  const recentRows = await conn
     .prepare(
       `SELECT fortune_json
          FROM fortune_records
@@ -1304,7 +1293,7 @@ function loadRecentDrawsForAccount(conn: DatabaseSync, accountId: number, fallba
  * - Kết quả quẻ sinh bằng `FortuneEngine` (PRNG có seed nhất quán theo ngày + tránh trùng 3 lần gần nhất) trên server và lưu vào `fortune_records`.
  * - Gửi lặp cùng `requestId` trả về đúng quẻ đã gieo mà không trừ tiền/vật phẩm lần 2.
  */
-export function drawFortuneWithMc(
+export async function drawFortuneWithMc(
   accountId: number,
   categoryRaw: string,
   tierRaw: string,
@@ -1336,12 +1325,12 @@ export function drawFortuneWithMc(
 
   // Trường hợp 1: Dùng lượt miễn phí mỗi ngày (1 lượt/môn/ngày) hoặc dùng Vật phẩm Lễ Phẩm
   if (paymentMode === 'free_daily' || paymentMode === 'offering_item') {
-    return withTransaction((conn) => {
-      const existingRec = conn
+    return withTransaction(async (conn) => {
+      const existingRec = await conn
         .prepare('SELECT id, cost_mc, fortune_json, receipt_hash FROM fortune_records WHERE request_id = ? AND account_id = ?')
         .get(cleanReqId, accountId) as { id: number; cost_mc: number; fortune_json: string; receipt_hash: string } | undefined
 
-      const accRow = conn
+      const accRow = await conn
         .prepare('SELECT mc_balance FROM accounts WHERE id = ?')
         .get(accountId) as { mc_balance: number } | undefined
       const currentBalance = Number(accRow?.mc_balance || 0)
@@ -1357,8 +1346,8 @@ export function drawFortuneWithMc(
             fortune: JSON.parse(existingRec.fortune_json),
             receiptHash: existingRec.receipt_hash,
             paymentMode,
-            inventory: getAccountInventory(accountId),
-            dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId)
+            inventory: await getAccountInventory(accountId),
+            dailyFreeUsedByCategory: await getAccountDailyFreeUsedMap(conn, accountId)
           }
         }
       }
@@ -1368,7 +1357,7 @@ export function drawFortuneWithMc(
       let tierCode = 'free_daily'
 
       if (paymentMode === 'free_daily') {
-        const usedMap = getAccountDailyFreeUsedMap(conn, accountId, now)
+        const usedMap = await getAccountDailyFreeUsedMap(conn, accountId, now)
         if ((usedMap[category] || 0) >= 1) {
           apiError(
             400,
@@ -1382,7 +1371,7 @@ export function drawFortuneWithMc(
         if (!catalogItem) {
           apiError(400, 'invalid_offering_item', 'Vật phẩm lễ phẩm không hợp lệ')
         }
-        const decRes = conn
+        const decRes = await conn
           .prepare(
             `UPDATE account_inventory
                 SET quantity = quantity - 1, updated_at = ?
@@ -1400,7 +1389,7 @@ export function drawFortuneWithMc(
         tierCode = `offering_${itemId}`
       }
 
-      const recentDraws = loadRecentDrawsForAccount(conn, accountId, mon)
+      const recentDraws = await loadRecentDrawsForAccount(conn, accountId, mon)
       const generated = generateFortune({
         mon,
         mode: boiOptions?.mode || 'quick',
@@ -1428,7 +1417,7 @@ export function drawFortuneWithMc(
         createdAt: now
       }
 
-      const ins = conn
+      const ins = await conn
         .prepare(
           `INSERT INTO fortune_records (account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at)
            VALUES (?, ?, ?, ?, 0, ?, ?, ?)`
@@ -1445,8 +1434,8 @@ export function drawFortuneWithMc(
           fortune: fortunePayload,
           receiptHash,
           paymentMode,
-          inventory: getAccountInventory(accountId),
-          dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId, now)
+          inventory: await getAccountInventory(accountId),
+          dailyFreeUsedByCategory: await getAccountDailyFreeUsedMap(conn, accountId, now)
         }
       }
     })
@@ -1462,8 +1451,8 @@ export function drawFortuneWithMc(
   return spend(accountId, tierCfg.costMc, 'fortune_divination', cleanReqId, {
     refType: 'fortune',
     metadata: { category, mon, tier, mode: boiOptions?.mode || 'quick', costMc: tierCfg.costMc },
-    onSpent: (conn, { ledgerId, now }) => {
-      const recentDraws = loadRecentDrawsForAccount(conn, accountId, mon)
+    onSpent: async (conn, { ledgerId, now }) => {
+      const recentDraws = await loadRecentDrawsForAccount(conn, accountId, mon)
 
       const generated = generateFortune({
         mon,
@@ -1492,7 +1481,7 @@ export function drawFortuneWithMc(
         createdAt: now
       }
 
-      conn
+      await conn
         .prepare(
           `INSERT INTO fortune_records (account_id, request_id, category, tier, cost_mc, fortune_json, receipt_hash, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1503,12 +1492,12 @@ export function drawFortuneWithMc(
         fortune: fortunePayload,
         receiptHash,
         paymentMode: 'mc',
-        inventory: getAccountInventory(accountId),
-        dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId, now)
+        inventory: await getAccountInventory(accountId),
+        dailyFreeUsedByCategory: await getAccountDailyFreeUsedMap(conn, accountId, now)
       }
     },
-    onReplay: (conn) => {
-      const rec = conn
+    onReplay: async (conn) => {
+      const rec = await conn
         .prepare('SELECT fortune_json, receipt_hash FROM fortune_records WHERE request_id = ? AND account_id = ?')
         .get(cleanReqId, accountId) as { fortune_json: string; receipt_hash: string } | undefined
       if (!rec) {
@@ -1518,8 +1507,8 @@ export function drawFortuneWithMc(
         fortune: JSON.parse(rec.fortune_json),
         receiptHash: rec.receipt_hash,
         paymentMode: 'mc',
-        inventory: getAccountInventory(accountId),
-        dailyFreeUsedByCategory: getAccountDailyFreeUsedMap(conn, accountId)
+        inventory: await getAccountInventory(accountId),
+        dailyFreeUsedByCategory: await getAccountDailyFreeUsedMap(conn, accountId)
       }
     }
   })
@@ -1531,7 +1520,7 @@ export function drawFortuneWithMc(
  * - Cộng vào tổng công đức toàn chùa (`globalMeritTotal`), lưu bảng công đức (`merit_donations`).
  * - Nếu cúng dường `>= 500 MC`, tặng vật phẩm tri ân `lotus_lantern` (Hoa Đăng Cầu An) vào kho đồ.
  */
-export function donateMeritWithMc(
+export async function donateMeritWithMc(
   accountId: number,
   amountMc: number,
   prayerRaw: string,
@@ -1553,7 +1542,7 @@ export function donateMeritWithMc(
   return spend(accountId, amountMc, 'merit_donation', cleanReqId, {
     refType: 'merit_box',
     metadata: { amountMc, prayer },
-    onSpent: (conn, { ledgerId, now }) => {
+    onSpent: async (conn, { ledgerId, now }) => {
       const receiptHash = 'mc_merit_' + createHash('sha256')
         .update(`${accountId}:${cleanReqId}:${ledgerId}:${now}`)
         .digest('hex')
@@ -1564,7 +1553,7 @@ export function donateMeritWithMc(
       if (amountMc >= 500) {
         rewardItemId = 'lotus_lantern'
         rewardItemName = 'Hoa Đăng Cầu An'
-        conn
+        await conn
           .prepare(
             `INSERT INTO account_inventory (account_id, item_id, category, quantity, unlocked_at, updated_at)
              VALUES (?, 'lotus_lantern', 'offering', 1, ?, ?)
@@ -1575,14 +1564,14 @@ export function donateMeritWithMc(
           .run(accountId, now, now)
       }
 
-      conn
+      await conn
         .prepare(
           `INSERT INTO merit_donations (account_id, request_id, amount_mc, prayer, reward_item_id, receipt_hash, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
         )
         .run(accountId, cleanReqId, amountMc, prayer, rewardItemId, receiptHash, now)
 
-      const totalRow = conn
+      const totalRow = await conn
         .prepare('SELECT COALESCE(SUM(amount_mc), 0) AS total FROM merit_donations')
         .get() as { total: number }
 
@@ -1596,8 +1585,8 @@ export function donateMeritWithMc(
         blessing: 'Nguyện đem công đức này, hồi hướng khắp tất cả, đệ tử và chúng sanh, đều trọn thành Phật đạo.'
       }
     },
-    onReplay: (conn) => {
-      const row = conn
+    onReplay: async (conn) => {
+      const row = await conn
         .prepare(
           `SELECT amount_mc, prayer, reward_item_id, receipt_hash
              FROM merit_donations
@@ -1606,7 +1595,7 @@ export function donateMeritWithMc(
         .get(cleanReqId, accountId) as
         | { amount_mc: number; prayer: string; reward_item_id: string | null; receipt_hash: string }
         | undefined
-      const totalRow = conn
+      const totalRow = await conn
         .prepare('SELECT COALESCE(SUM(amount_mc), 0) AS total FROM merit_donations')
         .get() as { total: number }
       return {
@@ -1623,28 +1612,28 @@ export function donateMeritWithMc(
 }
 
 /** Lấy tổng công đức, bảng vàng công đức gần nhất, lịch sử quẻ và sổ cái biến động của tài khoản */
-export function getMcOverviewAndHistory(accountId: number | null) {
-  const db = getDb()
-  const totalRow = db
+export async function getMcOverviewAndHistory(accountId: number | null) {
+  const db = await getDb()
+  const totalRow = await db
     .prepare('SELECT COALESCE(SUM(amount_mc), 0) AS total, COUNT(*) AS count FROM merit_donations')
     .get() as { total: number; count: number }
 
-  const leaderboard = db
+  const leaderboard = await db
     .prepare(
-      `SELECT a.display_name AS displayName, a.address AS address,
-              SUM(m.amount_mc) AS totalMc, COUNT(m.id) AS donationCount, MAX(m.created_at) AS lastAt
+      `SELECT COALESCE(NULLIF(TRIM(a.fortune_name), ''), a.display_name) AS "displayName", a.address AS address,
+              SUM(m.amount_mc) AS "totalMc", COUNT(m.id) AS "donationCount", MAX(m.created_at) AS "lastAt"
          FROM merit_donations m
          JOIN accounts a ON a.id = m.account_id
-        GROUP BY m.account_id
-        ORDER BY totalMc DESC, lastAt DESC
+        GROUP BY m.account_id, a.id, a.fortune_name, a.display_name, a.address
+        ORDER BY "totalMc" DESC, "lastAt" DESC
         LIMIT 10`
     )
     .all() as Array<{ displayName: string; address: string; totalMc: number; donationCount: number; lastAt: number }>
 
-  const recentDonations = db
+  const recentDonations = await db
     .prepare(
-      `SELECT m.id, a.display_name AS displayName, m.amount_mc AS amountMc, m.prayer,
-              m.reward_item_id AS rewardItemId, m.receipt_hash AS receiptHash, m.created_at AS createdAt
+      `SELECT m.id, COALESCE(NULLIF(TRIM(a.fortune_name), ''), a.display_name) AS "displayName", m.amount_mc AS "amountMc", m.prayer,
+              m.reward_item_id AS "rewardItemId", m.receipt_hash AS "receiptHash", m.created_at AS "createdAt"
          FROM merit_donations m
          JOIN accounts a ON a.id = m.account_id
         ORDER BY m.created_at DESC
@@ -1665,16 +1654,16 @@ export function getMcOverviewAndHistory(accountId: number | null) {
   }
 
   if (accountId) {
-    inventory = getAccountInventory(accountId)
-    dailyFreeUsedByCategory = getAccountDailyFreeUsedMap(db, accountId)
+    inventory = await getAccountInventory(accountId)
+    dailyFreeUsedByCategory = await getAccountDailyFreeUsedMap(db, accountId)
 
-    const fRows = db
+    const fRows = await db
       .prepare(
-        `SELECT id, request_id AS requestId, category, tier, cost_mc AS costMc,
-                fortune_json AS fortuneJson, receipt_hash AS receiptHash, created_at AS createdAt,
-             (SELECT l.hydra_status FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraStatus,
-             (SELECT l.hydra_tx_hash FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraTxHash,
-             (SELECT l.hydra_snapshot_no FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS hydraSnapshotNo
+        `SELECT id, request_id AS "requestId", category, tier, cost_mc AS "costMc",
+                fortune_json AS "fortuneJson", receipt_hash AS "receiptHash", created_at AS "createdAt",
+             (SELECT l.hydra_status FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS "hydraStatus",
+             (SELECT l.hydra_tx_hash FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS "hydraTxHash",
+             (SELECT l.hydra_snapshot_no FROM mc_ledger l WHERE l.reason = 'fortune_divination' AND l.ref_id = fortune_records.request_id LIMIT 1) AS "hydraSnapshotNo"
            FROM fortune_records
           WHERE account_id = ?
           ORDER BY created_at DESC
@@ -1714,11 +1703,11 @@ export function getMcOverviewAndHistory(accountId: number | null) {
       fortune: JSON.parse(r.fortuneJson)
     }))
 
-    ledgerHistory = db
+    ledgerHistory = await db
       .prepare(
-        `SELECT id, delta_mc AS deltaMc, balance_after AS balanceAfter, reason, ref_type AS refType,
-                ref_id AS refId, tx_hash AS txHash, metadata_json AS metadataJson, created_at AS createdAt,
-                hydra_tx_hash AS hydraTxHash, hydra_snapshot_no AS hydraSnapshotNo, hydra_status AS hydraStatus
+        `SELECT id, delta_mc AS "deltaMc", balance_after AS "balanceAfter", reason, ref_type AS "refType",
+                ref_id AS "refId", tx_hash AS "txHash", metadata_json AS "metadataJson", created_at AS "createdAt",
+                hydra_tx_hash AS "hydraTxHash", hydra_snapshot_no AS "hydraSnapshotNo", hydra_status AS "hydraStatus"
            FROM mc_ledger
           WHERE account_id = ?
           ORDER BY id DESC
@@ -1748,7 +1737,7 @@ export function getMcOverviewAndHistory(accountId: number | null) {
     fortuneHistory,
     ledgerHistory,
     dailyFreeUsedByCategory,
-    meditation: getMeditationStatus(accountId)
+    meditation: await getMeditationStatus(accountId)
   }
 }
 
@@ -1757,7 +1746,7 @@ export function getMcOverviewAndHistory(accountId: number | null) {
  * Trừ MC qua hàm `spend` nguyên tử, lưu vào `card_inventory`, `account_inventory`,
  * và đẩy chứng thực Hydra L2 Head.
  */
-export function buyAndOpenCardPack(accountId: number, packId: string, requestId: string) {
+export async function buyAndOpenCardPack(accountId: number, packId: string, requestId: string) {
   const pack = getCardPackById(packId)
   if (!pack) {
     apiError(404, 'pack_not_found', `Gói thẻ bài "${packId}" không tồn tại`)
@@ -1773,7 +1762,7 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
       cardCount: pack.cardCount,
       priceMc: pack.priceMc
     },
-    onSpent: (conn, { now }) => {
+    onSpent: async (conn, { now }) => {
       // 1. Rút thẻ bài theo thuật toán xác suất & bảo hiểm
       const drawnCards = rollCardGacha(pack.id)
 
@@ -1783,7 +1772,7 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
         VALUES (?, ?, ?, ?, 0, NULL)
       `)
       for (const card of drawnCards) {
-        insertCardStmt.run(accountId, card.id, card.rarity, now)
+        await insertCardStmt.run(accountId, card.id, card.rarity, now)
       }
 
       // 3. Đồng bộ vào account_inventory (loại heritage_card)
@@ -1795,7 +1784,7 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
           updated_at = excluded.updated_at
       `)
       for (const card of drawnCards) {
-        upsertAccInv.run(accountId, card.id, now, now)
+        await upsertAccInv.run(accountId, card.id, now, now)
       }
 
       // 4. Lưu lịch sử mở gói thẻ
@@ -1805,7 +1794,7 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
         .digest('hex')
         .slice(0, 24)
 
-      conn.prepare(`
+      await conn.prepare(`
         INSERT INTO card_pack_openings (account_id, request_id, pack_id, cost_mc, card_ids, cards_json, receipt_hash, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
@@ -1826,8 +1815,8 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
         openedAt: now
       }
     },
-    onReplay: (conn) => {
-      const record = conn.prepare(`
+    onReplay: async (conn) => {
+      const record = await conn.prepare(`
         SELECT cards_json, receipt_hash, created_at
         FROM card_pack_openings
         WHERE account_id = ? AND request_id = ?
@@ -1847,13 +1836,13 @@ export function buyAndOpenCardPack(accountId: number, packId: string, requestId:
 /**
  * Lấy danh sách thẻ bài đã sở hữu của người dùng kèm thống kê số lượng bản sao.
  */
-export function getUserCardInventory(accountId: number) {
-  const db = getDb()
-  const rows = db.prepare(`
+export async function getUserCardInventory(accountId: number) {
+  const db = await getDb()
+  const rows = await db.prepare(`
     SELECT card_id, rarity, COUNT(*) as count, MIN(unlocked_at) as first_unlocked_at, MAX(unlocked_at) as last_unlocked_at
     FROM card_inventory
     WHERE account_id = ?
-    GROUP BY card_id
+    GROUP BY card_id, rarity
   `).all(accountId) as Array<{
     card_id: string
     rarity: string

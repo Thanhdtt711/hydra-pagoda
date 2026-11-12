@@ -68,8 +68,9 @@ interface LedgerRow {
     hydra_status: string | null
 }
 
-function readLedger(ledgerId: number): LedgerRow | undefined {
-    return getDb()
+async function readLedger(ledgerId: number): Promise<LedgerRow | undefined> {
+    const db = await getDb()
+    return await db
         .prepare('SELECT id, account_id, delta_mc, balance_after, reason, ref_id, hydra_tx_hash, hydra_status FROM mc_ledger WHERE id = ?')
         .get(ledgerId) as LedgerRow | undefined
 }
@@ -85,13 +86,13 @@ function wire(client: HydraClient) {
     const st = S()
     if (st.wiredClient === client) return
     st.wiredClient = client
-    client.on('snapshotConfirmed', ({ number, txIds }: { number: number; txIds: string[] }) => {
+    client.on('snapshotConfirmed', async ({ number, txIds }: { number: number; txIds: string[] }) => {
         try {
-            const db = getDb()
+            const db = await getDb()
             const stmt = db.prepare(
                 "UPDATE mc_ledger SET hydra_status = 'snapshot_confirmed', hydra_snapshot_no = ? WHERE hydra_tx_hash = ?"
             )
-            for (const id of txIds) stmt.run(number, id)
+            for (const id of txIds) await stmt.run(number, id)
         } catch (e: any) {
             console.warn('[hydra:l2] Không cập nhật được SnapshotConfirmed:', e?.message || e)
         }
@@ -186,14 +187,14 @@ async function getStateUtxo(client: HydraClient, accountId: number, l2Address: s
 async function processLedger(client: HydraClient, ledgerId: number): Promise<void> {
     const cfg = getHydraConfig()
     const st = S()
-    const db = getDb()
+    const db = await getDb()
     if (!client.isOpen()) return
-    const row = readLedger(ledgerId)
+    const row = await readLedger(ledgerId)
     if (!row || row.hydra_tx_hash) return
 
-    const { key: sessionKey, l1Address } = getSessionKeyForAccount(row.account_id)
-    ensureAccountSession(row.account_id)
-    const fuelKey = getFuelKey()
+    const { key: sessionKey, l1Address } = await getSessionKeyForAccount(row.account_id)
+    await ensureAccountSession(row.account_id)
+    const fuelKey = await getFuelKey()
 
     for (let attempt = 1; attempt <= 2; attempt++) {
         const fuel = await acquireFuel(client, fuelKey, cfg)
@@ -210,11 +211,11 @@ async function processLedger(client: HydraClient, ledgerId: number): Promise<voi
             })
 
             // Ghi txHash TRƯỚC khi gửi để SnapshotConfirmed (đến rất nhanh) luôn tìm thấy bản ghi.
-            db.prepare("UPDATE mc_ledger SET hydra_tx_hash = ?, hydra_status = 'submitted' WHERE id = ?").run(built.txHash, row.id)
+            await db.prepare("UPDATE mc_ledger SET hydra_tx_hash = ?, hydra_status = 'submitted' WHERE id = ?").run(built.txHash, row.id)
             try {
                 await client.submitTx(built.cborHex, built.txHash)
             } catch (e) {
-                db.prepare("UPDATE mc_ledger SET hydra_tx_hash = NULL, hydra_status = 'offchain', hydra_snapshot_no = NULL WHERE id = ?").run(row.id)
+                await db.prepare("UPDATE mc_ledger SET hydra_tx_hash = NULL, hydra_status = 'offchain', hydra_snapshot_no = NULL WHERE id = ?").run(row.id)
                 throw e
             }
 
@@ -225,9 +226,9 @@ async function processLedger(client: HydraClient, ledgerId: number): Promise<voi
 
             const snap = client.confirmedSnapshotOf(built.txHash)
             if (snap !== null) {
-                db.prepare("UPDATE mc_ledger SET hydra_status = 'snapshot_confirmed', hydra_snapshot_no = ? WHERE id = ?").run(snap, row.id)
+                await db.prepare("UPDATE mc_ledger SET hydra_status = 'snapshot_confirmed', hydra_snapshot_no = ? WHERE id = ?").run(snap, row.id)
             } else {
-                db.prepare("UPDATE mc_ledger SET hydra_status = 'valid' WHERE id = ? AND hydra_status = 'submitted'").run(row.id)
+                await db.prepare("UPDATE mc_ledger SET hydra_status = 'valid' WHERE id = ? AND hydra_status = 'submitted'").run(row.id)
             }
             return
         } catch (e: any) {
@@ -256,20 +257,26 @@ export function scheduleHydraRecord(ledgerId: number): Promise<void> {
         const st = S()
         const existing = st.inflight.get(ledgerId)
         if (existing) return existing
-        const row = readLedger(ledgerId)
-        if (!row || row.hydra_tx_hash || (row.hydra_status && row.hydra_status !== 'offchain')) return Promise.resolve()
 
-        const prev = st.chains.get(row.account_id) ?? Promise.resolve()
-        const p: Promise<void> = prev
-            .then(() => processLedger(client, ledgerId))
-            .catch((e: any) => {
-                console.warn(`[hydra:l2] ledger #${ledgerId} giữ ở SQLite (offchain): ${String(e?.message || e).slice(0, 200)}`)
-            })
-            .then(() => {
+        const p: Promise<void> = (async () => {
+            try {
+                const row = await readLedger(ledgerId)
+                if (!row || row.hydra_tx_hash || (row.hydra_status && row.hydra_status !== 'offchain')) return
+
+                const prev = st.chains.get(row.account_id) ?? Promise.resolve()
+                const chained = prev
+                    .then(() => processLedger(client, ledgerId))
+                    .catch((e: any) => {
+                        console.warn(`[hydra:l2] ledger #${ledgerId} giữ ở SQLite (offchain): ${String(e?.message || e).slice(0, 200)}`)
+                    })
+                st.chains.set(row.account_id, chained)
+                await chained
+                if (st.chains.get(row.account_id) === chained) st.chains.delete(row.account_id)
+            } finally {
                 st.inflight.delete(ledgerId)
-                if (st.chains.get(row.account_id) === p) st.chains.delete(row.account_id)
-            })
-        st.chains.set(row.account_id, p)
+            }
+        })()
+
         st.inflight.set(ledgerId, p)
         return p
     } catch (e: any) {
@@ -279,20 +286,22 @@ export function scheduleHydraRecord(ledgerId: number): Promise<void> {
 }
 
 /** Tiện ích cho các luồng chỉ biết (reason, refId), ví dụ nạp ADA. */
-export function scheduleHydraRecordByRef(reason: string, refId: string): Promise<void> {
+export async function scheduleHydraRecordByRef(reason: string, refId: string): Promise<void> {
     try {
-        if (!getHydraConfig().enabled) return Promise.resolve()
-        const row = getDb().prepare('SELECT id FROM mc_ledger WHERE reason = ? AND ref_id = ?').get(reason, refId) as { id: number } | undefined
-        return row ? scheduleHydraRecord(row.id) : Promise.resolve()
+        if (!getHydraConfig().enabled) return
+        const db = await getDb()
+        const row = await db.prepare('SELECT id FROM mc_ledger WHERE reason = ? AND ref_id = ?').get(reason, refId) as { id: number } | undefined
+        if (row) return scheduleHydraRecord(row.id)
     } catch {
-        return Promise.resolve()
+        // bỏ qua
     }
 }
 
-function readProof(ledgerId: number): HydraProof {
-    const row = readLedger(ledgerId)
+async function readProof(ledgerId: number): Promise<HydraProof> {
+    const row = await readLedger(ledgerId)
     if (!row) return { ...OFFCHAIN, enabled: true }
-    const snap = getDb().prepare('SELECT hydra_snapshot_no AS n FROM mc_ledger WHERE id = ?').get(ledgerId) as { n: number | null }
+    const db = await getDb()
+    const snap = await db.prepare('SELECT hydra_snapshot_no AS n FROM mc_ledger WHERE id = ?').get(ledgerId) as { n: number | null }
     return {
         enabled: true,
         status: ((row.hydra_status as HydraLedgerStatus) || 'offchain'),
@@ -311,10 +320,10 @@ export async function getHydraProof(ledgerId: number, waitMs = 1500): Promise<Hy
         const deadline = Date.now() + waitMs
         const inflight = S().inflight.get(ledgerId)
         if (inflight) await Promise.race([inflight, sleep(waitMs)])
-        let proof = readProof(ledgerId)
+        let proof = await readProof(ledgerId)
         while ((proof.status === 'valid' || proof.status === 'submitted') && Date.now() < deadline) {
             await sleep(25)
-            proof = readProof(ledgerId)
+            proof = await readProof(ledgerId)
         }
         return proof
     } catch {
@@ -322,8 +331,9 @@ export async function getHydraProof(ledgerId: number, waitMs = 1500): Promise<Hy
     }
 }
 
-export function getHydraStats() {
-    const rows = getDb()
+export async function getHydraStats() {
+    const db = await getDb()
+    const rows = await db
         .prepare("SELECT COALESCE(hydra_status, 'offchain') AS s, COUNT(*) AS n FROM mc_ledger GROUP BY s")
         .all() as Array<{ s: string; n: number }>
     const byStatus: Record<string, number> = { offchain: 0, submitted: 0, valid: 0, snapshot_confirmed: 0 }

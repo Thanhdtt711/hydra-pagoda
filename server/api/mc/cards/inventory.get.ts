@@ -7,9 +7,9 @@ import { getCardPacks, getCardsCatalog } from '../../../utils/cards/catalog'
  * Trả về danh mục thẻ, các gói Gacha và danh sách thẻ người chơi đã sở hữu.
  * Hỗ trợ cả khách chưa kết nối ví.
  */
-export default defineEventHandler((event) => {
-  const account = getSessionAccount(event)
-  const userInventory = account ? getUserCardInventory(account.id) : []
+export default defineEventHandler(async (event) => {
+  const account = await getSessionAccount(event)
+  const userInventory = account ? await getUserCardInventory(account.id) : []
   const packs = getCardPacks()
   const catalog = getCardsCatalog()
 

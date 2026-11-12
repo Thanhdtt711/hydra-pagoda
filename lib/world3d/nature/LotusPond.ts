@@ -76,7 +76,7 @@ export class LotusPond {
       const cx = Math.cos(mid) * curbDist
       const cz = Math.sin(mid) * curbDist
       if (Math.abs(cx) < 2.0 && Math.abs(cz) > r - 1.2) continue
-      b.box('stone', 1.9, 0.45, 0.55, cx, 0.2, cz, Math.PI / 2 - mid)
+      b.box('stone', 1.9, 0.45, 0.55, cx, 0.2, cz, 0, Math.PI / 2 - mid)
     }
 
     // --- Cầu đá vòm bậc thang ---

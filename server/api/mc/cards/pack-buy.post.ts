@@ -12,13 +12,13 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:cards:pack-buy', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<{ packId?: unknown; requestId?: unknown }>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: { packId?: unknown; requestId?: unknown } = (await readBody<{ packId?: unknown; requestId?: unknown }>(event).catch(() => null)) || {}
 
   const packId = String(body.packId ?? '').trim()
   const requestId = String(body.requestId ?? '').trim()
 
-  const res = buyAndOpenCardPack(account.id, packId, requestId)
+  const res = await buyAndOpenCardPack(account.id, packId, requestId)
 
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return {
@@ -32,8 +32,8 @@ export default defineEventHandler(async (event) => {
     cards: res.extra.cards,
     receiptHash: res.extra.receiptHash,
     openedAt: res.extra.openedAt,
-    userCardInventory: getUserCardInventory(account.id),
-    inventory: getAccountInventory(account.id)
+    userCardInventory: await getUserCardInventory(account.id),
+    inventory: await getAccountInventory(account.id)
   }
 })
 

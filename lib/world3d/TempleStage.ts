@@ -28,10 +28,11 @@ import { MapLayout } from './world/MapLayout'
 import { HallLayout, type MeditationSlot } from './world/HallLayout'
 import { TerrainSystem } from './world/TerrainSystem'
 import { AvatarCrowd } from './characters/AvatarCrowd'
+import { AbbotNpc, type AbbotNpcEmotion } from './characters/AbbotNpc'
 import { PerformanceProfiler } from './debug/PerformanceProfiler'
 import { SeededPRNG } from './utils/SeededPRNG'
 
-export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | null
+export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | null
 
 export interface RemotePilgrimInstance {
   id: string
@@ -133,6 +134,11 @@ export class TempleStage {
   private lastWPressTime = 0
   private baseFov = 54
   private targetFov = 54
+  // Vector tạm tái sử dụng mỗi khung hình (tránh cấp phát + GC trong vòng lặp render).
+  private readonly scratchMoveDir = new THREE.Vector3()
+  private readonly scratchZeroDir = new THREE.Vector3()
+  private readonly scratchFocus = new THREE.Vector3()
+  private readonly scratchBackward = new THREE.Vector3()
 
   // Time of Day System & Giai đoạn 3: Atmosphere, PBR Materials & Post-Processing
   public timeOfDay: 'day' | 'sunset' | 'night' = 'day'
@@ -180,6 +186,11 @@ export class TempleStage {
     MapLayout.LANDMARKS.LOTUS_POND.center.z
   )
   private static readonly PROX_DOOR = new THREE.Vector3(0, 1.35, 0.5)
+  private static readonly PROX_ABBOT = new THREE.Vector3(
+    HallLayout.ABBOT_SPOT.x,
+    HallLayout.ABBOT_SPOT.y,
+    HallLayout.ABBOT_SPOT.z
+  )
 
   private hemiLight!: THREE.HemisphereLight
   private keyLight!: THREE.DirectionalLight
@@ -227,6 +238,7 @@ export class TempleStage {
   public buddhaStatue!: THREE.Group
   public lotusPond!: THREE.Group
   public sanctuaryHall!: PagodaSanctuaryHall
+  public abbotNpc!: AbbotNpc
   public hauDongSanctuary!: HauDongSanctuary
   public hauDongVisualState: HauDongVisualState | null = null
   public lotusPondInstance!: LotusPond
@@ -765,6 +777,10 @@ export class TempleStage {
     this.buddhaStatue = this.sanctuaryHall.buddhaGroup
     this.mandalaHalo = this.sanctuaryHall.mandalaHalo
 
+    // NPC Thầy Trụ Trì đứng ngoài Hiên Tiền Điện (Phương án 2)
+    this.abbotNpc = new AbbotNpc(this.collisionWorld, HallLayout.ABBOT_SPOT)
+    this.scene.add(this.abbotNpc.root)
+
     // Khởi tạo Nhà Hầu Đồng (Điện Thờ Tứ Phủ & Trần Triều) ở phía Đông (bên phải) Đại Hùng Bảo Điện
     this.hauDongSanctuary = new HauDongSanctuary(this.collisionWorld)
     this.scene.add(this.hauDongSanctuary.group)
@@ -1073,7 +1089,7 @@ export class TempleStage {
       const len = Math.hypot(moveX, moveZ)
       const nx = moveX / len
       const nz = moveZ / len
-      const moveDir = new THREE.Vector3(nx, 0, nz)
+      const moveDir = this.scratchMoveDir.set(nx, 0, nz)
 
       this.characterController.isSneaking = sneaking
       this.characterController.isSprinting = this.isSprinting && !inputLocked
@@ -1089,7 +1105,7 @@ export class TempleStage {
     } else {
       this.characterController.isSneaking = sneaking
       this.characterController.isSprinting = this.isSprinting && !inputLocked
-      this.characterController.update(delta, new THREE.Vector3(), 0)
+      this.characterController.update(delta, this.scratchZeroDir.set(0, 0, 0), 0)
 
       if (this.cameraMode === 'fpp' && !this.isSeated) {
         this.player.rotation.y = this.yaw
@@ -1118,7 +1134,7 @@ export class TempleStage {
 
     const eyeHeight = this.isSneaking ? 1.2 : 1.55
     const targetY = this.playerPos.y + (this.isSneaking ? 0.95 : 1.15)
-    const focusPoint = new THREE.Vector3(this.playerPos.x, targetY, this.playerPos.z)
+    const focusPoint = this.scratchFocus.set(this.playerPos.x, targetY, this.playerPos.z)
 
     if (this.cameraMode === 'fpp') {
       // 👁️ GÓC NHÌN THỨ NHẤT (FPP)
@@ -1133,7 +1149,7 @@ export class TempleStage {
     } else {
       // 👤 GÓC NHÌN THỨ BA SAU LƯNG (TPP) - CAMERA SPRING ARM CHỐNG XUYÊN TƯỜNG
       if (this.avatar) this.avatar.root.visible = true
-      const backwardDir = new THREE.Vector3(-fwdX * cp, sp, -fwdZ * cp).normalize()
+      const backwardDir = this.scratchBackward.set(-fwdX * cp, sp, -fwdZ * cp).normalize()
       const safeCamPos = this.cameraSpringArm.computePosition(
         focusPoint,
         backwardDir,
@@ -1161,6 +1177,7 @@ export class TempleStage {
     const distBuddha = this.playerPos.distanceTo(TempleStage.PROX_BUDDHA)
     const distPond = this.playerPos.distanceTo(TempleStage.PROX_POND)
     const distDoor = this.playerPos.distanceTo(TempleStage.PROX_DOOR)
+    const distAbbot = this.playerPos.distanceTo(TempleStage.PROX_ABBOT)
     const distHauDong = this.hauDongSanctuary
       ? Math.min(
           this.playerPos.distanceTo(this.hauDongSanctuary.centerWorldPos),
@@ -1184,6 +1201,7 @@ export class TempleStage {
     else if (distParkourStart < 3.0) nearest = 'parkour_start'
     else if (distParkourSummit < 3.8) nearest = 'parkour_summit'
     else if (distHauDong < 5.2) nearest = 'hau_dong'
+    else if (distAbbot < HallLayout.ABBOT_SPOT.interactionRadius) nearest = 'abbot'
     else if (distDoor < 3.2 && (this.sanctuaryHall ? this.sanctuaryHall.doorAngle < 0.4 : false)) nearest = 'door'
     else if (distBuddha < 4.8) nearest = 'meditation'
     else if (distPond < 8.8) nearest = 'lantern'
@@ -1438,6 +1456,58 @@ export class TempleStage {
         if (this.avatar) {
           this.avatar.setAction('standing')
         }
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /** Đồng bộ biểu cảm 3D của Thầy Trụ Trì theo JSON trả về từ hội thoại. */
+  public setAbbotEmotion(emotion: AbbotNpcEmotion) {
+    this.abbotNpc?.setEmotion(emotion)
+  }
+
+  /** Dẫn đường nhân vật bước lên Hiên Tiền Điện tới gặp Thầy Trụ Trì (Phương án 2). */
+  public walkToAbbot(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const spot = HallLayout.ABBOT_SPOT
+    const standPos = { x: spot.x - 1.15, z: spot.z + 0.55 }
+    const waypoints: Array<{ x: number; z: number }> = []
+
+    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
+      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+        this.sanctuaryHall.toggleDoor()
+      }
+      waypoints.push({ x: 0, z: -2.0 })
+      waypoints.push({ x: 0, z: 1.8 })
+      waypoints.push(standPos)
+    } else if (this.playerPos.z >= 3.5) {
+      waypoints.push({ x: 2.2, z: 6.8 })
+      waypoints.push({ x: 2.4, z: 3.1 })
+      waypoints.push(standPos)
+    } else {
+      waypoints.push(standPos)
+    }
+
+    const finalYaw = Math.atan2(spot.x - standPos.x, spot.z - standPos.z)
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 3.6,
+      startDelay: 0.05,
+      finalYaw,
+      snapOnStuck: false,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        this.abbotNpc?.setEmotion('smile')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
         if (onAbort) onAbort()
       },
       stuckTimer: 0,
@@ -1801,6 +1871,9 @@ export class TempleStage {
     if (this.hauDongSanctuary) {
       this.hauDongSanctuary.update(delta, elapsed, this.hauDongVisualState)
     }
+    if (this.abbotNpc) {
+      this.abbotNpc.update(delta, elapsed, this.playerPos)
+    }
 
     // Cập nhật Hồ sen sống động, Cầu đá vòm cong & Hướng mặt trời shader (Giai đoạn 4 & Phase 6)
     if (this.lotusPondInstance) {
@@ -1847,7 +1920,9 @@ export class TempleStage {
 
       const avatar = new PilgrimAvatar(country, gender)
 
-      const nameplate = createPilgrimNameplate(name, title, country)
+      const nameplate = createPilgrimNameplate(name, title, country, {
+        variant: data.verified ? 'verified' : 'pilgrim'
+      })
       nameplate.position.set(0, 2.05, 0)
       avatar.root.add(nameplate)
 
@@ -1879,11 +1954,13 @@ export class TempleStage {
         remote.action = data.action
         remote.avatar.setAction(data.action)
       }
+      let nameplateDirty = false
       if (data.country && data.country.trim() !== '') {
         const nextCountry = data.country.split(':')[0] as PilgrimCountry
         if (remote.country !== nextCountry) {
           remote.country = nextCountry
           remote.avatar.setCountryStyle(remote.country)
+          nameplateDirty = true
         }
       }
       if (data.gender || (data.country && data.country.includes(':'))) {
@@ -1896,9 +1973,24 @@ export class TempleStage {
       }
       if (data.name && data.name.trim() !== '' && remote.name !== data.name) {
         remote.name = data.name
+        nameplateDirty = true
       }
       if (data.title && data.title.trim() !== '' && remote.title !== data.title) {
         remote.title = data.title
+        nameplateDirty = true
+      }
+      if (nameplateDirty) {
+        if (remote.nameplate) {
+          remote.avatar.root.remove(remote.nameplate)
+          ;(remote.nameplate.material as THREE.SpriteMaterial)?.map?.dispose()
+          remote.nameplate.material?.dispose()
+        }
+        const nextPlate = createPilgrimNameplate(remote.name, remote.title, remote.country, {
+          variant: data.verified ? 'verified' : 'pilgrim'
+        })
+        nextPlate.position.set(0, 2.05, 0)
+        remote.avatar.root.add(nextPlate)
+        remote.nameplate = nextPlate
       }
     }
   }

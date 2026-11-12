@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ZenChatMessage } from '~/lib/network/MultiplayerClient'
 import ZenIcon from '~/components/ZenIcon.vue'
+import { t } from '~/lib/ui/copy'
 
 interface Props {
   modelValue: boolean
@@ -72,7 +73,7 @@ function formatTime(timestamp: number): string {
 </script>
 
 <template>
-  <div v-if="modelValue" class="binance-drawer-anim fixed bottom-14 right-3 w-96 max-w-[92vw] z-30 flex flex-col bg-surface-card border border-hairline rounded-[8px] shadow-2xl overflow-hidden font-sans text-primary">
+  <div v-if="modelValue" class="binance-drawer-anim fixed bottom-14 right-3 w-96 max-w-[92vw] z-30 flex flex-col bg-surface-card border border-hairline rounded-[2px] shadow-2xl overflow-hidden font-sans text-primary">
     <!-- Header: Spec-sheet Bar -->
     <div class="px-3.5 py-2.5 bg-surface-elevated border-b border-hairline flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -86,7 +87,7 @@ function formatTime(timestamp: number): string {
         </span>
         <button 
           @click="emit('update:modelValue', false)"
-          class="w-6 h-6 flex items-center justify-center rounded-[4px] text-secondary hover:text-primary hover:bg-surface-card transition-colors ui-focus-ring cursor-pointer"
+          class="w-6 h-6 flex items-center justify-center rounded-[2px] text-secondary hover:text-primary hover:bg-surface-card transition-colors ui-focus-ring cursor-pointer"
           title="Đóng (ESC)"
         >
           <ZenIcon name="x" :size="14" />
@@ -98,13 +99,13 @@ function formatTime(timestamp: number): string {
     <div ref="chatFeedRef" class="p-3 h-56 overflow-y-auto space-y-2.5 text-xs">
       <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center text-secondary p-4">
         <ZenIcon name="lotus" :size="24" class="text-secondary/40 mb-2" />
-        <p class="text-xs m-0">Chưa có lời nguyện nào. Hãy gởi một tâm nguyện an lành đến đại chúng đồng tu.</p>
+        <p class="text-xs m-0">{{ t('desc.chatEmpty') }}</p>
       </div>
 
       <div 
         v-for="(msg, idx) in messages" 
         :key="idx"
-        class="bg-surface-elevated border border-hairline rounded-[6px] p-2 space-y-1"
+        class="bg-surface-elevated border border-hairline rounded-[2px] p-2 space-y-1"
       >
         <div class="flex items-center justify-between text-xs">
           <div class="flex items-center gap-1.5">
@@ -125,7 +126,7 @@ function formatTime(timestamp: number): string {
         v-for="(mantra, i) in QUICK_MANTRAS"
         :key="i"
         @click="handleSend(mantra)"
-        class="px-2 py-1 rounded-[4px] bg-surface-elevated hover:bg-surface-card border border-hairline text-xs text-secondary hover:text-primary whitespace-nowrap transition-colors cursor-pointer"
+        class="px-2 py-1 rounded-[2px] bg-surface-elevated hover:bg-surface-card border border-hairline text-xs text-secondary hover:text-primary whitespace-nowrap transition-colors cursor-pointer"
       >
         {{ mantra }}
       </button>
@@ -139,12 +140,12 @@ function formatTime(timestamp: number): string {
         type="text" 
         maxlength="120"
         placeholder="Gởi lời nguyện chúc an lành... (Enter)"
-        class="flex-1 bg-surface-card border border-hairline focus:border-primary rounded-[6px] px-3 py-1.5 text-xs text-primary placeholder:text-muted outline-none transition-colors"
+        class="flex-1 bg-surface-card border border-hairline focus:border-primary focus:ring-1 focus:ring-primary rounded-[2px] px-3 py-1.5 text-xs text-primary placeholder:text-muted outline-none transition-colors"
       />
       <button 
         @click="handleSend()"
         :disabled="!inputMessage.trim()"
-        class="h-8 px-3 rounded-[6px] bg-primary text-ink font-semibold text-xs flex items-center gap-1.5 hover:bg-primary-active disabled:bg-primary-disabled disabled:text-muted disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer border-none"
+        class="h-8 px-3 rounded-[2px] bg-seal text-on-seal font-semibold text-xs flex items-center gap-1.5 hover:bg-seal-active disabled:bg-seal-disabled disabled:text-muted disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer border-none"
       >
         <ZenIcon name="send" :size="12" />
         <span>Gởi</span>

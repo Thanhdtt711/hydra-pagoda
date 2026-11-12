@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
 
 export type HydraMode = 'hydra_l2' | 'local_ledger'
+export type DbEngine = 'postgres' | 'sqlite'
 
 export interface HydraStatusDto {
     enabled: boolean
     connected: boolean
     mode: HydraMode
+    dbEngine?: DbEngine
     headStatus: string
     latestSnapshotNo: number
     totalL2Txs: number
@@ -32,17 +34,32 @@ export const useHydraStore = defineStore('hydra', {
     getters: {
         /** true khi Hydra L2 bật VÀ node đang kết nối. */
         isL2Active: (state): boolean => Boolean(state.status?.enabled && state.status?.connected && state.status?.mode === 'hydra_l2'),
-        /** Nhãn ngắn hiển thị trên HUD. */
+        /** true khi server đang dùng Supabase PostgreSQL (đã cấu hình DATABASE_URL). */
+        isPostgres: (state): boolean => state.status?.dbEngine === 'postgres',
+        /** Nhãn ngắn hiển thị động cơ CSDL trên HUD. */
+        dbLabel(): string {
+            if (!this.loaded) return '…'
+            return this.isPostgres ? 'PostgreSQL' : 'SQLite'
+        },
+        /** Giải thích khi nào dùng PostgreSQL vs SQLite. */
+        dbDescription(): string {
+            if (!this.loaded) return 'Đang kiểm tra cơ sở dữ liệu…'
+            if (this.isPostgres) {
+                return 'Cơ sở dữ liệu: Supabase PostgreSQL (đang dùng DATABASE_URL — dữ liệu bền vững qua các lần deploy).'
+            }
+            return 'Cơ sở dữ liệu: SQLite cục bộ (fallback khi chưa cấu hình DATABASE_URL).'
+        },
+        /** Nhãn ngắn hiển thị trên HUD cho lớp sổ cái. */
         modeLabel(): string {
-            return this.isL2Active ? 'Hydra L2' : 'SQLite'
+            return this.isL2Active ? 'Hydra L2' : this.dbLabel
         },
         /** Giải thích đầy đủ cho tooltip / trình đọc màn hình. */
         modeDescription(): string {
             const s = this.status
             if (!s || !this.loaded) return 'Đang kiểm tra chế độ sổ cái…'
-            if (!s.enabled) return 'Sổ cái cục bộ (SQLite). Hydra L2 đang tắt.'
-            if (!s.connected) return 'Sổ cái cục bộ (SQLite). Hydra L2 được bật nhưng chưa kết nối được hydra-node.'
-            return `Hydra L2 đang chạy (Head: ${s.headStatus}, snapshot #${s.latestSnapshotNo}). SQLite vẫn là sổ cái gốc.`
+            if (!s.enabled) return `${this.dbDescription} Hydra L2 đang tắt.`
+            if (!s.connected) return `${this.dbDescription} Hydra L2 được bật nhưng chưa kết nối được hydra-node.`
+            return `Hydra L2 đang chạy (Head: ${s.headStatus}, snapshot #${s.latestSnapshotNo}). ${this.dbLabel} vẫn là sổ cái gốc.`
         }
     },
 

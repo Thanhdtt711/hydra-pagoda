@@ -134,8 +134,9 @@ export function assertValidTreasuryAddress(): string {
 }
 
 /** Đánh dấu các đơn chưa gửi giao dịch đã quá hạn 30 phút sang trạng thái `expired`. */
-export function expireStaleOrders(now = Date.now()) {
-  getDb()
+export async function expireStaleOrders(now = Date.now()) {
+  const db = await getDb()
+  await db
     .prepare(
       `UPDATE mc_orders
           SET status = 'expired', failure_reason = COALESCE(failure_reason, 'Đơn hàng đã hết thời hạn 30 phút')
@@ -149,10 +150,10 @@ export function expireStaleOrders(now = Date.now()) {
  * Chấp nhận `adaAmount` (số nguyên >= 2) hoặc `lovelace` (bội số của 1.000.000, >= 2.000.000).
  * Không bao giờ tin địa chỉ treasury hay số MC từ client gửi lên.
  */
-export function createMcOrder(account: PublicAccount, input: { adaAmount?: unknown; lovelace?: unknown }): PublicOrder {
+export async function createMcOrder(account: PublicAccount, input: { adaAmount?: unknown; lovelace?: unknown }): Promise<PublicOrder> {
   const cfg = getWalletConfig()
   const treasuryAddress = assertValidTreasuryAddress()
-  expireStaleOrders()
+  await expireStaleOrders()
 
   let expectedLovelace = 0
   if (input.lovelace !== undefined && input.lovelace !== null) {
@@ -174,25 +175,26 @@ export function createMcOrder(account: PublicAccount, input: { adaAmount?: unkno
   const expiresAt = now + cfg.orderTtlMs
   const orderId = `ord_${now.toString(36)}_${randomBytes(6).toString('hex')}`
 
-  const db = getDb()
-  db.prepare(
+  const db = await getDb()
+  await db.prepare(
     `INSERT INTO mc_orders (
       order_id, account_id, address, treasury_address,
       expected_lovelace, expected_mc, confirmations, status, created_at, expires_at
     ) VALUES (?, ?, ?, ?, ?, ?, 0, 'pending', ?, ?)`
   ).run(orderId, account.id, account.address, treasuryAddress, expectedLovelace, expectedMc, now, expiresAt)
 
-  const row = db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(orderId) as unknown as OrderRow
+  const row = await db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(orderId) as unknown as OrderRow
   return toPublicOrder(row)
 }
 
 /** Lấy chi tiết đơn hàng của người chơi (kiểm tra quyền sở hữu). */
-export function getAccountOrder(account: PublicAccount, orderId: string): OrderRow {
-  expireStaleOrders()
+export async function getAccountOrder(account: PublicAccount, orderId: string): Promise<OrderRow> {
+  await expireStaleOrders()
   if (typeof orderId !== 'string' || !/^ord_[a-z0-9_]{6,40}$/.test(orderId)) {
     apiError(404, 'order_not_found', 'Không tìm thấy đơn hàng')
   }
-  const row = getDb().prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(orderId) as unknown as OrderRow | undefined
+  const db = await getDb()
+  const row = await db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(orderId) as unknown as OrderRow | undefined
   if (!row || row.account_id !== account.id) {
     apiError(404, 'order_not_found', 'Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập')
   }
@@ -200,9 +202,10 @@ export function getAccountOrder(account: PublicAccount, orderId: string): OrderR
 }
 
 /** Danh sách đơn mua MC & lịch sử nạp của tài khoản hiện tại. */
-export function listAccountOrders(account: PublicAccount, limit = 25): PublicOrder[] {
-  expireStaleOrders()
-  const rows = getDb()
+export async function listAccountOrders(account: PublicAccount, limit = 25): Promise<PublicOrder[]> {
+  await expireStaleOrders()
+  const db = await getDb()
+  const rows = await db
     .prepare('SELECT * FROM mc_orders WHERE account_id = ? ORDER BY created_at DESC LIMIT ?')
     .all(account.id, Math.min(100, Math.max(1, limit))) as unknown as OrderRow[]
   return rows.map(toPublicOrder)
@@ -212,19 +215,19 @@ export function listAccountOrders(account: PublicAccount, limit = 25): PublicOrd
  * Dựng giao dịch chưa ký cho đơn hàng bằng `@hydra-sdk/cardano-wasm`.
  * Lưu `unsigned_tx_hash` và `unsigned_tx_cbor` vào đơn để đối chiếu khi ví ký xong.
  */
-export function buildOrderTxForAccount(
+export async function buildOrderTxForAccount(
   account: PublicAccount,
   orderId: string,
   body: { utxos?: unknown; changeAddress?: unknown }
 ) {
   const cfg = getWalletConfig()
-  const order = getAccountOrder(account, orderId)
+  const order = await getAccountOrder(account, orderId)
 
   if (order.status === 'completed') {
     apiError(409, 'order_already_completed', 'Đơn hàng này đã hoàn tất')
   }
   if (order.status === 'expired' || Date.now() >= order.expires_at) {
-    expireStaleOrders()
+    await expireStaleOrders()
     apiError(410, 'order_expired', 'Đơn hàng đã hết hạn. Vui lòng tạo đơn mới.')
   }
   if (!['pending', 'signing'].includes(order.status)) {
@@ -246,11 +249,12 @@ export function buildOrderTxForAccount(
     metadataLabel: cfg.orderMetadataLabel
   })
 
-  getDb()
+  const db = await getDb()
+  await db
     .prepare('UPDATE mc_orders SET status = ?, unsigned_tx_hash = ?, unsigned_tx_cbor = ? WHERE order_id = ?')
     .run('signing', built.txHash, built.unsignedTxCbor, order.order_id)
 
-  const updated = getAccountOrder(account, order.order_id)
+  const updated = await getAccountOrder(account, order.order_id)
   return {
     order: toPublicOrder(updated),
     unsignedTxCbor: built.unsignedTxCbor,
@@ -262,12 +266,12 @@ export function buildOrderTxForAccount(
 /**
  * Ghép witness chữ ký từ `wallet.signTx(unsignedTxCbor, true)` vào giao dịch của đơn hàng.
  */
-export function attachWitnessForAccountOrder(
+export async function attachWitnessForAccountOrder(
   account: PublicAccount,
   orderId: string,
   witnessHex: unknown
-): { signedTxCbor: string; txHash: string } {
-  const order = getAccountOrder(account, orderId)
+): Promise<{ signedTxCbor: string; txHash: string }> {
+  const order = await getAccountOrder(account, orderId)
   if (!order.unsigned_tx_cbor) {
     apiError(400, 'order_not_built', 'Đơn hàng chưa được dựng giao dịch')
   }
@@ -282,8 +286,8 @@ export function attachWitnessForAccountOrder(
  * Lưu ý: bước này CHỈ chuyển trạng thái sang `'submitted'` (Đang chờ xác nhận),
  * TUYỆT ĐỐI chưa cộng MC cho tới khi kiểm tra trên chuỗi qua Blockfrost đạt đủ xác nhận!
  */
-export function submitOrderTxHash(account: PublicAccount, orderId: string, txHashInput: unknown): PublicOrder {
-  const order = getAccountOrder(account, orderId)
+export async function submitOrderTxHash(account: PublicAccount, orderId: string, txHashInput: unknown): Promise<PublicOrder> {
+  const order = await getAccountOrder(account, orderId)
   if (order.status === 'completed') return toPublicOrder(order)
 
   const txHash = typeof txHashInput === 'string' ? txHashInput.trim().toLowerCase() : ''
@@ -295,8 +299,8 @@ export function submitOrderTxHash(account: PublicAccount, orderId: string, txHas
     apiError(400, 'tx_hash_mismatch', 'txHash gửi lên không khớp với giao dịch đã dựng cho đơn hàng này')
   }
 
-  const db = getDb()
-  const existing = db
+  const db = await getDb()
+  const existing = await db
     .prepare('SELECT order_id FROM mc_orders WHERE tx_hash = ? AND order_id != ?')
     .get(txHash, order.order_id) as { order_id: string } | undefined
   if (existing) {
@@ -304,7 +308,7 @@ export function submitOrderTxHash(account: PublicAccount, orderId: string, txHas
   }
 
   const now = Date.now()
-  db.prepare(
+  await db.prepare(
     `UPDATE mc_orders
         SET tx_hash = ?,
             status = CASE WHEN status IN ('pending', 'signing', 'expired') THEN 'submitted' ELSE status END,
@@ -312,7 +316,7 @@ export function submitOrderTxHash(account: PublicAccount, orderId: string, txHas
       WHERE order_id = ?`
   ).run(txHash, now, order.order_id)
 
-  return toPublicOrder(getAccountOrder(account, order.order_id))
+  return toPublicOrder(await getAccountOrder(account, order.order_id))
 }
 
 /** Trích xuất `orderId` từ danh sách metadata của giao dịch trên chuỗi. */
@@ -362,10 +366,10 @@ export async function inspectAndSettleTx(
   const txHash = txHashRaw.trim().toLowerCase()
   const cfg = getWalletConfig()
   const client = opts?.client ?? getBlockfrostClient()
-  const db = getDb()
+  const db = await getDb()
 
   // Nếu txHash đã nằm trong bảng chain_deposits => đã xử lý xong trước đó (idempotent)
-  const existingDeposit = db
+  const existingDeposit = await db
     .prepare('SELECT order_id, mc_credited, confirmations, status FROM chain_deposits WHERE tx_hash = ?')
     .get(txHash) as { order_id: string | null; mc_credited: number; confirmations: number; status: string } | undefined
   if (existingDeposit) {
@@ -383,12 +387,12 @@ export async function inspectAndSettleTx(
 
   if (!info || !utxos) {
     // Nếu trước đó đơn từng ở trạng thái 'confirming' mà nay giao dịch biến mất khỏi chuỗi => Rollback (Reorg)
-    const trackedOrder = db
+    const trackedOrder = await db
       .prepare('SELECT * FROM mc_orders WHERE tx_hash = ?')
       .get(txHash) as unknown as OrderRow | undefined
     if (trackedOrder && trackedOrder.status === 'confirming') {
       console.warn(`[wallet:reorg] Giao dịch ${txHash} của đơn ${trackedOrder.order_id} không còn trên chuỗi (rollback trước khi đủ xác nhận). Đưa về submitted.`)
-      db.prepare(
+      await db.prepare(
         `UPDATE mc_orders SET status = 'submitted', confirmations = 0, block_height = NULL WHERE order_id = ? AND status = 'confirming'`
       ).run(trackedOrder.order_id)
     }
@@ -404,13 +408,13 @@ export async function inspectAndSettleTx(
   // Tìm đơn hàng khớp theo expectedOrderId, metadata orderId, hoặc tx_hash đã gắn
   let order: OrderRow | undefined
   if (opts?.expectedOrderId) {
-    order = db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(opts.expectedOrderId) as unknown as OrderRow | undefined
+    order = await db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(opts.expectedOrderId) as unknown as OrderRow | undefined
   }
   if (!order && metaOrderId) {
-    order = db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(metaOrderId) as unknown as OrderRow | undefined
+    order = await db.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(metaOrderId) as unknown as OrderRow | undefined
   }
   if (!order) {
-    order = db.prepare('SELECT * FROM mc_orders WHERE tx_hash = ? OR unsigned_tx_hash = ?').get(txHash, txHash) as unknown as OrderRow | undefined
+    order = await db.prepare('SELECT * FROM mc_orders WHERE tx_hash = ? OR unsigned_tx_hash = ?').get(txHash, txHash) as unknown as OrderRow | undefined
   }
 
   const targetTreasury = order ? order.treasury_address : cfg.treasuryAddress
@@ -427,7 +431,7 @@ export async function inspectAndSettleTx(
   // Nếu không khớp đơn hàng nào nhưng có tiền gửi vào treasury và đã đủ xác nhận -> ghi nhận unmatched để đối soát
   if (!order) {
     if (receivedLovelace > 0 && confirmations >= cfg.confirmationsRequired) {
-      db.prepare(
+      await db.prepare(
         `INSERT INTO chain_deposits (tx_hash, order_id, account_id, lovelace, mc_credited, block_height, confirmations, status, note, created_at)
          VALUES (?, NULL, NULL, ?, 0, ?, ?, 'unmatched', 'Giao dịch tới treasury không có orderId hợp lệ', ?)
          ON CONFLICT(tx_hash) DO NOTHING`
@@ -450,7 +454,7 @@ export async function inspectAndSettleTx(
 
   // Chưa đủ số xác nhận trên chuỗi -> chỉ cập nhật tiến độ 'confirming', CHƯA cộng MC
   if (confirmations < cfg.confirmationsRequired) {
-    db.prepare(
+    await db.prepare(
       `UPDATE mc_orders
           SET tx_hash = ?,
               received_lovelace = ?,
@@ -466,8 +470,8 @@ export async function inspectAndSettleTx(
   const now = Date.now()
   const blockTimeMs = info.blockTime > 0 ? info.blockTime * 1000 : now
 
-  const settled = withTransaction((conn): SettleResult => {
-    const freshOrder = conn.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(order!.order_id) as unknown as OrderRow
+  const settled = await withTransaction(async (conn): Promise<SettleResult> => {
+    const freshOrder = await conn.prepare('SELECT * FROM mc_orders WHERE order_id = ?').get(order!.order_id) as unknown as OrderRow
     if (freshOrder.status === 'completed') {
       return {
         txHash,
@@ -480,7 +484,7 @@ export async function inspectAndSettleTx(
 
     // Trường hợp 1: Trả thiếu tiền (receivedLovelace < expected_lovelace)
     if (receivedLovelace < freshOrder.expected_lovelace) {
-      const claim = conn.prepare(
+      const claim = await conn.prepare(
         `INSERT INTO chain_deposits (tx_hash, order_id, account_id, lovelace, mc_credited, block_height, confirmations, status, note, created_at)
          VALUES (?, ?, ?, ?, 0, ?, ?, 'underpaid', ?, ?)
          ON CONFLICT(tx_hash) DO NOTHING`
@@ -497,7 +501,7 @@ export async function inspectAndSettleTx(
       if (Number(claim.changes) === 0) {
         return { txHash, orderId: freshOrder.order_id, action: 'already_processed', confirmations, creditedMc: 0 }
       }
-      conn.prepare(
+      await conn.prepare(
         `UPDATE mc_orders
             SET tx_hash = ?, received_lovelace = ?, credited_mc = 0, block_height = ?, confirmations = ?,
                 status = 'underpaid', failure_reason = ?
@@ -517,7 +521,7 @@ export async function inspectAndSettleTx(
     // Trường hợp 2: Đơn đã hết hạn TRƯỚC KHI thanh toán nhưng vẫn có tiền về -> ghi vào danh sách đối soát thủ công
     const paidAfterExpiry = freshOrder.status === 'expired' || (!freshOrder.submitted_at && blockTimeMs > freshOrder.expires_at)
     if (paidAfterExpiry) {
-      const claim = conn.prepare(
+      const claim = await conn.prepare(
         `INSERT INTO chain_deposits (tx_hash, order_id, account_id, lovelace, mc_credited, block_height, confirmations, status, note, created_at)
          VALUES (?, ?, ?, ?, 0, ?, ?, 'expired_paid', 'Đơn hết hạn nhưng vẫn nhận được ADA - chờ đối soát thủ công', ?)
          ON CONFLICT(tx_hash) DO NOTHING`
@@ -525,7 +529,7 @@ export async function inspectAndSettleTx(
       if (Number(claim.changes) === 0) {
         return { txHash, orderId: freshOrder.order_id, action: 'already_processed', confirmations, creditedMc: 0 }
       }
-      conn.prepare(
+      await conn.prepare(
         `UPDATE mc_orders
             SET tx_hash = ?, received_lovelace = ?, credited_mc = 0, block_height = ?, confirmations = ?,
                 status = 'expired_paid', failure_reason = ?
@@ -546,7 +550,7 @@ export async function inspectAndSettleTx(
     const creditedMc = Math.floor(receivedLovelace / LOVELACE_PER_MC)
 
     // Bước 3.1: Claim tx_hash trong chain_deposits (PRIMARY KEY chống cộng trùng tuyệt đối)
-    const claim = conn.prepare(
+    const claim = await conn.prepare(
       `INSERT INTO chain_deposits (tx_hash, order_id, account_id, lovelace, mc_credited, block_height, confirmations, status, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'credited', ?, ?)
        ON CONFLICT(tx_hash) DO NOTHING`
@@ -566,11 +570,11 @@ export async function inspectAndSettleTx(
     }
 
     // Bước 3.2: Cộng số dư MC vào tài khoản
-    conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(creditedMc, freshOrder.account_id)
-    const accRow = conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(freshOrder.account_id) as { mc_balance: number }
+    await conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(creditedMc, freshOrder.account_id)
+    const accRow = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(freshOrder.account_id) as { mc_balance: number }
 
     // Bước 3.3: Ghi sổ cái bất biến (mc_ledger)
-    conn.prepare(
+    await conn.prepare(
       `INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
        VALUES (?, ?, ?, 'deposit_ada', 'order', ?, ?, ?, ?)`
     ).run(
@@ -590,7 +594,7 @@ export async function inspectAndSettleTx(
     )
 
     // Bước 3.4: Đánh dấu đơn hàng hoàn tất
-    conn.prepare(
+    await conn.prepare(
       `UPDATE mc_orders
           SET tx_hash = ?, received_lovelace = ?, credited_mc = ?, block_height = ?,
               confirmations = ?, status = 'completed', failure_reason = NULL, completed_at = ?
@@ -627,7 +631,7 @@ export async function syncPendingOrdersFromChain(opts?: { client?: BlockfrostCli
   isPollingChain = true
   lastChainSyncAt = now
   try {
-    expireStaleOrders()
+    await expireStaleOrders()
     const cfg = getWalletConfig()
     const client = opts?.client ?? getBlockfrostClient()
 
@@ -640,7 +644,8 @@ export async function syncPendingOrdersFromChain(opts?: { client?: BlockfrostCli
     const checkedHashes = new Set<string>()
 
     // 1. Kiểm tra các đơn đã có tx_hash hoặc unsigned_tx_hash đang ở trạng thái chờ
-    const pendingRows = getDb()
+    const db = await getDb()
+    const pendingRows = await db
       .prepare(
         `SELECT order_id, tx_hash, unsigned_tx_hash FROM mc_orders
           WHERE status IN ('signing', 'submitted', 'confirming')

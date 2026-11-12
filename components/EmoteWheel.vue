@@ -59,7 +59,7 @@ onUnmounted(() => {
         :key="e.id"
         type="button"
         @click="choose(e)"
-        class="w-full p-3 rounded-[6px] bg-surface-elevated border border-hairline hover:border-primary transition-colors flex items-center justify-between text-left cursor-pointer ui-focus-ring"
+        class="w-full p-3 rounded-[2px] bg-surface-elevated border border-hairline hover:border-primary transition-colors flex items-center justify-between text-left cursor-pointer ui-focus-ring"
       >
         <div class="min-w-0 flex-1">
           <div class="text-sm font-semibold text-primary">

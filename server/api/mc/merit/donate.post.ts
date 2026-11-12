@@ -12,18 +12,18 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:merit:donate', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<{ amountMc?: unknown; prayer?: unknown; requestId?: unknown }>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: { amountMc?: unknown; prayer?: unknown; requestId?: unknown } = (await readBody<{ amountMc?: unknown; prayer?: unknown; requestId?: unknown }>(event).catch(() => null)) || {}
 
   const amountMc = typeof body.amountMc === 'number' ? body.amountMc : Number(body.amountMc)
-  const res = donateMeritWithMc(
+  const res = await donateMeritWithMc(
     account.id,
     amountMc,
     String(body.prayer ?? ''),
     String(body.requestId ?? '')
   )
 
-  const overview = getMcOverviewAndHistory(account.id)
+  const overview = await getMcOverviewAndHistory(account.id)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return {
     ok: true,
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
     globalMeritTotal: overview.globalMeritTotal,
     leaderboard: overview.leaderboard,
     recentDonations: overview.recentDonations,
-    inventory: getAccountInventory(account.id)
+    inventory: await getAccountInventory(account.id)
   }
 })
 

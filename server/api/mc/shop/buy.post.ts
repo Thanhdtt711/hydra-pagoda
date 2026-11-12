@@ -12,10 +12,10 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:shop:buy', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<{ itemId?: unknown; requestId?: unknown }>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: { itemId?: unknown; requestId?: unknown } = (await readBody<{ itemId?: unknown; requestId?: unknown }>(event).catch(() => null)) || {}
 
-  const res = purchaseShopItem(
+  const res = await purchaseShopItem(
     account.id,
     String(body.itemId ?? ''),
     String(body.requestId ?? '')
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     item: res.extra.item,
     quantity: res.extra.quantity,
     unlockedAt: res.extra.unlockedAt,
-    inventory: getAccountInventory(account.id)
+    inventory: await getAccountInventory(account.id)
   }
 })
 

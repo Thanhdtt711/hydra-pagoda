@@ -4,6 +4,7 @@ import { useHauDongStore } from '~/stores/hauDong'
 import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
 import UiButton from '~/components/ui/UiButton.vue'
+import { t } from '~/lib/ui/copy'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 
@@ -136,7 +137,7 @@ async function executeConfirmedSponsor() {
       class="p-3.5 rounded-lg border flex items-center justify-between gap-3"
       :class="
         isInsideHauDong
-          ? 'bg-surface-elevated border-[var(--primary,#fcd535)]'
+          ? 'bg-surface-elevated border-[var(--primary,#c9a24b)]'
           : 'bg-surface-card border-hairline'
       "
     >
@@ -144,18 +145,14 @@ async function executeConfirmedSponsor() {
         <div class="flex items-center gap-2">
           <span
             class="w-2 h-2 rounded-full shrink-0"
-            :class="isInsideHauDong ? 'bg-[var(--trading-up,#0ecb81)]' : 'bg-[var(--primary,#fcd535)]'"
+            :class="isInsideHauDong ? 'bg-[var(--trading-up,#0ecb81)]' : 'bg-[var(--primary,#c9a24b)]'"
           />
-          <span class="text-xs font-bold uppercase tracking-wider text-white">
+          <span class="text-xs font-bold text-white">
             {{ isInsideHauDong ? 'Đang hiện diện tại Chiếu Hầu Tứ Phủ' : 'Vị trí: Hướng Đông Đại Hùng Bảo Điện' }}
           </span>
         </div>
         <p class="text-xs text-secondary mt-1 leading-relaxed">
-          {{
-            isInsideHauDong
-              ? 'Bạn đang ở trong không gian Nhà Hầu Đồng. Chắp tay khánh hỷ và đợi Bước 5 mỗi giá để thỉnh lộc MC!'
-              : 'Bước sang Điện Thờ Tứ Phủ bên phải sân chùa để trực tiếp xem Đồng thầy hầu 5 giá và nhận lộc.'
-          }}
+          {{ isInsideHauDong ? t('desc.hdInside') : t('desc.hdOutside') }}
         </p>
       </div>
       <UiButton
@@ -165,7 +162,7 @@ async function executeConfirmedSponsor() {
         class="shrink-0"
         @click="$emit('guideToHauDong')"
       >
-        Bước Tới Điện
+        {{ t('btn.walkToHauDong') }}
       </UiButton>
       <UiButton
         v-else
@@ -174,7 +171,7 @@ async function executeConfirmedSponsor() {
         class="shrink-0"
         @click="handleBowClick"
       >
-        Chắp Tay
+        {{ t('btn.bow') }}
       </UiButton>
     </div>
 
@@ -185,31 +182,31 @@ async function executeConfirmedSponsor() {
         class="py-2 px-2.5 rounded text-xs font-semibold transition cursor-pointer"
         :class="
           activeSubTab === 'live'
-            ? 'bg-[var(--primary,#fcd535)] text-[#181a20] font-bold'
+            ? 'bg-[var(--primary,#c9a24b)] text-[#1a1714] font-bold'
             : 'text-secondary hover:text-white hover:bg-surface-elevated'
         "
         @click="activeSubTab = 'live'"
       >
-        Đàn Lễ Đang Mở
+        {{ t('btn.hdLive') }}
       </button>
       <button
         type="button"
         class="py-2 px-2.5 rounded text-xs font-semibold transition cursor-pointer"
         :class="
           activeSubTab === 'sponsor'
-            ? 'bg-[var(--primary,#fcd535)] text-[#181a20] font-bold'
+            ? 'bg-[var(--primary,#c9a24b)] text-[#1a1714] font-bold'
             : 'text-secondary hover:text-white hover:bg-surface-elevated'
         "
         @click="activeSubTab = 'sponsor'"
       >
-        Mở Đàn (2,500 MC)
+        {{ t('btn.hdOpen') }}
       </button>
       <button
         type="button"
         class="py-2 px-2.5 rounded text-xs font-semibold transition cursor-pointer"
         :class="
           activeSubTab === 'crowdfund'
-            ? 'bg-[var(--primary,#fcd535)] text-[#181a20] font-bold'
+            ? 'bg-[var(--primary,#c9a24b)] text-[#1a1714] font-bold'
             : 'text-secondary hover:text-white hover:bg-surface-elevated'
         "
         @click="activeSubTab = 'crowdfund'"
@@ -240,7 +237,7 @@ async function executeConfirmedSponsor() {
     <!-- Hộp xác nhận tiêu MC -->
     <div
       v-if="confirmModal"
-      class="p-4 rounded-lg bg-surface-elevated border border-[var(--primary,#fcd535)] space-y-3"
+      class="p-4 rounded-lg bg-surface-elevated border border-[var(--primary,#c9a24b)] space-y-3"
     >
       <div class="flex items-center justify-between">
         <span class="text-sm font-bold text-white">Xác nhận Công Đức Mở Đàn</span>
@@ -249,16 +246,12 @@ async function executeConfirmedSponsor() {
         </UiBadge>
       </div>
       <p class="text-xs text-secondary leading-relaxed">
-        {{
-          confirmModal.mode === 'single_open'
-            ? 'Hệ thống sẽ trích 60% (1,500 MC) vào Quỹ Ban Lộc trực tiếp tại Chiếu Hầu, 25% (625 MC) tu bổ Điện Thờ và 15% (375 MC) vào Quỹ Đại Lễ Rằm/Mồng 1. Danh vị của bạn sẽ được khắc lên Cuốn Thư Vàng!'
-            : `Khoản công đức ${confirmModal.amountMc.toLocaleString()} MC sẽ được cộng dồn vào Quỹ Bách Gia. Khi đạt đủ 2,500 MC, Điện Thờ tự động khai đàn!`
-        }}
+        {{ confirmModal.mode === 'single_open' ? t('desc.hdConfirmSingle') : t('desc.hdConfirmPool') }}
       </p>
       <div class="flex items-center justify-end gap-2">
         <UiButton variant="secondary" size="sm" @click="confirmModal = null">Hủy</UiButton>
         <UiButton variant="primary" size="sm" :disabled="hauDong.submitting" @click="executeConfirmedSponsor">
-          {{ hauDong.submitting ? 'Đang xử lý...' : 'Xác Nhận Công Đức' }}
+          {{ hauDong.submitting ? t('btn.processing') : t('btn.confirm') }}
         </UiButton>
       </div>
     </div>
@@ -301,9 +294,9 @@ async function executeConfirmedSponsor() {
               </span>
               <span class="font-numbers text-primary font-semibold">{{ session.stepRemainingSec }}s</span>
             </div>
-            <div class="w-full h-2 rounded-full bg-[#0b0e11] overflow-hidden">
+            <div class="w-full h-2 rounded-full bg-[#100e0c] overflow-hidden">
               <div
-                class="h-full bg-[var(--primary,#fcd535)] transition-all duration-300"
+                class="h-full bg-[var(--primary,#c9a24b)] transition-all duration-300"
                 :style="{ width: `${Math.round(session.stepProgress * 100)}%` }"
               />
             </div>
@@ -317,7 +310,7 @@ async function executeConfirmedSponsor() {
           </div>
 
           <!-- Thông tin Thanh Đồng Mở Đàn & Lời Khấn -->
-          <div class="p-3 rounded-md bg-[#0b0e11] border border-hairline space-y-1">
+          <div class="p-3 rounded-md bg-[#100e0c] border border-hairline space-y-1">
             <div class="flex items-center justify-between text-xs">
               <span class="text-secondary">Chủ lễ / Mở đàn:</span>
               <span class="font-bold text-primary">{{ session.sponsorName }}</span>
@@ -373,7 +366,7 @@ async function executeConfirmedSponsor() {
         <!-- Danh sách 5 Giá Đồng trong vấn hầu hiện tại -->
         <div class="p-3.5 rounded-lg bg-surface-card border border-hairline space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-secondary">
+            <span class="text-xs font-bold text-secondary">
               Trình Tự 5 Giá Đồng (8 Phút / Buổi)
             </span>
             <span class="text-xs text-secondary font-numbers">96 giây / Giá</span>
@@ -386,10 +379,10 @@ async function executeConfirmedSponsor() {
               class="px-3 py-2 rounded-md border flex items-center justify-between gap-2 text-xs"
               :class="
                 d.giaIndex === session.giaIndex
-                  ? 'bg-surface-elevated border-[var(--primary,#fcd535)] text-white'
+                  ? 'bg-surface-elevated border-[var(--primary,#c9a24b)] text-white'
                   : (d.giaIndex || 0) < session.giaIndex
-                    ? 'bg-[#0b0e11] border-hairline text-secondary opacity-75'
-                    : 'bg-[#0b0e11] border-hairline text-secondary'
+                    ? 'bg-[#100e0c] border-hairline text-secondary opacity-75'
+                    : 'bg-[#100e0c] border-hairline text-secondary'
               "
             >
               <div class="flex items-center gap-2.5 min-w-0">
@@ -417,9 +410,9 @@ async function executeConfirmedSponsor() {
         </div>
 
         <div>
-          <h4 class="text-sm font-bold text-white tracking-wide">Điện Thờ Tứ Phủ Đang Tịnh Đàn</h4>
+          <h4 class="text-sm font-bold text-white">{{ t('title.hdRest') }}</h4>
           <p class="text-xs text-secondary leading-relaxed mt-1 max-w-sm mx-auto">
-            Nghi lễ Hầu Đồng 5 Giá diễn ra định kỳ hằng ngày vào đúng <span class="text-primary font-semibold">11h00 Trưa (Giờ Ngọ)</span>. Quý đạo hữu có thể hoan hỷ chờ đến giờ hành lễ, hoặc chọn Phát Tâm Mở Đàn Đặc Cách / Góp Bách Gia để mở đàn ngay!
+            {{ t('desc.hdRest') }}
           </p>
         </div>
 
@@ -458,7 +451,7 @@ async function executeConfirmedSponsor() {
 
         <!-- 2 Nút Mở Đàn Thay Thế (Mở Đàn Đặc Cách & Góp Bách Gia) -->
         <div class="space-y-2 pt-1 max-w-sm mx-auto">
-          <div class="text-xs font-semibold uppercase tracking-wider text-secondary">
+          <div class="text-xs font-semibold text-secondary">
             Hoặc Khai Mở Vấn Hầu Riêng Ngay Bây Giờ
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -468,7 +461,8 @@ async function executeConfirmedSponsor() {
               class="justify-center text-xs"
               @click="activeSubTab = 'sponsor'"
             >
-              Mở Đàn (2,500 MC)
+              {{ t('btn.hdOpen') }}
+              <span class="font-numbers ml-1">2,500 MC</span>
             </UiButton>
             <UiButton
               variant="secondary"
@@ -476,7 +470,8 @@ async function executeConfirmedSponsor() {
               class="justify-center text-xs"
               @click="activeSubTab = 'crowdfund'"
             >
-              Góp Bách Gia ({{ crowdfundPercent }}%)
+              {{ t('btn.hdPool') }}
+              <span class="font-numbers ml-1">{{ crowdfundPercent }}%</span>
             </UiButton>
           </div>
         </div>
@@ -504,8 +499,8 @@ async function executeConfirmedSponsor() {
       <div class="p-4 rounded-lg bg-surface-card border border-hairline space-y-3.5">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-bold text-white">Phát Tâm Mở Đàn Đặc Cách</h3>
-            <p class="text-xs text-secondary mt-0.5">Khai mở 1 buổi hầu 8 phút (5 Giá) &amp; khắc tên lên Cuốn Thư Vàng</p>
+            <h3 class="text-sm font-bold text-white">{{ t('title.hdSponsor') }}</h3>
+            <p class="text-xs text-secondary mt-0.5">{{ t('desc.hdSponsor') }}</p>
           </div>
           <UiBadge variant="warning">
             <span class="font-numbers">2,500 MC</span>
@@ -513,7 +508,7 @@ async function executeConfirmedSponsor() {
         </div>
 
         <!-- Phân bổ dòng tiền minh bạch 60 / 25 / 15 -->
-        <div class="grid grid-cols-3 gap-2 text-center p-2.5 rounded-md bg-[#0b0e11] border border-hairline">
+        <div class="grid grid-cols-3 gap-2 text-center p-2.5 rounded-md bg-[#100e0c] border border-hairline">
           <div>
             <div class="text-xs text-secondary">60% Quỹ Ban Lộc</div>
             <div class="text-sm font-bold text-up font-numbers mt-0.5">1,500 MC</div>
@@ -530,7 +525,7 @@ async function executeConfirmedSponsor() {
 
         <!-- Chọn Giá Đồng Tâm Nguyện -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-secondary uppercase tracking-wider">
+          <label class="block text-xs font-semibold text-secondary">
             Chọn Giá Đồng Tâm Nguyện Chủ Đạo
           </label>
           <div class="space-y-1.5">
@@ -539,8 +534,8 @@ async function executeConfirmedSponsor() {
               class="w-full p-2.5 rounded-md border text-left text-xs transition cursor-pointer flex items-center justify-between"
               :class="
                 selectedCustomDeity === 'default'
-                  ? 'bg-surface-elevated border-[var(--primary,#fcd535)] text-white'
-                  : 'bg-[#0b0e11] border-hairline text-secondary hover:text-white'
+                  ? 'bg-surface-elevated border-[var(--primary,#c9a24b)] text-white'
+                  : 'bg-[#100e0c] border-hairline text-secondary hover:text-white'
               "
               @click="selectedCustomDeity = 'default'"
             >
@@ -556,8 +551,8 @@ async function executeConfirmedSponsor() {
               class="w-full p-2.5 rounded-md border text-left text-xs transition cursor-pointer flex items-center justify-between"
               :class="
                 selectedCustomDeity === 'duc_ong_tran_trieu'
-                  ? 'bg-surface-elevated border-[var(--primary,#fcd535)] text-white'
-                  : 'bg-[#0b0e11] border-hairline text-secondary hover:text-white'
+                  ? 'bg-surface-elevated border-[var(--primary,#c9a24b)] text-white'
+                  : 'bg-[#100e0c] border-hairline text-secondary hover:text-white'
               "
               @click="selectedCustomDeity = 'duc_ong_tran_trieu'"
             >
@@ -573,8 +568,8 @@ async function executeConfirmedSponsor() {
               class="w-full p-2.5 rounded-md border text-left text-xs transition cursor-pointer flex items-center justify-between"
               :class="
                 selectedCustomDeity === 'ong_hoang_bay'
-                  ? 'bg-surface-elevated border-[var(--primary,#fcd535)] text-white'
-                  : 'bg-[#0b0e11] border-hairline text-secondary hover:text-white'
+                  ? 'bg-surface-elevated border-[var(--primary,#c9a24b)] text-white'
+                  : 'bg-[#100e0c] border-hairline text-secondary hover:text-white'
               "
               @click="selectedCustomDeity = 'ong_hoang_bay'"
             >
@@ -589,15 +584,15 @@ async function executeConfirmedSponsor() {
 
         <!-- Lời Khấn Nguyện -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-secondary uppercase tracking-wider">
+          <label class="block text-xs font-semibold text-secondary">
             Lời Khấn Nguyện Ghi Danh Lên Cuốn Thư Vàng
           </label>
           <textarea
             v-model="prayerInput"
             rows="2"
             maxlength="180"
-            class="w-full rounded-md bg-[#0b0e11] border border-hairline px-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--primary,#fcd535)]"
-            placeholder="Nhập lời cầu nguyện bình an, tài lộc cho bản thân và gia quyến..."
+            class="w-full rounded-md bg-[#100e0c] border border-hairline px-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--primary,#c9a24b)] focus:ring-1 focus:ring-primary"
+            :placeholder="t('desc.prayerHint')"
           />
         </div>
 
@@ -619,8 +614,8 @@ async function executeConfirmedSponsor() {
       <div class="p-4 rounded-lg bg-surface-card border border-hairline space-y-3.5">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-bold text-white">Quỹ Bách Gia Trăm Họ Mở Đàn</h3>
-            <p class="text-xs text-secondary mt-0.5">Nhiều thiện tín cùng góp tâm — Đủ 2,500 MC tự động khai đàn</p>
+            <h3 class="text-sm font-bold text-white">{{ t('title.hdCrowd') }}</h3>
+            <p class="text-xs text-secondary mt-0.5">{{ t('desc.hdCrowd') }}</p>
           </div>
           <UiBadge variant="neutral">
             <span class="font-numbers">{{ crowdfundPercent }}%</span>
@@ -635,9 +630,9 @@ async function executeConfirmedSponsor() {
               {{ hauDong.crowdfund.currentMc.toLocaleString() }} / {{ hauDong.crowdfund.targetMc.toLocaleString() }} MC
             </span>
           </div>
-          <div class="w-full h-2.5 rounded-full bg-[#0b0e11] overflow-hidden border border-hairline">
+          <div class="w-full h-2.5 rounded-full bg-[#100e0c] overflow-hidden border border-hairline">
             <div
-              class="h-full bg-[var(--primary,#fcd535)] transition-all duration-300"
+              class="h-full bg-[var(--primary,#c9a24b)] transition-all duration-300"
               :style="{ width: `${crowdfundPercent}%` }"
             />
           </div>
@@ -648,7 +643,7 @@ async function executeConfirmedSponsor() {
 
         <!-- Mức góp nhanh -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-secondary uppercase tracking-wider">
+          <label class="block text-xs font-semibold text-secondary">
             Chọn Mức Công Đức Góp Quỹ (Tối thiểu 50 MC)
           </label>
           <div class="grid grid-cols-4 gap-2">
@@ -659,8 +654,8 @@ async function executeConfirmedSponsor() {
               class="py-2 rounded-md border text-xs font-bold font-numbers transition cursor-pointer"
               :class="
                 crowdfundAmountMc === amt
-                  ? 'bg-[var(--primary,#fcd535)] text-[#181a20] border-[var(--primary,#fcd535)]'
-                  : 'bg-[#0b0e11] text-white border-hairline hover:bg-surface-elevated'
+                  ? 'bg-[var(--primary,#c9a24b)] text-[#1a1714] border-[var(--primary,#c9a24b)]'
+                  : 'bg-[#100e0c] text-white border-hairline hover:bg-surface-elevated'
               "
               @click="crowdfundAmountMc = amt"
             >
@@ -680,14 +675,14 @@ async function executeConfirmedSponsor() {
 
         <!-- Danh sách thiện tín vừa góp quỹ -->
         <div v-if="hauDong.crowdfund.recentContributors.length > 0" class="border-t border-hairline pt-3 space-y-2">
-          <div class="text-xs font-bold text-secondary uppercase tracking-wider">
+          <div class="text-xs font-bold text-secondary">
             Thiện Tín Vừa Góp Quỹ ({{ hauDong.crowdfund.contributorCount }})
           </div>
           <div class="space-y-1.5">
             <div
               v-for="(c, idx) in hauDong.crowdfund.recentContributors"
               :key="idx"
-              class="px-3 py-2 rounded bg-[#0b0e11] border border-hairline flex items-center justify-between text-xs"
+              class="px-3 py-2 rounded bg-[#100e0c] border border-hairline flex items-center justify-between text-xs"
             >
               <span class="font-semibold text-white truncate">{{ c.display_name }}</span>
               <span class="font-numbers font-bold text-up shrink-0">+{{ c.amount_mc.toLocaleString() }} MC</span>

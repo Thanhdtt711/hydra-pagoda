@@ -97,18 +97,21 @@ Nitro API Routes (`server/api/mc/*`, `server/api/auth/*`, `server/api/shop/*`)
 
 ---
 
-## 5. Design System: Binance Dark (`DESIGN.md`)
+## 5. Design System: Sơn mài và vàng thếp (`DESIGN.md`)
 
-All UI elements must strictly adhere to the Binance Dark design language:
+All UI elements must strictly adhere to the "Sơn mài và vàng thếp" (lacquer and gold leaf) design language:
 
 - **Colors:**
-  - Root Canvas: `#0b0e11`
-  - Card Surfaces: `#1e2329`
-  - Elevated Surfaces / Hovers: `#2b3139`
-  - Hairline Borders: `#2b3139`
-  - Primary Accent: Binance Yellow (`#fcd535`, active `#f0b90b`, disabled `#3a3a1f`, text on yellow `#181a20`)
+  - Root Canvas: `#100e0c`
+  - Card Surfaces: `#1a1714`
+  - Elevated Surfaces / Hovers: `#26221d`
+  - Hairline Borders: `#332d26`
+  - Accent (text, borders, selected state): Gold leaf `#c9a24b`, active `#b58f3a`, disabled `#3a3320`
+  - Primary action button only (`UiButton variant="primary"`, one per screen): Seal red `#b8372b`, hover `#9e2d22`, disabled `#4a2622`, text `#f6ecd8`
   - Semantic Trading Colors: Green (`#0ecb81`) and Red (`#f6465d`) are **strictly reserved for tabular numbers, transaction gains/losses, and status indicators**. Never use them as background card fills.
+- **Shape:** two corner styles only (2px square, fully round for circular objects). One shadow level (`shadow-2xl`) for floating layers. No glassmorphism, no glow, no gradients, no `uppercase tracking-wider` labels (enforced by `scripts/verify-ui-primitives.mjs`).
 - **Typography:**
+  - Headings and body: `Be Vietnam Pro` (bold for headings). Numbers: `IBM Plex Sans`. Both have full Vietnamese diacritics. Do not use serif fonts in HTML UI (`ui-font-serif` and `Noto Serif Display` are removed and blocked by `verify-ui-primitives.mjs`), and do not use Cinzel or Playfair Display (no vietnamese subset).
   - Minimum font size: **`12px` (`text-xs`)**. Fonts smaller than 12px (e.g. `text-[10px]`, `text-[11px]`) are prohibited and will fail `scripts/verify-ui-primitives.mjs`.
   - Numbers and blockchain hashes must use `font-numbers` (`tabular-nums lining-nums`).
 - **Right-Sliding Drawer Paradigm:**

@@ -49,7 +49,7 @@ const ownerships: Array<{ id: OwnershipFilter; label: string }> = [
       <!-- Thanh tiến độ -->
       <div class="w-full h-1.5 rounded-full bg-surface-elevated overflow-hidden">
         <div
-          class="h-full bg-gradient-to-r from-amber-500 to-gold transition-all duration-500 rounded-full"
+          class="h-full bg-gold transition-all duration-500 rounded-full"
           :style="{ width: `${cardsStore.collectionStats.percent}%` }"
         />
       </div>

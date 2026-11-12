@@ -56,7 +56,7 @@ export default defineWebSocketHandler({
     )
   },
 
-  message(peer, message) {
+  async message(peer, message) {
     try {
       const raw = (message as any).rawData || message
       const isBinary =
@@ -140,7 +140,7 @@ export default defineWebSocketHandler({
         // Có vé WS hợp lệ (đổi từ phiên đăng nhập ví) => tên do SERVER đặt theo tài khoản,
         // bỏ qua tên client gửi. Không có vé => khách, tên cố định "Khách xxxx" để không ai
         // mạo danh người chơi đã xác thực.
-        const account = data.ticket ? consumeWsTicket(data.ticket) : null
+        const account = data.ticket ? await consumeWsTicket(data.ticket) : null
         if (data.ticket && !account) {
           peer.send(JSON.stringify({ type: 'server:error', code: 'bad_ticket', message: 'Vé kết nối không hợp lệ hoặc đã hết hạn' }))
         }
@@ -175,9 +175,18 @@ export default defineWebSocketHandler({
             ? 'male'
             : 'female'
 
+        const rawGuestFortune = cleanText(data.fortuneName, 40, '')
+        const safeGuestFortune =
+          rawGuestFortune &&
+          !rawGuestFortune.startsWith('addr_') &&
+          !/^khách\s/i.test(rawGuestFortune) &&
+          rawGuestFortune !== 'Hành Giả Tâm An'
+            ? rawGuestFortune
+            : ''
+
         const presence: PilgrimPresence = {
           id: requestedId,
-          name: account ? account.displayName : `Khách ${requestedId.slice(-4)}`,
+          name: account ? account.displayName : (safeGuestFortune || `Khách ${requestedId.slice(-4)}`),
           title: cleanText(data.title, 40, 'Sơ Tâm Nhập Đạo'),
           country: ALLOWED_COUNTRIES.has(rawCountry) ? rawCountry : 'vietnam',
           gender: rawGender,

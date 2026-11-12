@@ -49,7 +49,7 @@ function getActionLabel(action: string): string {
     @close="emit('update:modelValue', false)"
   >
     <!-- Live Count Stats Banner -->
-    <div class="px-3 py-2 bg-surface-elevated border border-hairline rounded-[6px] flex items-center justify-between text-xs font-numbers">
+    <div class="px-3 py-2 bg-surface-elevated border border-hairline rounded-[2px] flex items-center justify-between text-xs font-numbers">
       <div class="flex items-center gap-2 text-trading-up">
         <span class="w-2 h-2 rounded-full bg-trading-up"></span>
         <span class="font-bold">{{ pilgrims.length + 1 }} ĐỒNG TU ĐANG CÙNG CHIÊM BÁI</span>
@@ -60,9 +60,9 @@ function getActionLabel(action: string): string {
     <!-- Pilgrims List -->
     <div class="space-y-2 font-sans">
       <!-- Local User Entry (You) -->
-      <div class="p-3 rounded-[6px] bg-surface-elevated border border-primary/40 flex items-center justify-between">
+      <div class="p-3 rounded-[2px] bg-surface-elevated border border-primary/40 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-[4px] bg-surface-card border border-hairline flex items-center justify-center font-numbers text-xs font-bold text-gold">
+          <div class="w-8 h-8 rounded-[2px] bg-surface-card border border-hairline flex items-center justify-center font-numbers text-xs font-bold text-gold">
             {{ COUNTRY_NAMES[localCountry]?.code || 'VN' }}
           </div>
           <div>
@@ -80,10 +80,10 @@ function getActionLabel(action: string): string {
       <div 
         v-for="p in pilgrims" 
         :key="p.id"
-        class="p-3 rounded-[6px] bg-surface-elevated border border-hairline flex items-center justify-between gap-2"
+        class="p-3 rounded-[2px] bg-surface-elevated border border-hairline flex items-center justify-between gap-2"
       >
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-8 h-8 rounded-[4px] bg-surface-card border border-hairline flex items-center justify-center font-numbers text-xs font-bold text-secondary shrink-0">
+          <div class="w-8 h-8 rounded-[2px] bg-surface-card border border-hairline flex items-center justify-center font-numbers text-xs font-bold text-secondary shrink-0">
             {{ COUNTRY_NAMES[p.country]?.code || 'VN' }}
           </div>
           <div class="min-w-0">

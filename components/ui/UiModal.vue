@@ -56,7 +56,7 @@ onUnmounted(() => {
       <header class="flex items-start justify-between gap-3 px-4 py-3.5 border-b border-hairline shrink-0 bg-surface-card">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2.5 flex-wrap">
-            <h2 class="text-sm font-bold tracking-tight text-primary m-0 truncate">{{ props.title }}</h2>
+            <h2 class="text-base font-bold text-primary m-0 truncate">{{ props.title }}</h2>
             <slot name="header-badge" />
           </div>
           <p v-if="props.subtitle" class="text-xs text-secondary mt-1 m-0 leading-normal line-clamp-2">
@@ -69,7 +69,7 @@ onUnmounted(() => {
           <button
             type="button"
             aria-label="Đóng cửa sổ"
-            class="w-7 h-7 inline-flex items-center justify-center rounded text-secondary hover:text-primary hover:bg-surface-elevated transition-colors ui-focus-ring cursor-pointer border-none bg-transparent"
+            class="w-[40px] h-[40px] shrink-0 inline-flex items-center justify-center rounded text-secondary hover:text-primary hover:bg-surface-elevated transition-colors ui-focus-ring cursor-pointer border-none bg-transparent"
             @click="emit('close')"
           >
             <ZenIcon name="x" :size="16" />

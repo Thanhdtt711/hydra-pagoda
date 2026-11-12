@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'auth:nonce', 10, 60_000)
   const body = await readBody<{ address?: unknown }>(event)
-  const r = issueNonce(event, body?.address)
+  const r = await issueNonce(event, body?.address)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return { ...r, networkId: getWalletConfig().networkId }
 })

@@ -13,13 +13,18 @@
     "wallet:test:spend": "node scripts/wallet/test-spend.mjs",
     "wallet:test:hydra": "node scripts/wallet/test-hydra-l2.mjs",
     "wallet:test:meditation": "node scripts/wallet/test-meditation.mjs",
+    "wallet:test:hau-dong": "node scripts/wallet/test-hau-dong.mjs",
+    "wallet:test:vietnam-day": "node --experimental-strip-types scripts/wallet/test-vietnam-day.mjs",
     "hydra:mock": "node scripts/hydra-mock-server.mjs",
     "hydra:prepare": "node scripts/hydra-prepare.mjs",
     "hydra:up": "docker compose -f docker-compose.hydra.yml up -d",
     "hydra:down": "docker compose -f docker-compose.hydra.yml down",
     "hydra:logs": "docker compose -f docker-compose.hydra.yml logs -f --tail=50",
     "boi:test": "node --experimental-strip-types scripts/boi/test-fortune-engine.mjs",
-    "boi:test:golden": "node --experimental-strip-types scripts/boi/test-golden-suite.mjs"
+    "boi:test:golden": "node --experimental-strip-types scripts/boi/test-golden-suite.mjs",
+    "typecheck": "vue-tsc --noEmit",
+    "verify:copy": "node scripts/verify-copy-budget.mjs",
+    "copy:inventory": "node scripts/copy-inventory.mjs"
   },
   "dependencies": {
     "@hydra-sdk/cardano-wasm": "1.0.0",
@@ -31,6 +36,7 @@
     "@scure/base": "1.2.4",
     "cbor2": "1.9.0",
     "nuxt": "^3.15.4",
+    "pg": "^8.23.1",
     "pinia": "^3.0.1",
     "three": "^0.186.1",
     "vue": "^3.5.13"
@@ -38,8 +44,10 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",
     "@types/node": "^22.13.9",
+    "@types/pg": "^8.23.1",
     "@types/three": "^0.186.0",
     "tailwindcss": "^4.3.4",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vue-tsc": "^3.3.14"
   }
 }

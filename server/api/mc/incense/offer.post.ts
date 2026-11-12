@@ -3,6 +3,8 @@ import { assertSameOrigin, getSessionAccount } from '../../../utils/wallet/auth'
 import { credit } from '../../../utils/wallet/mcService'
 import { getDb } from '../../../utils/wallet/db'
 import { getHydraProof } from '../../../utils/hydra/hydraQueue'
+import { getVietnamDayKey } from '../../../../lib/time/vietnamDay'
+import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 const DHAMMAPADA_VERSES = [
   'Tâm an vạn sự an, tâm bình thế giới bình.',
@@ -17,6 +19,7 @@ const DHAMMAPADA_VERSES = [
 
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
+  rateLimit(event, 'mc:incense:offer', 30, 60_000)
 
   const body = (await readBody(event).catch(() => ({}))) || {}
   const location = body.location === 'hall' ? 'hall' : 'courtyard'
@@ -24,7 +27,7 @@ export default defineEventHandler(async (event) => {
   const randomIndex = Math.floor(Math.random() * DHAMMAPADA_VERSES.length)
   const verse = DHAMMAPADA_VERSES[randomIndex]
 
-  const account = getSessionAccount(event)
+  const account = await getSessionAccount(event)
   if (!account) {
     // Khách vãng lai (chưa kết nối ví): Vẫn được dâng hương thành tâm
     return {
@@ -38,14 +41,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getVietnamDayKey()
   const refId = `incense_${account.id}_${todayStr}`
 
   // Kiểm tra xem hôm nay tài khoản đã nhận lộc dâng hương chưa
-  const db = getDb()
-  const existing = db
+  const db = await getDb()
+  const existing = await db
     .prepare('SELECT id, balance_after FROM mc_ledger WHERE reason = ? AND ref_id = ?')
-    .get('incense_daily', refId) as { id: number; balance_after: number } | undefined
+    .get<{ id: number; balance_after: number }>('incense_daily', refId)
 
   if (existing) {
     const hydra = await getHydraProof(existing.id).catch(() => null)
@@ -63,7 +66,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Lần đầu trong ngày: Tặng 15 MC công đức dâng hương
-  const creditRes = credit(account.id, 15, 'incense_daily', {
+  const creditRes = await credit(account.id, 15, 'incense_daily', {
     refType: 'incense',
     refId,
     metadata: { location, date: todayStr }

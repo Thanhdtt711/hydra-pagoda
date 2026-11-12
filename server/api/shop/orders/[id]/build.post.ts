@@ -10,10 +10,10 @@ import { rateLimit } from '../../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'shop:orders:build', 20, 60_000)
-  const account = requireSession(event)
+  const account = await requireSession(event)
   const orderId = String(getRouterParam(event, 'id') || '')
   const body = await readBody<{ utxos?: unknown; changeAddress?: unknown }>(event)
-  const res = buildOrderTxForAccount(account, orderId, body ?? {})
+  const res = await buildOrderTxForAccount(account, orderId, body ?? {})
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return res
 })

@@ -10,19 +10,19 @@ import { rateLimit } from '../../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'shop:orders:submit', 20, 60_000)
-  const account = requireSession(event)
+  const account = await requireSession(event)
   const orderId = String(getRouterParam(event, 'id') || '')
   const body = await readBody<{ txHash?: unknown }>(event)
-  let order = submitOrderTxHash(account, orderId, body?.txHash)
+  let order = await submitOrderTxHash(account, orderId, body?.txHash)
 
   if (order.txHash && getWalletConfig().blockfrostApiKey) {
     try {
       await inspectAndSettleTx(order.txHash, { expectedOrderId: order.orderId })
-      order = submitOrderTxHash(account, orderId, order.txHash)
+      order = await submitOrderTxHash(account, orderId, order.txHash)
     } catch { /* giao dịch vừa gửi có thể chưa lên block ngay, sẽ được poller cập nhật */ }
   }
 
-  const freshAccount = getSessionAccount(event) ?? account
+  const freshAccount = (await getSessionAccount(event)) ?? account
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return { order, account: freshAccount }
 })

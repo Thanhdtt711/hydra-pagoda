@@ -14,6 +14,7 @@ import {
     buildPartGeometries,
     disposePartGeometries,
     getCachedPartGeometries,
+    type AvatarPalette,
     type AvatarPartGeometries
 } from './AvatarGeometry'
 
@@ -177,6 +178,14 @@ export class LowPolyAvatarModel implements AvatarModel {
     public setOutfitColor(colorHex: number) {
         const base = AVATAR_PALETTES[this.currentCountry] ?? AVATAR_PALETTES.vietnam
         const geos = buildPartGeometries({ ...base, gender: this.currentGender, robeColor: colorHex })
+        this.assignGeometries(geos)
+        this.releaseOwnedGeometries()
+        this.ownedGeometries = geos
+    }
+
+    /** Áp dụng bộ tạo hình / màu sắc tùy chỉnh riêng (ví dụ NPC Thầy Trụ Trì). */
+    public setCustomPalette(palette: AvatarPalette) {
+        const geos = buildPartGeometries({ ...palette, gender: palette.gender ?? this.currentGender })
         this.assignGeometries(geos)
         this.releaseOwnedGeometries()
         this.ownedGeometries = geos

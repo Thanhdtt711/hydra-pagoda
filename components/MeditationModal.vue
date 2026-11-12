@@ -4,6 +4,7 @@ import { zenAudio } from '~/lib/audio/ZenAudio'
 import { useUserStore } from '~/stores/user'
 import UiModal from '~/components/ui/UiModal.vue'
 import UiButton from '~/components/ui/UiButton.vue'
+import { t } from '~/lib/ui/copy'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -69,7 +70,7 @@ onUnmounted(() => {
     <!-- Config View -->
     <div v-if="!isMeditating" class="space-y-4 font-sans text-primary">
       <div>
-        <label class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">THỜI LƯỢNG THIỀN ĐỊNH</label>
+        <label class="text-xs font-semibold text-secondary mb-2 block">THỜI LƯỢNG THIỀN ĐỊNH</label>
         <div class="grid grid-cols-4 gap-2">
           <button 
             v-for="mins in [3, 5, 15, 30]" 
@@ -77,14 +78,14 @@ onUnmounted(() => {
             type="button"
             @click="durationMinutes = mins"
             :class="durationMinutes === mins ? 'bg-surface-elevated text-primary font-bold border-primary' : 'bg-surface-card text-secondary border-hairline hover:bg-surface-elevated hover:text-primary'"
-            class="py-2.5 rounded-[6px] font-numbers text-xs transition-colors border text-center cursor-pointer ui-focus-ring"
+            class="py-2.5 rounded-[2px] font-numbers text-xs transition-colors border text-center cursor-pointer ui-focus-ring"
           >
             {{ mins }} Phút
           </button>
         </div>
       </div>
 
-      <div class="bg-surface-elevated p-3.5 rounded-[6px] border border-hairline space-y-1.5 text-xs text-secondary leading-relaxed">
+      <div class="bg-surface-elevated p-3.5 rounded-[2px] border border-hairline space-y-1.5 text-xs text-secondary leading-relaxed">
         <div class="text-primary font-semibold mb-1">Quy tắc nhịp thở 4-4-6:</div>
         <div>- Hít vào sâu bằng mũi trong 4 giây</div>
         <div>- Giữ hơi thở nhẹ nhàng trong 4 giây</div>
@@ -113,7 +114,7 @@ onUnmounted(() => {
         />
         <div class="text-center">
           <div class="font-numbers text-3xl font-bold text-primary tracking-tight">{{ formattedTime }}</div>
-          <div class="font-sans text-xs text-gold uppercase mt-1 tracking-wider font-semibold">{{ breathState }}</div>
+          <div class="font-sans text-xs text-gold mt-1 font-semibold">{{ breathState }}</div>
         </div>
       </div>
 
@@ -127,7 +128,7 @@ onUnmounted(() => {
           block
           @click="endMeditation"
         >
-          Kết Thúc Thiền Định
+          {{ t('btn.endMeditation') }}
         </UiButton>
       </div>
     </div>

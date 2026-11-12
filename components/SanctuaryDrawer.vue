@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { zenAudio } from '~/lib/audio/ZenAudio'
+import { t } from '~/lib/ui/copy'
 import {
   getPresetQuestions,
   getTopicLabel,
@@ -45,7 +46,7 @@ import UiSelectableCard from '~/components/ui/UiSelectableCard.vue'
 import UiTabs from '~/components/ui/UiTabs.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import UiInput from '~/components/ui/UiInput.vue'
-import ZenIcon from '~/components/ZenIcon.vue'
+import ZenIcon, { type WhitelistedIconName } from '~/components/ZenIcon.vue'
 import HauDongPanel from '~/components/HauDongPanel.vue'
 import { useHauDongStore } from '~/stores/hauDong'
 import CardPackCard from '~/components/cards/CardPackCard.vue'
@@ -313,8 +314,8 @@ onMounted(() => {
   if (sp) {
     if (sp.gender === 'nu') user.setGender('female')
     else if (sp.gender === 'nam') user.setGender('male')
-    if (sp.fullName && (!user.name || user.name.startsWith('addr_'))) {
-      user.name = sp.fullName
+    if (sp.fullName?.trim()) {
+      user.name = sp.fullName.trim()
     }
   }
   partnerContacts.value = loadPartnerContacts()
@@ -323,7 +324,7 @@ onMounted(() => {
   void cards.fetchInventory()
 })
 
-function handleSaveProfile() {
+async function handleSaveProfile() {
   profileStatusMsg.value = null
   fortuneNotice.value = null
   profileFieldErrors.value = {}
@@ -351,13 +352,21 @@ function handleSaveProfile() {
   savedProfile.value = saved
   if (saved.gender === 'nu') user.setGender('female')
   else if (saved.gender === 'nam') user.setGender('male')
-  if (saved.fullName) user.name = saved.fullName
   isEditingProfile.value = false
   profileStatusMsg.value = 'Hồ sơ Bát Tự đã xác nhận thành công! Đã mở khóa các môn thỉnh quẻ.'
   zenAudio.playTempleBell()
+
+  // Đồng bộ tên hồ sơ lên server trước rồi mới cập nhật user.name để multiplayer rejoin nhận đúng tên mới
+  const cleanName = saved.fullName?.trim() || ''
+  if (wallet.accountId) {
+    await wallet.syncFortuneProfileName(cleanName || null)
+  }
+  if (cleanName) {
+    user.name = cleanName
+  }
 }
 
-function handleDeleteProfile() {
+async function handleDeleteProfile() {
   clearSavedProfile()
   savedProfile.value = null
   profileForm.value = { fullName: '', birthDate: '', birthHour: '', gender: '' as any }
@@ -367,6 +376,11 @@ function handleDeleteProfile() {
   isEditingProfile.value = true
   fortuneResult.value = null
   profileStatusMsg.value = 'Đã xóa toàn bộ hồ sơ cá nhân.'
+
+  if (wallet.accountId) {
+    await wallet.syncFortuneProfileName(null)
+  }
+  user.name = wallet.displayName || 'Hành Giả Tâm An'
 }
 
 function handleSelectPartnerFromContact(contact: PersonProfile) {
@@ -437,16 +451,16 @@ function getMucBadgeStyle(muc?: MucQue | string): string {
     case 'cat':
       return 'border-[var(--trading-up,#0ecb81)] bg-[rgba(14,203,129,0.15)] text-[var(--trading-up,#0ecb81)]'
     case 'binh':
-      return 'border-[var(--hairline-on-dark,#2b3139)] bg-[var(--surface-elevated-dark,#2b3139)] text-[var(--text-secondary,#929aa5)]'
+      return 'border-[var(--hairline-on-dark,#26221d)] bg-[var(--surface-elevated-dark,#26221d)] text-[var(--text-secondary,#a89c88)]'
     case 'hung':
     case 'dai_hung':
       return 'border-[var(--trading-down,#f6465d)] bg-[rgba(246,70,93,0.15)] text-[var(--trading-down,#f6465d)]'
     default:
-      return 'border-[var(--primary,#fcd535)] bg-[rgba(252,213,53,0.15)] text-[var(--primary,#fcd535)]'
+      return 'border-[var(--primary,#c9a24b)] bg-[rgba(201,162,75,0.15)] text-[var(--primary,#c9a24b)]'
   }
 }
 
-function getMucIconName(muc?: MucQue | string): string {
+function getMucIconName(muc?: MucQue | string): WhitelistedIconName {
   switch (muc) {
     case 'dai_cat':
     case 'cat':
@@ -586,17 +600,13 @@ async function executeDirectFortuneRoll(payload: {
     zenAudio.playFortuneShaking()
 
     if (payload.paymentMode === 'free_daily' && !wallet.isConnected) {
-      const recentBlockIds = mergedFortuneHistory.value
-        .slice(0, 3)
-        .flatMap((h: any) => h.fortune?.selectedBlockIds || [])
       const generated = generateFortune({
-        category: payload.category,
+        mon: payload.category,
         mode: payload.mode,
         questionId: payload.questionId,
         customQuestion: payload.customQuestion,
         profile: payload.profile,
-        partnerProfile: payload.partnerProfile,
-        recentBlockIds
+        partnerProfile: payload.partnerProfile
       })
 
       markDailyFreeUsed(payload.category)
@@ -939,7 +949,8 @@ const attireItems = computed(() => {
   ]
 })
 
-function tryOnOutfit(countryId: string) {
+function tryOnOutfit(countryId?: string) {
+  if (!countryId) return
   emit('outfitChanged', countryId as CountryId)
   user.setCountry(countryId as CountryId)
   zenAudio.playWoodenFish()
@@ -1198,7 +1209,7 @@ function sendMantraMessage(text: string) {
 
         <!-- Title Block (Full Width: Eyebrow, Name, Subtitle) -->
         <div class="mt-2">
-          <div class="text-xs font-bold uppercase tracking-wider text-secondary">
+          <div class="text-xs font-bold text-secondary">
             {{ currentMeta.badge }}
           </div>
           <h2 class="text-base sm:text-lg font-bold text-white leading-snug mt-0.5">
@@ -1227,7 +1238,7 @@ function sendMantraMessage(text: string) {
       >
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-secondary">Xác nhận tiêu MC Coin</div>
+            <div class="text-xs font-semibold text-secondary">Xác nhận tiêu MC Coin</div>
             <div class="text-sm font-bold text-white mt-0.5">{{ pendingConfirm.title }}</div>
           </div>
           <UiBadge variant="warning">
@@ -1266,23 +1277,23 @@ function sendMantraMessage(text: string) {
           <!-- Cảnh Báo Vị Trí: Cần Đến Bàn Xem Quẻ -->
           <div
             v-if="props.isNearFortune === false"
-            class="p-3.5 rounded-lg border border-primary/50 bg-[rgba(252,213,53,0.08)] flex flex-col gap-2 text-left"
+            class="p-3.5 rounded-lg border border-primary/50 bg-[rgba(201,162,75,0.08)] flex flex-col gap-2 text-left"
           >
             <div class="flex items-center gap-2 text-xs font-bold text-primary">
               <ZenIcon name="triangle-alert" :size="16" class="text-primary shrink-0" />
               <span>Chưa đến Bàn Xem Quẻ</span>
             </div>
             <p class="text-xs text-secondary leading-relaxed">
-              Đạo hữu cần bước lại gần <span class="text-white font-semibold">Bàn Xin Xăm &amp; Pháp Bảo</span> ngoài sân Chùa để thành tâm thỉnh quẻ.
+              Lại gần <span class="text-white font-semibold">Bàn Xin Xăm</span> ngoài sân chùa.
             </p>
             <UiButton
               variant="primary"
-              size="sm"
+              size="md"
               block
               class="mt-1"
               @click="emit('guideToFortune')"
             >
-              Dẫn đường đến Bàn Xem Quẻ
+              {{ t('btn.guideToDesk') }}
             </UiButton>
           </div>
 
@@ -1292,8 +1303,8 @@ function sendMantraMessage(text: string) {
             class="p-4 rounded-lg border flex flex-col gap-2"
             :class="
               activeDailyEffect.effect.type === 'buff'
-                ? 'border-[var(--trading-up,#0ecb81)]/45 bg-[rgba(14,203,129,0.1)]'
-                : 'border-[var(--primary,#fcd535)]/50 bg-[rgba(252,213,53,0.1)]'
+                ? 'border-[var(--trading-up,#0ecb81)]/60 bg-surface-elevated'
+                : 'border-[var(--primary,#c9a24b)]/60 bg-surface-elevated'
             "
           >
             <div class="flex items-center justify-between gap-2">
@@ -1316,11 +1327,11 @@ function sendMantraMessage(text: string) {
           <div v-if="!savedProfile || isEditingProfile" class="rounded-lg border border-hairline bg-surface-card p-5 space-y-4">
             <div class="flex items-center justify-between border-b border-hairline pb-3">
               <div>
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider">
-                  {{ savedProfile ? 'Chỉnh Sửa Hồ Sơ Bát Tự' : 'Bước 1: Khai Hồ Sơ Bát Tự' }}
+                <h3 class="text-sm font-bold text-white">
+                  {{ savedProfile ? t('title.profileEdit') : t('title.profileNew') }}
                 </h3>
                 <p class="text-xs text-secondary mt-1">
-                  Người chơi bắt buộc hoàn thiện hồ sơ chuẩn xác để mở khóa gieo quẻ 6 môn.
+                  {{ t('desc.profileNeeded') }}
                 </p>
               </div>
               <UiBadge variant="warning">Bắt buộc</UiBadge>
@@ -1367,14 +1378,14 @@ function sendMantraMessage(text: string) {
                 </label>
                 <select
                   v-model="profileForm.birthHour"
-                  class="w-full h-10 px-3 rounded-md bg-surface-elevated border border-hairline text-xs text-white focus:border-primary outline-none"
+                  class="w-full h-[40px] px-3 rounded-md bg-surface-elevated border border-hairline text-xs text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                 >
                   <option v-for="opt in BIRTH_HOUR_OPTIONS" :key="opt.id" :value="opt.id">
                     {{ opt.label }} {{ opt.timeRange ? `(${opt.timeRange})` : '' }}
                   </option>
                 </select>
                 <p class="text-xs text-secondary">
-                  Nếu không rõ giờ sinh, hệ thống sẽ để trống Can Chi giờ và không tự phán đoán.
+                  {{ t('desc.birthHourUnknown') }}
                 </p>
               </div>
 
@@ -1386,9 +1397,9 @@ function sendMantraMessage(text: string) {
                 <div class="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    class="h-10 px-4 rounded-md border text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                    class="h-[40px] px-4 rounded-md border text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
                     :class="profileForm.gender === 'nam'
-                      ? 'border-primary bg-[rgba(252,213,53,0.12)] text-white'
+                      ? 'border-primary bg-[rgba(201,162,75,0.12)] text-white'
                       : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
                     @click="profileForm.gender = 'nam'; profileFieldErrors.gender = undefined"
                   >
@@ -1398,9 +1409,9 @@ function sendMantraMessage(text: string) {
 
                   <button
                     type="button"
-                    class="h-10 px-4 rounded-md border text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                    class="h-[40px] px-4 rounded-md border text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
                     :class="profileForm.gender === 'nu'
-                      ? 'border-primary bg-[rgba(252,213,53,0.12)] text-white'
+                      ? 'border-primary bg-[rgba(201,162,75,0.12)] text-white'
                       : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
                     @click="profileForm.gender = 'nu'; profileFieldErrors.gender = undefined"
                   >
@@ -1409,7 +1420,7 @@ function sendMantraMessage(text: string) {
                   </button>
                 </div>
                 <p class="text-xs text-secondary mt-1">
-                  Dùng để tính Cung Phi Bát Trạch và Sao chiếu mệnh theo cách truyền thống.
+                  {{ t('desc.genderWhy') }}
                 </p>
                 <p v-if="profileFieldErrors.gender" class="text-xs text-danger mt-1">
                   {{ profileFieldErrors.gender }}
@@ -1428,7 +1439,7 @@ function sendMantraMessage(text: string) {
             <!-- THẺ XEM TRƯỚC HỒ SƠ TỰ ĐỘNG TÍNH TOÁN -->
             <div v-if="profilePreview" class="p-4 rounded-lg bg-surface-elevated border border-primary/40 space-y-2.5">
               <div class="flex items-center justify-between border-b border-hairline pb-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-primary">Thẻ Xem Trước Dữ Liệu Tự Tính</span>
+                <span class="text-xs font-bold text-primary">Thẻ Xem Trước Dữ Liệu Tự Tính</span>
                 <span class="text-xs text-secondary">Đối chiếu trước khi lưu</span>
               </div>
 
@@ -1459,15 +1470,15 @@ function sendMantraMessage(text: string) {
             <!-- Nút bấm hành động duy nhất -->
             <div class="pt-2 space-y-2">
               <UiButton variant="primary" size="lg" block @click="handleSaveProfile">
-                Xác Nhận Hồ Sơ
+                {{ t('btn.saveProfile') }}
               </UiButton>
               <UiButton v-if="savedProfile" variant="ghost" size="sm" block @click="isEditingProfile = false">
-                Hủy bỏ & Quay lại
+                {{ t('btn.back') }}
               </UiButton>
             </div>
 
             <p class="text-xs text-secondary text-center leading-normal pt-1 border-t border-hairline">
-              Dữ liệu được lưu trữ an toàn trên thiết bị của bạn (cục bộ), không đưa on-chain và chỉ sử dụng cho mục đích tính quẻ.
+              {{ t('desc.privacy') }}
             </p>
           </div>
 
@@ -1504,7 +1515,7 @@ function sendMantraMessage(text: string) {
               <!-- MỤC 1: CHỌN MÔN CẦU AN (Lưới 2 cột, không icon trang trí) -->
               <section class="space-y-2.5">
                 <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-bold text-white">1. Chọn môn cầu an</h3>
+                  <h3 class="text-sm font-bold text-white">{{ t('title.pickCategory') }}</h3>
                   <span class="text-xs text-secondary">6 môn truyền thống</span>
                 </div>
 
@@ -1523,7 +1534,7 @@ function sendMantraMessage(text: string) {
               <!-- MỤC 2: PHƯƠNG THỨC THỈNH QUẺ (Radio Cards) -->
               <section class="space-y-2">
                 <div class="flex items-center justify-between gap-2">
-                  <h3 class="text-sm font-bold text-white">2. Phương thức thỉnh quẻ</h3>
+                  <h3 class="text-sm font-bold text-white">{{ t('title.pickMethod') }}</h3>
                   <span class="text-xs text-secondary">Nhất quán theo ngày</span>
                 </div>
 
@@ -1569,11 +1580,11 @@ function sendMantraMessage(text: string) {
                 <!-- MÔN TƠ DUYÊN TƯƠNG NGỘ: ĐỘC THÂN CẦU DUYÊN (1 NGƯỜI) -->
                 <div v-if="fortuneCategory === 'love'" class="p-3.5 rounded-lg bg-surface-elevated border border-hairline space-y-2 mt-3">
                   <div class="flex items-center justify-between border-b border-hairline pb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-primary">Độc Thân Cầu Duyên (1 Người)</span>
+                    <span class="text-xs font-bold text-primary">Độc Thân Cầu Duyên (1 Người)</span>
                     <span class="text-xs text-secondary">Bát Tự bản mệnh</span>
                   </div>
                   <p class="text-xs text-secondary leading-relaxed">
-                    Chiêm bốc vận đào hoa, thời điểm tương ngộ ý trung nhân theo Bát Tự của bạn.
+                    {{ t('desc.loveSingle') }}
                   </p>
                   <div class="pt-1.5 flex items-center justify-between text-xs border-t border-hairline">
                     <span class="text-secondary">Muốn so khớp Bát Tự cặp đôi?</span>
@@ -1582,7 +1593,7 @@ function sendMantraMessage(text: string) {
                       class="text-primary hover:underline font-semibold cursor-pointer"
                       @click="activeTab = 'love_couple'"
                     >
-                      Đài Tơ Duyên Nguyệt Lão &rarr;
+                      {{ t('btn.coupleDesk') }}
                     </button>
                   </div>
                 </div>
@@ -1620,7 +1631,7 @@ function sendMantraMessage(text: string) {
 
                 <!-- KHỐI 2: Luận giải -->
                 <div class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-1">
-                  <h5 class="text-sm font-bold text-white">Luận giải chủ đề</h5>
+                  <h5 class="text-sm font-bold text-white">{{ t('title.interpret') }}</h5>
                   <p class="text-sm text-secondary leading-normal">
                     {{ fortuneResult.blocks?.luangiai?.text || fortuneResult.meaning }}
                   </p>
@@ -1648,7 +1659,7 @@ function sendMantraMessage(text: string) {
 
                 <!-- KHỐI 3: Lời khuyên chánh niệm -->
                 <div class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-1">
-                  <h5 class="text-sm font-bold text-white">Lời khuyên chánh niệm</h5>
+                  <h5 class="text-sm font-bold text-white">{{ t('title.advice') }}</h5>
                   <p class="text-sm text-secondary leading-normal">
                     {{ fortuneResult.blocks?.loikhuyen?.text || fortuneResult.advice }}
                   </p>
@@ -1660,8 +1671,8 @@ function sendMantraMessage(text: string) {
                   class="p-4 rounded-lg bg-[rgba(246,70,93,0.1)] border border-[rgba(246,70,93,0.3)] space-y-2"
                 >
                   <div class="flex items-center justify-between gap-2">
-                    <h5 class="text-sm font-bold text-danger">Pháp hóa giải vận hạn</h5>
-                    <UiButton variant="secondary" size="sm" @click="currentTab = 'meditation'">Tọa thiền hóa giải</UiButton>
+                    <h5 class="text-sm font-bold text-danger">{{ t('title.remedy') }}</h5>
+                    <UiButton variant="secondary" size="sm" @click="currentTab = 'meditation'">{{ t('btn.remedyMeditate') }}</UiButton>
                   </div>
                   <p class="text-xs text-secondary leading-normal">
                     {{ fortuneResult.blocks?.hoagiai?.text || fortuneResult.remediationText }}
@@ -1671,10 +1682,10 @@ function sendMantraMessage(text: string) {
                 <!-- Nút thao tác sau khi có quẻ -->
                 <div class="pt-2 flex flex-wrap items-center gap-2">
                   <UiButton variant="secondary" size="md" class="flex-1" @click="openShareCardModal(fortuneResult)">
-                    Lưu / Chia sẻ ảnh quẻ (PNG)
+                    {{ t('btn.saveShare') }}
                   </UiButton>
                   <UiButton variant="ghost" size="md" @click="fortuneResult = null">
-                    Xin lại quẻ khác
+                    {{ t('btn.drawAgain') }}
                   </UiButton>
                 </div>
               </div>
@@ -1693,7 +1704,7 @@ function sendMantraMessage(text: string) {
                 <div class="flex items-center gap-2 pt-1">
                   <label class="flex items-center gap-2 text-xs text-secondary cursor-pointer select-none">
                     <input type="checkbox" v-model="hideBirthDateInShare" class="rounded border-hairline accent-gold cursor-pointer" />
-                    <span>Ẩn ngày sinh chi tiết khi xuất ảnh (chỉ hiển thị năm âm lịch &amp; can chi)</span>
+                    <span>{{ t('desc.hideBirth') }}</span>
                   </label>
                 </div>
                 <div class="flex items-center gap-2">
@@ -1741,7 +1752,7 @@ function sendMantraMessage(text: string) {
             <div class="flex flex-col gap-4">
               <div class="rounded-md border border-hairline bg-surface-card p-4 space-y-3.5">
                 <div class="flex items-center justify-between border-b border-hairline pb-2.5">
-                  <span class="text-xs font-bold uppercase tracking-wider text-secondary">Thông Tin Chiêm Bái</span>
+                  <span class="text-xs font-bold text-secondary">Thông Tin Chiêm Bái</span>
                   <UiBadge :variant="remainingFreeDrawsForCurrentSubject > 0 ? 'success' : 'neutral'" dot>
                     {{ remainingFreeDrawsForCurrentSubject > 0 ? 'Miễn phí hôm nay' : 'Đã dùng miễn phí' }}
                   </UiBadge>
@@ -1765,7 +1776,7 @@ function sendMantraMessage(text: string) {
 
                 <!-- Chọn hình thức thanh toán (Binance style radio row items) -->
                 <div class="pt-3 border-t border-hairline space-y-2">
-                  <span class="text-xs font-bold text-secondary uppercase tracking-wider block">Hình thức thanh toán</span>
+                  <span class="text-xs font-bold text-secondary block">Hình thức thanh toán</span>
                   <div class="grid grid-cols-1 gap-1.5" role="radiogroup">
                     <!-- Lượt miễn phí -->
                     <button
@@ -1831,7 +1842,7 @@ function sendMantraMessage(text: string) {
                   <span class="text-xs text-secondary block">Chọn lễ phẩm:</span>
                   <select
                     v-model="selectedOfferingItemId"
-                    class="w-full h-9 px-2.5 rounded-md bg-surface-elevated border border-hairline text-xs text-white focus:border-primary outline-none"
+                    class="w-full h-[40px] px-2.5 rounded-md bg-surface-elevated border border-hairline text-xs text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   >
                     <option v-for="off in offeringItems" :key="off.id" :value="off.id">
                       {{ off.name }} (Có: {{ economy.getItemQuantity(off.id) }})
@@ -1842,14 +1853,14 @@ function sendMantraMessage(text: string) {
                 <!-- Cảnh báo lỗi / nạp tiền -->
                 <div
                   v-if="fortunePaymentMode !== 'free_daily' && !wallet.isConnected"
-                  class="p-2.5 rounded-md bg-[rgba(252,213,53,0.1)] border border-[rgba(252,213,53,0.3)] text-xs text-white space-y-1.5"
+                  class="p-2.5 rounded-md bg-[rgba(201,162,75,0.1)] border border-[rgba(201,162,75,0.3)] text-xs text-white space-y-1.5"
                 >
                   <span>Cần kết nối ví Eternl để dùng lễ phẩm hoặc tiêu MC.</span>
                   <UiButton variant="secondary" size="sm" block @click="economy.openTopUpModal()">Kết nối ví</UiButton>
                 </div>
                 <div
                   v-else-if="fortunePaymentMode === 'mc' && wallet.isConnected && economy.meritCoins < currentFortuneCostMc"
-                  class="p-2.5 rounded-md bg-[rgba(252,213,53,0.1)] border border-[rgba(252,213,53,0.3)] text-xs text-white space-y-1.5"
+                  class="p-2.5 rounded-md bg-[rgba(201,162,75,0.1)] border border-[rgba(201,162,75,0.3)] text-xs text-white space-y-1.5"
                 >
                   <span>Số dư không đủ (<strong class="font-numbers">{{ economy.meritCoins.toLocaleString() }} MC</strong> / <strong class="font-numbers">{{ currentFortuneCostMc }} MC</strong>).</span>
                   <UiButton variant="secondary" size="sm" block @click="economy.openTopUpModal()">+ Nạp thêm MC</UiButton>
@@ -1875,18 +1886,18 @@ function sendMantraMessage(text: string) {
                   >
                     {{
                       isRolling
-                        ? 'Đang lắc ống xăm...'
+                        ? t('btn.rolling')
                         : fortunePaymentMode === 'free_daily'
-                          ? 'Gieo Quẻ Miễn Phí (0 MC)'
+                          ? t('btn.drawFree')
                           : fortunePaymentMode === 'offering_item'
-                            ? 'Dâng Lễ Phẩm Thỉnh Quẻ'
-                            : `Gieo Quẻ Chiêm Nghiệm (${currentFortuneCostMc} MC)`
+                            ? t('btn.drawOffering')
+                            : t('btn.drawPaid', { mc: currentFortuneCostMc })
                     }}
                   </UiButton>
                 </div>
 
                 <p class="text-xs text-secondary text-center leading-normal">
-                  MC là điểm trong game (off-chain), không phải tiền mã hóa và không đổi ngược ra ADA. Hòm công đức là tự nguyện.
+                  {{ t('desc.mcNote') }}
                 </p>
               </div>
             </div>
@@ -1900,12 +1911,12 @@ function sendMantraMessage(text: string) {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <ZenIcon name="sparkles" class="w-5 h-5 text-gold" />
-                <span class="text-sm font-bold text-white">Đài Tơ Duyên Nguyệt Lão</span>
+                <span class="text-sm font-bold text-white">{{ t('btn.coupleDesk') }}</span>
               </div>
               <UiBadge variant="warning">Nguyệt Lão Chỉ Hồng</UiBadge>
             </div>
             <p class="text-xs text-secondary leading-normal m-0">
-              Cây Hồng Thần Mộc ngàn năm bên bờ Hồ Sen soi bóng nước. Thành tâm thắt sợi chỉ hồng, gieo quẻ Bát Tự tương hợp đôi lứa và đón nhận duyên lành trăm năm.
+              {{ t('desc.coupleIntro') }}
             </p>
           </UiCard>
 
@@ -1925,7 +1936,6 @@ function sendMantraMessage(text: string) {
                   <div class="text-sm font-semibold text-white truncate">{{ myEffectiveName }}</div>
                   <div class="text-xs text-secondary">
                     {{ myEffectiveGender === 'nu' ? 'Nữ giới' : 'Nam giới' }}
-                    <span v-if="savedProfile?.canChiNam"> · {{ savedProfile.canChiNam }} ({{ savedProfile.napAmName }})</span>
                   </div>
                 </div>
               </div>
@@ -1953,7 +1963,7 @@ function sendMantraMessage(text: string) {
                   <input
                     v-model="couplePartnerForm.birthDate"
                     type="date"
-                    class="w-full h-9 px-2.5 rounded border border-hairline bg-surface-elevated text-xs text-white focus:outline-none focus:border-gold"
+                    class="w-full h-[40px] px-2.5 rounded border border-hairline bg-surface-elevated text-xs text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <div class="space-y-1.5">
@@ -1961,7 +1971,7 @@ function sendMantraMessage(text: string) {
                   <div class="flex gap-2">
                     <button
                       type="button"
-                      class="flex-1 h-9 rounded border text-xs font-medium cursor-pointer transition"
+                      class="flex-1 h-[40px] rounded border text-xs font-medium cursor-pointer transition"
                       :class="couplePartnerForm.gender === 'nam' ? 'border-gold bg-surface-elevated text-gold font-semibold' : 'border-hairline bg-surface-elevated/40 text-secondary hover:text-white'"
                       @click="couplePartnerForm.gender = 'nam'"
                     >
@@ -1969,7 +1979,7 @@ function sendMantraMessage(text: string) {
                     </button>
                     <button
                       type="button"
-                      class="flex-1 h-9 rounded border text-xs font-medium cursor-pointer transition"
+                      class="flex-1 h-[40px] rounded border text-xs font-medium cursor-pointer transition"
                       :class="couplePartnerForm.gender === 'nu' ? 'border-gold bg-surface-elevated text-gold font-semibold' : 'border-hairline bg-surface-elevated/40 text-secondary hover:text-white'"
                       @click="couplePartnerForm.gender = 'nu'"
                     >
@@ -2006,7 +2016,7 @@ function sendMantraMessage(text: string) {
             </div>
 
             <!-- Báo Lỗi Nếu Có -->
-            <div v-if="coupleError" class="p-2.5 rounded bg-loss/15 border border-loss/30 text-xs text-loss leading-normal">
+            <div v-if="coupleError" class="p-2.5 rounded bg-surface-card border border-loss/50 text-xs text-loss leading-normal">
               {{ coupleError }}
             </div>
 
@@ -2027,7 +2037,7 @@ function sendMantraMessage(text: string) {
           <div v-else class="space-y-4">
             <!-- Huy Hiệu Điểm Tương Hợp & Danh Vị -->
             <UiCard variant="subtle" class="p-4 space-y-3 border-hairline bg-surface-card text-center">
-              <div class="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-loss/20 border border-loss text-xs font-bold text-white tracking-wider">
+              <div class="inline-flex items-center justify-center px-4 py-1.5 rounded-[2px] bg-surface-elevated border border-gold text-xs font-bold text-gold">
                 {{ coupleResult.compatibility?.rankTitle || 'Song Duyên Tương Hợp' }}
               </div>
 
@@ -2056,7 +2066,7 @@ function sendMantraMessage(text: string) {
             <UiCard variant="subtle" class="p-4 space-y-2 border-hairline bg-surface-card">
               <div class="flex items-center gap-2 border-b border-hairline pb-2">
                 <ZenIcon name="cards" class="w-4 h-4 text-gold" />
-                <span class="text-xs font-bold text-gold uppercase tracking-wide">Thơ Nguyệt Lão Thiêng Liêng</span>
+                <span class="text-xs font-bold text-gold">Thơ Nguyệt Lão Thiêng Liêng</span>
               </div>
               <div class="text-xs text-white italic leading-relaxed whitespace-pre-line py-1 text-center">
                 {{ coupleResult.fortune?.blocks?.tho?.text || coupleResult.fortune?.poem }}
@@ -2067,21 +2077,21 @@ function sendMantraMessage(text: string) {
             <UiCard variant="subtle" class="p-4 space-y-2 border-hairline bg-surface-card">
               <div class="flex items-center gap-2 border-b border-hairline pb-2">
                 <ZenIcon name="lotus" class="w-4 h-4 text-primary" />
-                <span class="text-xs font-bold text-primary uppercase tracking-wide">Lời Khuyên Dung Hòa Chánh Niệm</span>
+                <span class="text-xs font-bold text-primary">Lời Khuyên Dung Hòa Chánh Niệm</span>
               </div>
               <p class="text-xs text-secondary leading-relaxed m-0">
-                {{ coupleResult.fortune?.blocks?.loikhuyen?.text || coupleResult.fortune?.mindfulAdvice || 'Hai bạn hãy cùng nhau nuôi dưỡng lòng thấu hiểu và bao dung để lương duyên luôn tròn đầy viên mãn.' }}
+                {{ coupleResult.fortune?.blocks?.loikhuyen?.text || coupleResult.fortune?.mindfulAdvice || t('desc.coupleAdvice') }}
               </p>
             </UiCard>
 
             <!-- Thông Báo Tặng Bùa Chỉ Đỏ Uyên Ương -->
-            <div class="p-3 rounded bg-gain/15 border border-gain/30 flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-gain/20 flex items-center justify-center shrink-0">
-                <ZenIcon name="sparkles" class="w-4 h-4 text-gain" />
+            <div class="p-3 rounded bg-surface-card border border-hairline flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-surface-elevated border border-gold/40 flex items-center justify-center shrink-0">
+                <ZenIcon name="sparkles" class="w-4 h-4 text-gold" />
               </div>
               <div class="min-w-0 flex-1">
                 <div class="text-xs font-semibold text-white">Đã nhận Bùa Chỉ Đỏ Uyên Ương!</div>
-                <div class="text-xs text-secondary">Vật phẩm may mắn phong thủy đã được cất vào túi đồ của bạn.</div>
+                <div class="text-xs text-secondary">{{ t('desc.charmReceived') }}</div>
               </div>
             </div>
 
@@ -2097,7 +2107,7 @@ function sendMantraMessage(text: string) {
                 <img :src="coupleShareImageUrl" alt="Thẻ bài Song Duyên" class="max-w-full h-auto rounded max-h-72" />
               </div>
               <UiButton variant="primary" size="sm" class="w-full text-xs font-semibold" @click="downloadCoupleCardPng">
-                Tải ảnh PNG về máy
+                {{ t('btn.downloadPng') }}
               </UiButton>
             </div>
 
@@ -2132,7 +2142,7 @@ function sendMantraMessage(text: string) {
               :class="shopTab === 'attire' ? 'text-white' : 'text-secondary hover:text-white'"
               @click="shopTab = 'attire'"
             >
-              Cổ Phục 9 Quốc Gia
+              {{ t('btn.tabAttire') }}
               <span
                 v-if="shopTab === 'attire'"
                 class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full"
@@ -2144,7 +2154,7 @@ function sendMantraMessage(text: string) {
               :class="shopTab === 'offerings' ? 'text-white' : 'text-secondary hover:text-white'"
               @click="shopTab = 'offerings'"
             >
-              Lễ Vật &amp; Nhang Trầm
+              {{ t('btn.tabOfferings') }}
               <span
                 v-if="shopTab === 'offerings'"
                 class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full"
@@ -2172,7 +2182,7 @@ function sendMantraMessage(text: string) {
           <!-- Chọn Giới Tính Nhân Vật (Nam / Nữ Hành Giả) -->
           <div v-if="shopTab === 'attire'" class="p-3.5 rounded-lg border border-hairline bg-surface-card space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-secondary">Giới tính nhân vật</span>
+              <span class="text-xs font-bold text-secondary">Giới tính nhân vật</span>
               <span class="text-xs text-secondary">Đồng bộ Multiplayer</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -2199,7 +2209,7 @@ function sendMantraMessage(text: string) {
               <div
                 v-for="item in attireItems"
                 :key="item.id"
-                class="p-4 rounded-lg border border-hairline bg-surface-card flex flex-col justify-between gap-3 transition-colors hover:border-[var(--surface-elevated-dark,#2b3139)]"
+                class="p-4 rounded-lg border border-hairline bg-surface-card flex flex-col justify-between gap-3 transition-colors hover:border-[var(--surface-elevated-dark,#26221d)]"
               >
                 <div>
                   <div class="flex items-center justify-between">
@@ -2219,7 +2229,7 @@ function sendMantraMessage(text: string) {
                   Đang mặc
                 </UiButton>
                 <UiButton
-                  v-else-if="economy.isItemUnlocked(item.id) || item.defaultUnlocked"
+                  v-else-if="economy.isItemUnlocked(item)"
                   variant="secondary"
                   size="sm"
                   block
@@ -2242,7 +2252,7 @@ function sendMantraMessage(text: string) {
               <div
                 v-for="off in offeringItems"
                 :key="off.id"
-                class="p-4 rounded-lg border border-hairline bg-surface-card flex flex-col justify-between gap-3 transition-colors hover:border-[var(--surface-elevated-dark,#2b3139)]"
+                class="p-4 rounded-lg border border-hairline bg-surface-card flex flex-col justify-between gap-3 transition-colors hover:border-[var(--surface-elevated-dark,#26221d)]"
               >
                 <div>
                   <div class="flex items-center justify-between">
@@ -2270,14 +2280,14 @@ function sendMantraMessage(text: string) {
           <!-- Cảnh Báo Vị Trí: Cần Đến Hòm Công Đức -->
           <div
             v-if="props.isNearMerit === false"
-            class="p-3.5 rounded-lg border border-primary/50 bg-[rgba(252,213,53,0.08)] flex flex-col gap-2 text-left"
+            class="p-3.5 rounded-lg border border-primary/50 bg-[rgba(201,162,75,0.08)] flex flex-col gap-2 text-left"
           >
             <div class="flex items-center gap-2 text-xs font-bold text-primary">
               <ZenIcon name="triangle-alert" :size="16" class="text-primary shrink-0" />
               <span>Chưa đến Hòm Công Đức</span>
             </div>
             <p class="text-xs text-secondary leading-relaxed">
-              Đạo hữu cần bước lại gần <span class="text-white font-semibold">Hòm Công Đức Tam Bảo</span> ngoài sân Chùa để phát tâm cúng dường.
+              Lại gần <span class="text-white font-semibold">Hòm Công Đức</span> ngoài sân chùa.
             </p>
             <UiButton
               variant="primary"
@@ -2286,7 +2296,7 @@ function sendMantraMessage(text: string) {
               class="mt-1"
               @click="emit('guideToMerit')"
             >
-              Dẫn đường đến Hòm Công Đức
+              {{ t('btn.guideToMerit') }}
             </UiButton>
           </div>
 
@@ -2298,9 +2308,9 @@ function sendMantraMessage(text: string) {
 
           <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-4">
             <div>
-              <h3 class="text-base font-bold text-white">Cúng dường Tam Bảo tự nguyện</h3>
+              <h3 class="text-base font-bold text-white">{{ t('title.merit') }}</h3>
               <p class="text-xs text-secondary leading-normal mt-1">
-                Toàn bộ công đức được ghi nhận vào sổ vàng và phân bổ tự động vào quỹ hương trầm và duy tu chùa.
+                {{ t('desc.meritIntro') }}
               </p>
             </div>
 
@@ -2349,11 +2359,12 @@ function sendMantraMessage(text: string) {
 
             <!-- 1 Primary Yellow CTA Button -->
             <UiButton variant="primary" size="lg" block @click="requestDonateMerit">
-              Cúng dường ({{ meritAmount.toLocaleString() }} MC)
+              {{ t('btn.donate') }}
+              <span class="font-numbers ml-1">{{ meritAmount.toLocaleString() }} MC</span>
             </UiButton>
 
             <div class="text-xs text-secondary text-center leading-normal mt-2">
-              MC là điểm trong game (off-chain), không phải tiền mã hóa và không đổi ngược ra ADA. Hòm công đức là tự nguyện.
+              {{ t('desc.mcNote') }}
             </div>
           </div>
 
@@ -2362,7 +2373,7 @@ function sendMantraMessage(text: string) {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <ZenIcon name="pagoda" class="w-4 h-4 text-primary" />
-                <h4 class="text-sm font-bold text-white">Tổng Số Tiền Công Đức Tam Bảo</h4>
+                <h4 class="text-sm font-bold text-white">{{ t('title.meritTotal') }}</h4>
               </div>
               <span class="text-xs text-secondary">Toàn tự viện</span>
             </div>
@@ -2390,7 +2401,7 @@ function sendMantraMessage(text: string) {
             </div>
 
             <p class="text-xs text-secondary leading-relaxed">
-              Mọi khoản công đức đều được lưu danh trên sổ cái bạch ngọc và phân bổ minh bạch cho hoạt động duy tu, thắp đèn hoa đăng và trợ duyên đại chúng.
+              {{ t('desc.meritLedger') }}
             </p>
           </div>
 
@@ -2399,7 +2410,7 @@ function sendMantraMessage(text: string) {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <ZenIcon name="lotus" class="w-4 h-4 text-primary" />
-                <h4 class="text-sm font-bold text-white">Bảng Vàng Công Đức (Top 10)</h4>
+                <h4 class="text-sm font-bold text-white">{{ t('title.leaderboard') }}</h4>
               </div>
               <span class="text-xs text-secondary">
                 {{ top10Donors.length }}/10 vị đồng tu
@@ -2419,7 +2430,7 @@ function sendMantraMessage(text: string) {
                     class="w-6 h-6 rounded-md flex items-center justify-center font-numbers text-xs font-bold shrink-0 border"
                     :class="[
                       idx === 0
-                        ? 'border-primary bg-[rgba(252,213,53,0.12)] text-primary'
+                        ? 'border-primary bg-[rgba(201,162,75,0.12)] text-primary'
                         : idx === 1
                           ? 'border-slate-400/60 bg-slate-500/15 text-slate-200'
                           : idx === 2
@@ -2459,7 +2470,7 @@ function sendMantraMessage(text: string) {
               <ZenIcon name="lotus" class="w-8 h-8 text-secondary/60 mx-auto" />
               <div class="text-xs font-semibold text-white">Chưa có dữ liệu Bảng Vàng</div>
               <p class="text-xs text-secondary max-w-xs mx-auto leading-relaxed">
-                Hãy là người đầu tiên phát tâm cúng dường Tam Bảo để lưu danh bảng vàng công đức toàn chùa.
+                {{ t('desc.leaderboardEmpty') }}
               </p>
             </div>
           </div>
@@ -2518,7 +2529,7 @@ function sendMantraMessage(text: string) {
                 <UiBadge variant="warning">Cardano CIP-68 Ready</UiBadge>
               </div>
               <p class="text-xs text-secondary leading-relaxed m-0">
-                Mở gói hộp mù để thỉnh các thẻ bài di sản cổ tự và kinh kệ ngàn năm. Mỗi lần mở thẻ đều được ghi nhận vĩnh viễn trên sổ cái Merit Coins và chứng thực bởi Cardano Hydra L2 Head.
+                {{ t('desc.gachaIntro') }}
               </p>
             </UiCard>
 
@@ -2561,9 +2572,9 @@ function sendMantraMessage(text: string) {
         <div v-else-if="currentTab === 'meditation'" class="max-w-lg mx-auto space-y-4 text-center">
           <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-4">
             <div>
-              <h3 class="text-base font-bold text-white">Tọa Thiền Định Tâm Chuông Xoay 432Hz</h3>
+              <h3 class="text-base font-bold text-white">{{ t('title.meditation') }}</h3>
               <p class="text-xs text-secondary leading-relaxed mt-1">
-                Chuông xoay Tây Tạng ngân vang giúp thả lỏng tâm trí, nhịp thở 4-4-6 đưa thân tâm về trạng thái chánh niệm hiện tiền.
+                {{ t('desc.meditationIntro') }}
               </p>
             </div>
 
@@ -2599,7 +2610,7 @@ function sendMantraMessage(text: string) {
                 <span>Bạn đang ở bên ngoài Chánh Điện</span>
               </div>
               <p class="text-xs text-secondary leading-relaxed">
-                Vui lòng bước vào bên trong Đại Hùng Bảo Điện để tìm bồ đoàn và bắt đầu thời khóa tọa thiền định tâm kiếm MC.
+                {{ t('desc.meditationOutside') }}
               </p>
               <UiButton
                 variant="primary"
@@ -2607,7 +2618,7 @@ function sendMantraMessage(text: string) {
                 block
                 @click="meditation.guideToHall"
               >
-                Dẫn đường vào Chánh Điện
+                {{ t('btn.guideToHall') }}
               </UiButton>
             </div>
 
@@ -2621,7 +2632,7 @@ function sendMantraMessage(text: string) {
                 <span>Chánh Điện đã kín toàn bộ bồ đoàn</span>
               </div>
               <p class="text-xs text-secondary leading-relaxed">
-                Hiện tại toàn bộ {{ meditation.totalSlots }} bồ đoàn đều đã có đồng tu tĩnh tọa. Kính mong đạo hữu hoan hỷ chờ các đồng tu xả thiền hoặc quay lại sau.
+                {{ t('desc.meditationFull') }}
               </p>
             </div>
 
@@ -2664,13 +2675,13 @@ function sendMantraMessage(text: string) {
                 class="mt-1.5"
                 @click="meditation.guideToHall"
               >
-                Dẫn đường vào Chánh Điện
+                {{ t('btn.guideToHall') }}
               </UiButton>
             </div>
 
             <!-- Lựa chọn gói thời lượng khi sẵn sàng -->
             <div v-if="meditation.phase === 'idle'" class="space-y-2 text-left">
-              <div class="text-xs font-semibold text-secondary uppercase tracking-wider">
+              <div class="text-xs font-semibold text-secondary">
                 Chọn thời lượng tọa thiền
               </div>
               <div class="grid grid-cols-2 gap-2">
@@ -2680,7 +2691,7 @@ function sendMantraMessage(text: string) {
                   type="button"
                   class="rounded-lg border p-3 text-left transition-all"
                   :class="meditation.selectedDurationMin === plan.durationMin
-                    ? 'border-primary bg-[rgba(252,213,53,0.08)]'
+                    ? 'border-primary bg-[rgba(201,162,75,0.08)]'
                     : 'border-hairline bg-surface-elevated hover:border-hairline-bright'"
                   @click="meditation.setDuration(plan.durationMin)"
                 >
@@ -2697,15 +2708,15 @@ function sendMantraMessage(text: string) {
 
             <!-- Visualizer breathing ring -->
             <div
-              class="relative w-36 h-36 mx-auto my-3 flex flex-col items-center justify-center rounded-full border-2 transition-all duration-700"
+              class="relative w-36 h-36 mx-auto my-3 flex flex-col items-center justify-center rounded-full border-2 transition-all duration-[3500ms] ease-in-out"
               :class="meditation.isSeated
-                ? 'border-primary bg-[rgba(252,213,53,0.06)] shadow-[0_0_24px_rgba(252,213,53,0.15)] animate-pulse'
+                ? ['border-primary bg-surface-elevated', breathingPhase?.name === 'Thở Ra' ? 'scale-90' : 'scale-110']
                 : meditation.phase === 'walking' || meditation.phase === 'finding'
                   ? 'border-primary/60 bg-surface-elevated'
                   : 'border-hairline bg-surface-elevated'"
             >
               <template v-if="meditation.isSeated && breathingPhase">
-                <span class="text-xs uppercase tracking-wider text-primary font-semibold">
+                <span class="text-xs text-primary font-semibold">
                   {{ breathingPhase.name }} ({{ breathingPhase.count }}s)
                 </span>
                 <span class="text-lg font-bold font-numbers text-white mt-0.5">
@@ -2716,7 +2727,7 @@ function sendMantraMessage(text: string) {
                 </span>
               </template>
               <template v-else-if="meditation.phase === 'walking'">
-                <span class="text-xs uppercase tracking-wider text-primary font-semibold">
+                <span class="text-xs text-primary font-semibold">
                   Đang Đến Đệm
                 </span>
                 <span class="text-sm font-bold text-white mt-1">
@@ -2725,14 +2736,14 @@ function sendMantraMessage(text: string) {
                 <span class="text-xs text-secondary mt-0.5">Khoan thai bước...</span>
               </template>
               <template v-else-if="meditation.phase === 'guiding'">
-                <span class="text-xs uppercase tracking-wider text-primary font-semibold">
+                <span class="text-xs text-primary font-semibold">
                   Dẫn Đường
                 </span>
                 <span class="text-sm font-bold text-white mt-1">Vào Chánh Điện</span>
                 <span class="text-xs text-secondary mt-0.5">Đang di chuyển...</span>
               </template>
               <template v-else>
-                <span class="text-xs uppercase tracking-wider text-secondary font-semibold">
+                <span class="text-xs text-secondary font-semibold">
                   Sẵn Sàng
                 </span>
                 <span class="text-sm font-bold text-white mt-1">Tĩnh Lặng</span>
@@ -2764,7 +2775,7 @@ function sendMantraMessage(text: string) {
                 :disabled="meditation.availableSlots === 0"
                 @click="handleStartMeditation"
               >
-                Bắt Đầu Tọa Thiền
+                {{ t('btn.startMeditation') }}
               </UiButton>
               <UiButton
                 v-else-if="meditation.phase === 'walking' || meditation.phase === 'seated'"
@@ -2792,9 +2803,9 @@ function sendMantraMessage(text: string) {
         <div v-else-if="currentTab === 'soundscape'" class="max-w-lg mx-auto space-y-4">
           <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-5">
             <div>
-              <h3 class="text-base font-bold text-white">Bộ Trộn Âm Cảnh Không Gian 3D</h3>
+              <h3 class="text-base font-bold text-white">{{ t('title.soundscape') }}</h3>
               <p class="text-xs text-secondary leading-relaxed mt-1">
-                Điều chỉnh âm lượng từng nguồn thanh tịnh để tìm lại sự bình yên trong tâm trí.
+                {{ t('desc.soundscape') }}
               </p>
             </div>
 
@@ -2848,7 +2859,7 @@ function sendMantraMessage(text: string) {
                 class="text-xs text-secondary hover:text-white transition cursor-pointer"
                 @click="faderRain = 30; faderStream = 40; faderBowl = 70"
               >
-                Đặt lại mặc định
+                {{ t('btn.resetDefault') }}
               </button>
             </div>
           </div>
@@ -2858,7 +2869,7 @@ function sendMantraMessage(text: string) {
         <div v-else-if="currentTab === 'sangha'" class="space-y-4">
           <div class="rounded-lg border border-hairline bg-surface-card p-4 space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-secondary">Hình tướng Hành Giả của bạn</span>
+              <span class="text-xs font-bold text-secondary">Hình tướng Hành Giả của bạn</span>
               <span class="text-xs text-secondary">Phím tắt: G</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -2881,9 +2892,9 @@ function sendMantraMessage(text: string) {
 
           <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-4">
             <div>
-              <h3 class="text-sm font-bold text-white">Pháp Đàm & Lời Nguyện Chánh Niệm</h3>
+              <h3 class="text-sm font-bold text-white">{{ t('title.chat') }}</h3>
               <p class="text-xs text-secondary leading-relaxed mt-1">
-                Gõ tin nhắn chia sẻ hoặc chọn câu niệm Phật để lan tỏa năng lượng bình an cùng các đồng tu đang hiện diện.
+                {{ t('desc.chat') }}
               </p>
             </div>
 
@@ -2929,8 +2940,8 @@ function sendMantraMessage(text: string) {
           <div class="space-y-2">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-[var(--trading-up,#0ecb81)]" />
-              <h4 class="text-xs font-semibold text-secondary uppercase tracking-wider">
-                Đồng tu cùng tu tập ({{ remotePilgrims?.length || 0 }})
+              <h4 class="text-xs font-semibold text-secondary">
+                {{ t('title.pilgrims') }} ({{ remotePilgrims?.length || 0 }})
               </h4>
             </div>
 
@@ -2986,17 +2997,17 @@ function sendMantraMessage(text: string) {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   height: 100vh;
   height: 100dvh;
-  background-color: var(--canvas-dark, #0b0e11);
-  border-left: 1px solid var(--hairline-on-dark, #2b3139);
+  background-color: var(--canvas-dark, #100e0c);
+  border-left: 1px solid var(--hairline-on-dark, #26221d);
   border-top: none;
   border-right: none;
   border-bottom: none;
   border-radius: 0;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.75);
-  color: var(--text-primary, #eaecef);
+  color: var(--text-primary, #ede4d3);
   overflow: hidden;
   outline: none;
   font-family: var(--font-sans, 'Inter', sans-serif);
@@ -3018,44 +3029,44 @@ function sendMantraMessage(text: string) {
 .sanctuary-header {
   flex-shrink: 0;
   padding: 14px 16px 0;
-  background-color: var(--surface-card-dark, #1e2329);
-  border-bottom: 1px solid var(--hairline-on-dark, #2b3139);
+  background-color: var(--surface-card-dark, #1a1714);
+  border-bottom: 1px solid var(--hairline-on-dark, #26221d);
 }
 
 .sanctuary-mc-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 8px;
+  height: 40px;
+  padding: 0 10px;
   border-radius: var(--radius-sm, 4px);
-  background-color: var(--surface-elevated-dark, #2b3139);
-  border: 1px solid var(--hairline-on-dark, #2b3139);
+  background-color: var(--surface-elevated-dark, #26221d);
+  border: 1px solid var(--hairline-on-dark, #26221d);
   cursor: pointer;
   transition: background-color var(--transition-fast, 120ms ease);
 }
 
 .sanctuary-mc-chip:hover {
-  background-color: var(--surface-elevated-dark-hover, #333b44);
+  background-color: var(--surface-elevated-dark-hover, #332d26);
 }
 
 .sanctuary-close-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm, 4px);
-  background-color: var(--surface-elevated-dark, #2b3139);
-  border: 1px solid var(--hairline-on-dark, #2b3139);
-  color: var(--text-secondary, #929aa5);
+  background-color: var(--surface-elevated-dark, #26221d);
+  border: 1px solid var(--hairline-on-dark, #26221d);
+  color: var(--text-secondary, #a89c88);
   cursor: pointer;
   transition: background-color var(--transition-fast, 120ms ease), color var(--transition-fast, 120ms ease);
 }
 
 .sanctuary-close-btn:hover {
-  background-color: var(--surface-elevated-dark-hover, #333b44);
-  color: #ffffff;
+  background-color: var(--surface-elevated-dark-hover, #332d26);
+  color: #f5eddc;
 }
 
 .sanctuary-body {
@@ -3084,11 +3095,11 @@ function sendMantraMessage(text: string) {
 }
 
 .text-gold {
-  color: var(--primary, #fcd535);
+  color: var(--primary, #c9a24b);
 }
 
 .text-primary {
-  color: var(--primary, #fcd535);
+  color: var(--primary, #c9a24b);
 }
 
 .text-up {
@@ -3100,22 +3111,22 @@ function sendMantraMessage(text: string) {
 }
 
 .text-secondary {
-  color: var(--text-secondary, #929aa5);
+  color: var(--text-secondary, #a89c88);
 }
 
 .text-ink {
-  color: var(--ink-light, #181a20);
+  color: var(--ink-light, #1a1714);
 }
 
 .bg-surface-card {
-  background-color: var(--surface-card-dark, #1e2329);
+  background-color: var(--surface-card-dark, #1a1714);
 }
 
 .bg-surface-elevated {
-  background-color: var(--surface-elevated-dark, #2b3139);
+  background-color: var(--surface-elevated-dark, #26221d);
 }
 
 .border-hairline {
-  border-color: var(--hairline-on-dark, #2b3139);
+  border-color: var(--hairline-on-dark, #26221d);
 }
 </style>

@@ -3,6 +3,7 @@ import type { BuddhistCard } from '~/stores/cards'
 import { zenAudio } from '~/lib/audio/ZenAudio'
 import ZenIcon from '~/components/ZenIcon.vue'
 import UiButton from '~/components/ui/UiButton.vue'
+import { t } from '~/lib/ui/copy'
 import HydraBadge from '~/components/HydraBadge.vue'
 import HeritageCardItem from '~/components/cards/HeritageCardItem.vue'
 
@@ -58,7 +59,7 @@ onMounted(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 overflow-y-auto"
       @click.self="allRevealed ? emit('close') : undefined"
     >
       <div
@@ -76,11 +77,8 @@ onMounted(() => {
           <!-- Hàng 1: Icon + Tiêu đề + Hydra Badge -->
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-9 h-9 rounded-xl bg-surface-elevated border border-gold/40 flex items-center justify-center text-gold shadow-[0_0_14px_rgba(252,213,53,0.25)] shrink-0">
-                <ZenIcon name="sparkles" :size="18" />
-              </div>
-              <h3 class="text-sm sm:text-base font-bold text-white tracking-wide truncate m-0">
-                Khai Quang Hộp Mù Di Sản Cổ Tự
+              <h3 class="text-sm sm:text-base font-bold text-white truncate m-0">
+                {{ t('title.cardReveal') }}
               </h3>
             </div>
 
@@ -92,9 +90,9 @@ onMounted(() => {
           <!-- Hàng 2: Huy hiệu trạng thái đếm thẻ & Hướng dẫn thao tác -->
           <div class="flex items-center justify-between text-xs text-secondary gap-2 pt-0.5">
             <p class="m-0 text-xs text-secondary truncate">
-              Chạm vào bảo vật để giải trừ phong ấn hoặc bấm "Lật Tất Cả"
+              {{ t('desc.cardReveal') }}
             </p>
-            <span class="px-2.5 py-0.5 rounded-full bg-surface-elevated text-gold border border-gold/30 font-numbers text-xs font-semibold shrink-0">
+            <span class="px-2.5 py-0.5 rounded-[2px] bg-surface-elevated text-gold border border-gold/30 font-numbers text-xs font-semibold shrink-0">
               Đã mở: {{ revealedIndices.size }} / {{ cards.length }} Thẻ
             </span>
           </div>

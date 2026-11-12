@@ -37,7 +37,7 @@ function handleClick() {
     :aria-checked="props.roleType === 'radio' ? (props.selected ? 'true' : 'false') : undefined"
     :aria-pressed="props.roleType === 'button' ? (props.selected ? 'true' : 'false') : undefined"
     :disabled="props.disabled"
-    class="ui-selectable-card ui-focus-ring relative flex items-start justify-between gap-2.5 w-full min-h-[44px] p-3 rounded-md font-sans text-left cursor-pointer transition-colors border box-border"
+    class="ui-selectable-card ui-focus-ring relative flex shrink-0 items-start justify-between gap-2.5 w-full min-h-[44px] p-3 rounded-md font-sans text-left cursor-pointer transition-colors border box-border"
     :class="[
       props.selected
         ? 'bg-surface-elevated !border-gold shadow-sm'
@@ -50,7 +50,7 @@ function handleClick() {
       <template v-if="props.title || props.description">
         <div
           v-if="props.title"
-          class="text-sm leading-tight transition-colors"
+          class="text-sm leading-snug break-words transition-colors"
           :class="props.selected ? 'font-bold text-gold' : 'font-semibold text-white'"
         >
           {{ props.title }}

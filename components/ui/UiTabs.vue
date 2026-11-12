@@ -102,7 +102,7 @@ onUnmounted(() => {
       v-if="props.layout === 'horizontal' && canScrollLeft"
       type="button"
       aria-label="Cuộn sang trái"
-      class="absolute left-0 z-20 w-6 h-full flex items-center justify-center bg-gradient-to-r from-surface-card via-surface-card to-transparent text-secondary hover:text-white cursor-pointer"
+      class="absolute left-0 z-20 w-[40px] h-full flex items-center justify-center bg-gradient-to-r from-surface-card via-surface-card to-transparent text-secondary hover:text-white cursor-pointer"
       @click="scroll('left')"
     >
       <ZenIcon name="chevron-left" :size="13" />
@@ -132,13 +132,13 @@ onUnmounted(() => {
         :class="[
           props.layout === 'horizontal'
             ? [
-                'relative inline-flex items-center justify-center px-2 py-1.5 min-h-[36px] text-xs bg-transparent border-none border-b-2 font-medium shrink-0',
+                'relative inline-flex items-center justify-center px-3 py-1.5 min-h-[40px] text-xs bg-transparent border-none border-b-2 font-medium shrink-0',
                 props.modelValue === item.id
                   ? 'text-gold font-bold !border-b-gold !border-b-2'
                   : 'text-secondary hover:text-white border-b-transparent'
               ]
             : [
-                'min-h-[36px] px-3 rounded text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-1.5 border',
+                'min-h-[40px] px-3 rounded text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-1.5 border',
                 props.modelValue === item.id
                   ? 'bg-surface-elevated text-gold font-bold border-gold'
                   : 'bg-transparent text-secondary hover:text-white hover:bg-surface-elevated border-transparent'
@@ -165,7 +165,7 @@ onUnmounted(() => {
       v-if="props.layout === 'horizontal' && canScrollRight"
       type="button"
       aria-label="Cuộn sang phải"
-      class="absolute right-0 z-20 w-6 h-full flex items-center justify-center bg-gradient-to-l from-surface-card via-surface-card to-transparent text-secondary hover:text-white cursor-pointer"
+      class="absolute right-0 z-20 w-[40px] h-full flex items-center justify-center bg-gradient-to-l from-surface-card via-surface-card to-transparent text-secondary hover:text-white cursor-pointer"
       @click="scroll('right')"
     >
       <ZenIcon name="chevron-right" :size="13" />

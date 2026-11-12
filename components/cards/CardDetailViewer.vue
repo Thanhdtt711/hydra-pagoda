@@ -54,38 +54,38 @@ function handleDownloadWallpaper() {
     const ctx = canvas.getContext('2d')
     if (ctx) {
       // Nền tối Binance Dark
-      ctx.fillStyle = '#0b0e11'
+      ctx.fillStyle = '#100e0c'
       ctx.fillRect(0, 0, 1080, 1920)
 
       // Viền vàng hoàng kim
-      ctx.strokeStyle = '#fcd535'
+      ctx.strokeStyle = '#c9a24b'
       ctx.lineWidth = 12
       ctx.strokeRect(60, 60, 960, 1800)
 
       // Header
-      ctx.fillStyle = '#fcd535'
+      ctx.fillStyle = '#c9a24b'
       ctx.font = 'bold 44px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText('VẠN CẢNH THIỀN TỰ · DI SẢN CỔ TỰ', 540, 200)
 
       // Tiêu đề thẻ
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = '#f5eddc'
       ctx.font = 'bold 64px sans-serif'
       ctx.fillText(props.card.title, 540, 420)
 
-      ctx.fillStyle = '#929aa5'
+      ctx.fillStyle = '#a89c88'
       ctx.font = '36px sans-serif'
       ctx.fillText(props.card.subtitle, 540, 500)
 
       // Kinh văn
       if (props.card.scriptureText) {
-        ctx.fillStyle = '#fcd535'
+        ctx.fillStyle = '#c9a24b'
         ctx.font = 'italic 38px serif'
         ctx.fillText(`"${props.card.scriptureText}"`, 540, 780)
       }
 
       // Ý nghĩa
-      ctx.fillStyle = '#e0e0e0'
+      ctx.fillStyle = '#ede4d3'
       ctx.font = '32px sans-serif'
       const words = props.card.meaning.split(' ')
       let line = ''
@@ -103,7 +103,7 @@ function handleDownloadWallpaper() {
       ctx.fillText(line, 540, y)
 
       // Footer
-      ctx.fillStyle = '#666666'
+      ctx.fillStyle = '#968b79'
       ctx.font = '28px monospace'
       ctx.fillText('Cardano Blockchain · Hydra L2 Notary', 540, 1780)
 
@@ -148,21 +148,18 @@ const rarityBadge = computed(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 overflow-y-auto">
       <div
         class="w-full max-w-lg bg-surface-card border border-hairline rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto my-auto">
         <!-- Header Modal -->
         <div class="flex items-center justify-between border-b border-hairline pb-3">
           <div class="flex items-center gap-2.5">
-            <div
-              class="w-9 h-9 rounded-xl bg-surface-elevated border border-hairline flex items-center justify-center text-gold shadow-sm shrink-0">
-              <ZenIcon :name="card.category === 'wisdom' ? 'lotus' : 'pagoda'" :size="18" />
-            </div>
+            <ZenIcon :name="card.category === 'wisdom' ? 'lotus' : 'pagoda'" :size="20" class="text-gold shrink-0" />
             <div>
               <div class="text-xs text-secondary font-medium">
                 {{ card.country }} · {{ card.category === 'wisdom' ? 'Triết Lý Thiền' : 'Kiến Trúc Cổ Tự' }}
               </div>
-              <h3 class="text-sm font-bold text-white tracking-wide leading-snug m-0">
+              <h3 class="text-sm font-bold text-white leading-snug m-0">
                 {{ card.title }}
               </h3>
             </div>
@@ -209,7 +206,7 @@ const rarityBadge = computed(() => {
             </div>
 
             <div class="p-3.5 rounded-xl bg-surface-card border border-hairline space-y-1">
-              <div class="text-xs text-gold font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <div class="text-xs text-gold font-bold flex items-center gap-1.5">
                 <ZenIcon name="sparkles" :size="12" />
                 <span>Ý Nghĩa Chánh Niệm</span>
               </div>
@@ -219,7 +216,7 @@ const rarityBadge = computed(() => {
             </div>
 
             <div class="p-3.5 rounded-xl bg-surface-card border border-hairline/70 space-y-1">
-              <div class="text-xs text-secondary font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <div class="text-xs text-secondary font-semibold flex items-center gap-1.5">
                 <ZenIcon name="pagoda" :size="12" />
                 <span>Điển Tích Cổ Tự (Lore)</span>
               </div>
@@ -233,8 +230,8 @@ const rarityBadge = computed(() => {
           <div v-else class="space-y-3">
             <div v-if="card.scriptureText"
               class="p-4 rounded-xl bg-surface-card border border-gold/40 text-center space-y-2 shadow-inner">
-              <div class="text-xs text-gold font-bold uppercase tracking-wider">Kinh Văn Kệ</div>
-              <div class="text-xs text-white font-serif italic leading-relaxed whitespace-pre-line">
+              <div class="text-xs text-gold font-bold">Kinh Văn Kệ</div>
+              <div class="text-xs text-white italic leading-relaxed whitespace-pre-line">
                 "{{ card.scriptureText }}"
               </div>
             </div>
@@ -245,7 +242,7 @@ const rarityBadge = computed(() => {
               <div class="flex items-center gap-2.5">
                 <div
                   class="w-9 h-9 rounded-full bg-surface-elevated border border-hairline flex items-center justify-center text-primary shrink-0">
-                  <ZenIcon name="volume" :size="16" />
+                  <ZenIcon name="volume-2" :size="16" />
                 </div>
                 <div class="min-w-0">
                   <div class="text-xs font-semibold text-white">Thuyết Minh Âm Thanh</div>

@@ -9,13 +9,13 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
  */
 export default defineEventHandler(async (event) => {
   rateLimit(event, 'shop:orders:list', 60, 60_000)
-  const account = requireSession(event)
-  const initialOrders = listAccountOrders(account, 30)
+  const account = await requireSession(event)
+  const initialOrders = await listAccountOrders(account, 30)
   if (initialOrders.some(o => ['signing', 'submitted', 'confirming'].includes(o.status))) {
     await syncPendingOrdersFromChain()
   }
-  const freshAccount = getSessionAccount(event) ?? account
-  const orders = listAccountOrders(freshAccount, 30)
+  const freshAccount = (await getSessionAccount(event)) ?? account
+  const orders = await listAccountOrders(freshAccount, 30)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return {
     orders,

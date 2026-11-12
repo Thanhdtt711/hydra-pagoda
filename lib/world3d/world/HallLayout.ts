@@ -77,6 +77,16 @@ export class HallLayout {
     perimeterWidth: 1.5 // Lối đi sát vách
   }
 
+  // Vị trí NPC Thầy Trụ Trì (Phương án 2: đứng ngoài Hiên Tiền Điện, thềm Hữu Chính Môn, cách cột hiên & không chắn cửa)
+  public static readonly ABBOT_SPOT = {
+    x: 3.85,
+    y: 1.35,
+    z: 2.25,
+    yaw: -0.35,
+    interactionRadius: 3.0,
+    colliderRadius: 0.48
+  }
+
   // Bệ bàn thờ Phật (sát vách phía Bắc)
   public static readonly ALTAR_BOUNDS = {
     minX: -5.0,

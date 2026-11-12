@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "greeting_pool_limit": 6,
+  "questions": [
+    {
+      "id": "q_tu_dieu_de",
+      "text": "Tứ diệu đế là gì? Vì sao gọi là \"diệu\"?",
+      "category": "tu_dieu_de",
+      "primary_source": "data/tu_dieu_de/tu_dieu_de.md",
+      "related_ids": ["q_nhan_qua", "q_giam_lo_au", "q_thien_la_gi"],
+      "emotion": "calm",
+      "offline_answer": "A Di Đà Phật, Tứ diệu đế là bốn sự thật màu nhiệm mà Đức Phật chỉ ra ngay từ bài pháp đầu tiên: Khổ đế, Tập đế, Diệt đế và Đạo đế. Hiểu nôm na như chuyện chữa bệnh: Khổ là nhận diện nỗi bất an đang có, Tập là tìm đúng gốc rễ sinh ra nó từ tham sân si, Diệt là trạng thái lòng lắng dịu khi buông được chấp niệm, còn Đạo là tám bước thực hành để đi tới bình an. Sở dĩ gọi là \"diệu\" vì đây là sự thật chắc chắn, ai chịu nhìn thẳng và thực hành đúng đều có thể chuyển hóa khổ đau ngay trong đời này. Con có muốn thầy nói sâu hơn về bước đầu tiên của Bát chánh đạo không?"
+    },
+    {
+      "id": "q_nhan_qua",
+      "text": "Nhân quả và nghiệp hiểu thế nào cho đúng?",
+      "category": "giao_ly_phat_phap",
+      "primary_source": "data/giao_ly_phat_phap/nhan_qua.md",
+      "related_ids": ["q_ngu_gioi", "q_giam_lo_au", "q_cong_duc"],
+      "emotion": "calm",
+      "offline_answer": "A Di Đà Phật, nhiều người nghe tới \"nghiệp\" thường thấy sợ, nhưng thực ra nghiệp chỉ có nghĩa là hành động có tác ý qua thân, miệng và ý của mình. Nhân giống như hạt giống con gieo xuống đất, gặp đủ nắng mưa gọi là duyên thì mới nảy mầm thành quả. Nhân quả không phải bản án cố định trói buộc con người, bởi ngay phút giây hiện tại con luôn có quyền gieo thêm những hạt lành mới để chuyển hóa dòng chảy cũ. Như cốc nước muối mặn, nếu ta rót thêm nhiều nước ngọt tinh khiết thì vị mặn tự khắc dịu đi. Con có muốn hỏi thêm về cách giữ tâm thiện lành mỗi ngày không?"
+    },
+    {
+      "id": "q_ngu_gioi",
+      "text": "Ngũ giới gồm những gì? Người tại gia giữ giới ra sao?",
+      "category": "gioi_luat",
+      "primary_source": "data/gioi_luat/ngu_gioi.md",
+      "related_ids": ["q_nhan_qua", "q_di_chua", "q_giam_lo_au"],
+      "emotion": "smile",
+      "offline_answer": "A Di Đà Phật, Ngũ giới của người Phật tử tại gia gồm năm điều thực tập: không sát sinh, không trộm cắp, không tà dâm, không nói dối và không dùng chất say nghiện làm mờ trí tuệ. Giới luật không phải sợi dây trói buộc hay điều răn phạt, mà giống như hàng rào ven vực giúp mình đi đứng vững vàng mà không trượt ngã. Người tại gia giữ giới tùy theo sức và hoàn cảnh, lỡ vấp chỗ nào thì tự nhận biết để sửa chỗ ấy, nuôi lớn lòng từ bi và sự chân thật. Nhờ giữ năm điều này, gia đình ấm êm mà lòng mình cũng ngủ yên hơn mỗi tối."
+    },
+    {
+      "id": "q_di_chua",
+      "text": "Đi chùa lễ Phật nên chuẩn bị gì, ứng xử thế nào?",
+      "category": "van_hoa_chua_nghi_le",
+      "primary_source": "data/van_hoa_chua_nghi_le/le_chua_thap_huong.md",
+      "related_ids": ["q_ram_mong_mot", "q_cong_duc", "q_thien_la_gi"],
+      "emotion": "smile",
+      "offline_answer": "A Di Đà Phật, điều quý nhất con mang theo khi vào chùa không phải mâm cao cỗ đầy, mà là y phục chỉnh tề, kín đáo và một tấm lòng thanh tịnh. Khi thắp hương, con chỉ cần một nén hương lòng hoặc một cành hoa tươi ở đỉnh hương ngoài sân, không chen lấn hay khấn xin điều gây hại cho ai. Trong khuôn viên chùa, ta đi nhẹ nói khẽ để giữ sự tĩnh lặng chung cho những người đang tọa thiền. Một cái chắp tay cúi đầu thành kính trước Tam Bảo đã đủ trọn vẹn ý nghĩa lễ Phật rồi."
+    },
+    {
+      "id": "q_ram_mong_mot",
+      "text": "Vì sao có ngày mồng một và ngày rằm lên chùa?",
+      "category": "van_hoa_chua_nghi_le",
+      "primary_source": "data/van_hoa_chua_nghi_le/ngay_ram_mong_mot.md",
+      "related_ids": ["q_di_chua", "q_cong_duc", "q_thien_la_gi"],
+      "emotion": "calm",
+      "offline_answer": "A Di Đà Phật, người Việt mình giữ nếp lên chùa vào ngày mồng một đầu tháng và ngày rằm giữa tháng như hai khoảng dừng quý giá giữa nhịp sống bận rộn. Đầu tháng là dịp phát nguyện sống hiền hòa, bớt nóng nảy; còn ngày rằm trăng tròn nhắc mình soi lại lòng xem nửa tháng qua đã giữ được bình an hay chưa. Ở nhiều truyền thống Phật giáo, đây cũng là những ngày Bố-tát để chư Tăng tụng giới và Phật tử về chùa tụng kinh, giữ tâm thanh tịnh. Trong game Pagoda, mồng một và ngày rằm Âm lịch cũng là dịp sinh hoạt cộng đồng đặc biệt của chùa và Nhà Hầu Đồng."
+    },
+    {
+      "id": "q_kinh_dich",
+      "text": "Kinh Dịch là gì? Có liên quan đến Phật giáo không?",
+      "category": "kinh_dich",
+      "primary_source": "data/kinh_dich/tong_quan_kinh_dich.md",
+      "related_ids": ["q_nhan_qua", "q_tho_mau", "q_giam_lo_au"],
+      "emotion": "thoughtful",
+      "offline_answer": "A Di Đà Phật, câu hỏi của con rất tinh tế vì nhiều người hay gộp chung hai điều này. Kinh Dịch là bộ sách triết học và văn hóa cổ đại phương Đông bàn về quy luật biến đổi không ngừng của Âm Dương, Bát quái và Ngũ hành, hoàn toàn không phải giáo lý Phật giáo. Điểm tương đồng thú vị chỉ nằm ở chỗ cả hai đều nhìn thấy vạn vật luôn vận động, thịnh rồi suy như thủy triều lên xuống. Khi xem quẻ Kinh Dịch trong chùa để chiêm nghiệm, con hãy coi đó như tấm gương nhắc mình suy nghĩ chín chắn, bởi vận mệnh cuối cùng vẫn nằm ở việc con làm chứ không phải ở que tre."
+    },
+    {
+      "id": "q_tho_mau",
+      "text": "Phật giáo và tín ngưỡng thờ Mẫu khác nhau thế nào?",
+      "category": "thong_tin_game",
+      "primary_source": "data/thong_tin_game/tin_nguong_tho_mau_hau_dong.md",
+      "related_ids": ["q_kinh_dich", "q_di_chua", "q_phap_luat"],
+      "emotion": "thoughtful",
+      "offline_answer": "A Di Đà Phật, người Việt có câu \"Tiền Phật - Hậu Mẫu\", thể hiện sự chung sống rất hài hòa nhưng vẫn rạch ròi giữa hai truyền thống. Phật giáo hướng con người tu tập tâm thức, giữ giới và giác ngộ thoát khổ theo lời dạy của Đức Phật Thích Ca; còn Tín ngưỡng Thờ Mẫu Tam Tứ phủ là di sản văn hóa bản địa tôn vinh Mẹ Thiên nhiên, các vị anh hùng dân tộc như Đức Thánh Trần và nghi lễ Hầu đồng đã được UNESCO ghi danh năm 2016. Hai bên khác nhau về mục đích tối hậu và nghi thức hành trì, nhưng cùng gặp nhau ở lòng hướng thiện và tri ân tiền nhân. Trong game Pagoda, Nhà Hầu Đồng đặt trang nghiêm ở phía Đông Chánh Điện để người chơi tìm hiểu nét đẹp văn hóa dân tộc một cách tôn trọng."
+    },
+    {
+      "id": "q_cong_duc",
+      "text": "Công đức và từ thiện đúng cách là gì?",
+      "category": "phap_luat_nha_nuoc",
+      "primary_source": "data/phap_luat_nha_nuoc/cong_duc_tu_thien_di_tich.md",
+      "related_ids": ["q_nhan_qua", "q_phap_luat", "q_di_chua"],
+      "emotion": "calm",
+      "offline_answer": "A Di Đà Phật, công đức đích thực không nằm ở con số tiền lớn hay nhỏ, mà ở tâm hoan hỉ, trong sáng khi cho đi mà không mong cầu đổi chác hay khoe khoang. Một lời an ủi chân thành, một hành động nhường nhịn hay giúp người lúc ngặt nghèo đều là công đức lớn. Khi đóng góp tiền công đức hay làm từ thiện, cả tinh thần Phật pháp lẫn quy định pháp luật hiện hành đều đề cao sự tự nguyện, công khai và minh bạch đúng mục đích tu bổ di tích, giúp đỡ cộng đồng. Trong game cũng vậy, góp công đức ở Hòm Công Đức hoàn toàn tùy tâm, tuyệt đối không phải để mua bán phước phần."
+    },
+    {
+      "id": "q_phap_luat",
+      "text": "Pháp luật quy định thế nào về hoạt động tôn giáo, lễ hội?",
+      "category": "phap_luat_nha_nuoc",
+      "primary_source": "data/phap_luat_nha_nuoc/tin_nguong_ton_giao_le_hoi.md",
+      "related_ids": ["q_cong_duc", "q_di_chua", "q_tho_mau"],
+      "emotion": "serious",
+      "offline_answer": "A Di Đà Phật, theo tinh thần Luật Tín ngưỡng, tôn giáo năm 2016 và các quy định quản lý lễ hội của Nhà nước, mọi người đều có quyền tự do tín ngưỡng, tôn giáo nhưng cần thực hiện văn minh, đúng pháp luật và không lợi dụng lễ hội để mê tín dị đoan hay trục lợi. Tại nơi thờ tự và di tích, người tham gia cần giữ gìn trật tự, an toàn phòng cháy chữa cháy và bảo vệ cảnh quan chung. Nếu con cần tra cứu chi tiết từng điều khoản pháp lý hoặc thủ tục hành chính cụ thể ngoài những nét chung này, thầy chưa nắm đầy đủ từng mục luật nên con hãy xem văn bản gốc hoặc hỏi cơ quan quản lý có thẩm quyền nhé."
+    },
+    {
+      "id": "q_giam_lo_au",
+      "text": "Làm sao để bớt lo âu, giữ tâm bình an?",
+      "category": "giao_ly_phat_phap",
+      "primary_source": "data/giao_ly_phat_phap/tu_vo_luong_tam_thien_dinh.md",
+      "related_ids": ["q_thien_la_gi", "q_tu_dieu_de", "q_nhan_qua"],
+      "emotion": "smile",
+      "offline_answer": "A Di Đà Phật, tâm hay lo âu cũng giống như mặt hồ bị gió thổi xao động; nếu ta cứ lấy tay đập xuống nước cho phẳng thì nước càng đục hơn. Thay vì gồng mình xua đuổi suy nghĩ, con hãy thử ngồi yên một chút, hít vào chậm rãi và nhận ra mình đang hít vào, thở ra nhẹ nhàng và buông lỏng hai vai. Nhiều nỗi sợ đến từ việc tâm chạy trước về tương lai chưa tới hoặc ngoái lại quá khứ đã qua, nên kéo ý thức trở về hơi thở hiện tại sẽ giúp ngọn đèn trong lòng sáng và đứng gió hơn. Con có thể bước vào Đại Hùng Bảo Điện trải nghiệm nhịp thở 4-4-6 trên bồ đoàn thiền 432Hz để cảm nhận sự lắng dịu này."
+    },
+    {
+      "id": "q_thien_la_gi",
+      "text": "Thiền là gì? Người mới nên bắt đầu thế nào?",
+      "category": "tong_chi_truyen_thong",
+      "primary_source": "data/tong_chi_truyen_thong/cac_tong_phai_phat_giao.md",
+      "related_ids": ["q_giam_lo_au", "q_tu_dieu_de", "q_di_chua"],
+      "emotion": "calm",
+      "offline_answer": "A Di Đà Phật, thiền không phải ép đầu óc trống rỗng như tảng đá, mà là nghệ thuật quay về quan sát thân tâm mình một cách tỉnh thức và dịu dàng. Người mới bắt đầu chỉ cần ngồi thẳng lưng tự nhiên, thả lỏng vai, chọn một điểm neo đơn giản là hơi thở ra vào ở cánh mũi hoặc vùng bụng. Khi tâm chạy đi suy nghĩ chuyện công việc hay gia đình, con chỉ cần mỉm cười nhận ra rồi nhẹ nhàng đưa chú ý về lại hơi thở, mỗi ngày năm mười phút đều đặn là quý lắm rồi. Trong chùa Pagoda, con có thể vào Chánh Điện ngồi bồ đoàn nghe tiếng chuông 432Hz để tập nhịp thở chánh niệm ấy."
+    }
+  ]
+}
+

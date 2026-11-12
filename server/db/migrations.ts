@@ -10,6 +10,13 @@ export interface Migration {
   sql: string
 }
 
+/** Chuyển DDL SQLite trong MIGRATIONS sang cú pháp PostgreSQL tương đương. */
+export function toPostgresSql(sqliteSql: string): string {
+  return sqliteSql
+    .replace(/\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b/gi, 'BIGSERIAL PRIMARY KEY')
+    .replace(/\bINTEGER\b/gi, 'BIGINT')
+}
+
 export const MIGRATIONS: Migration[] = [
   {
     version: 1,
@@ -380,6 +387,15 @@ CREATE TABLE IF NOT EXISTS card_pack_openings (
   created_at   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_card_pack_acc ON card_pack_openings (account_id, created_at DESC);
+`
+  },
+  {
+    version: 10,
+    name: 'accounts_fortune_name',
+    sql: `
+-- Lưu họ tên từ hồ sơ Bói Quẻ (nếu người chơi đã nhập) để hiển thị trong game & multiplayer,
+-- tách biệt với display_name mặc định theo ví để có thể khôi phục khi xóa hồ sơ.
+ALTER TABLE accounts ADD COLUMN fortune_name TEXT;
 `
   }
 ]

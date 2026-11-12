@@ -7,10 +7,10 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
  * Trả về gói thiền, hạn mức MC trong ngày của tài khoản (nếu đã đăng nhập) và danh sách mã bồ đoàn đang có
  * đồng tu ngồi thiền để client chọn chỗ trống gần nhất / báo "hết chỗ ngồi".
  */
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   rateLimit(event, 'mc:meditation:status', 60, 60_000)
-  const account = getSessionAccount(event)
+  const account = await getSessionAccount(event)
   setResponseHeader(event, 'Cache-Control', 'no-store')
-  return { authenticated: Boolean(account), ...getMeditationStatus(account?.id ?? null) }
+  return { authenticated: Boolean(account), ...(await getMeditationStatus(account?.id ?? null)) }
 })
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue'
 import UiButton from '~/components/ui/UiButton.vue'
+import { t } from '~/lib/ui/copy'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -9,11 +10,11 @@ const emit = defineEmits<{
 
 <template>
   <UiModal
-    title="Quy chuẩn & Pháp lý"
-    subtitle="Mô phỏng văn hóa viễn tưởng & Chống mê tín dị đoan"
+    :title="t('title.legal')"
+    subtitle="Mô phỏng văn hóa, không tiên tri"
     @close="emit('close')"
   >
-    <div class="text-sm text-secondary space-y-3 bg-surface-elevated p-4 rounded-lg border border-hairline leading-relaxed">
+    <details class="text-sm text-secondary space-y-3 bg-surface-elevated p-4 rounded-lg border border-hairline leading-relaxed"><summary class="cursor-pointer text-primary font-semibold">{{ t('btn.more') }}</summary>
       <div class="flex items-start gap-3">
         <span class="font-numbers text-xs font-bold text-primary mt-0.5">01.</span>
         <p class="m-0">
@@ -32,7 +33,7 @@ const emit = defineEmits<{
           <strong class="text-primary">Chánh niệm &amp; Trách nhiệm:</strong> Hãy tiếp cận với tinh thần hoan hỷ, an lạc. Mọi quyết định trong đời sống cần xây dựng trên nền tảng khoa học, lý trí và đạo đức.
         </p>
       </div>
-    </div>
+    </details>
 
     <template #footer>
       <UiButton 
@@ -41,7 +42,7 @@ const emit = defineEmits<{
         block
         @click="emit('close')"
       >
-        Tôi đã hiểu và tiếp tục chiêm bái
+        {{ t('btn.understood') }}
       </UiButton>
     </template>
   </UiModal>

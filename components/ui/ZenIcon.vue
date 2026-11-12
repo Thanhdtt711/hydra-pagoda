@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import ZenIcon from '~/components/ZenIcon.vue'
+import ZenIcon, { type WhitelistedIconName } from '~/components/ZenIcon.vue'
 
 interface Props {
-  name: string
+  name: WhitelistedIconName
   size?: number | string
   class?: string
 }

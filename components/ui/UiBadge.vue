@@ -41,16 +41,16 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .ui-badge--neutral {
-  background-color: var(--surface-elevated-dark, #2b3139);
-  color: var(--text-secondary, #929aa5);
-  border: 1px solid var(--hairline-on-dark, #2b3139);
+  background-color: var(--surface-elevated-dark, #26221d);
+  color: var(--text-secondary, #a89c88);
+  border: 1px solid var(--hairline-on-dark, #26221d);
 }
 
 .ui-badge--gold,
 .ui-badge--warning {
-  background-color: rgba(252, 213, 53, 0.15);
-  color: var(--primary, #fcd535);
-  border: 1px solid rgba(252, 213, 53, 0.3);
+  background-color: rgba(201,162,75, 0.15);
+  color: var(--primary, #c9a24b);
+  border: 1px solid rgba(201,162,75, 0.3);
 }
 
 .ui-badge--success {

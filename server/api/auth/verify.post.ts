@@ -11,14 +11,14 @@ export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'auth:verify', 10, 60_000)
   const body = await readBody(event)
-  const account = verifyLogin(event, body ?? {})
-  const sessionToken = startSession(event, account.id)
+  const account = await verifyLogin(event, body ?? {})
+  const sessionToken = await startSession(event, account.id)
 
   // Hydra L2: chữ ký CIP-8 vừa xác minh ủy quyền cho Session Ephemeral Key của tài khoản (không cần popup ví khi tiêu MC).
   let l2: { sessionVkey: string; l2Address: string } | null = null
   if (getHydraConfig().enabled) {
     try {
-      l2 = ensureAccountSession(account.id)
+      l2 = await ensureAccountSession(account.id)
     } catch (e: any) {
       console.warn('[hydra:l2] Không tạo được Session Key (bỏ qua, dùng SQLite):', e?.message || e)
     }

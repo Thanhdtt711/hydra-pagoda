@@ -36,6 +36,7 @@ export interface WalletConfig {
   /** CIP-30 getNetworkId(): 0 = testnet (Preprod), 1 = mainnet */
   networkId: 0 | 1
   isTestnet: boolean
+  databaseUrl: string
   dbPath: string
   sessionTtlMs: number
   trustProxy: boolean
@@ -57,8 +58,8 @@ export interface WalletConfig {
 }
 
 export function getWalletConfig(): WalletConfig {
-  const rc = useRuntimeConfig()
-  const raw = String(process.env.NUXT_PUBLIC_CARDANO_NETWORK || rc.public.cardanoNetwork || 'preprod').toLowerCase()
+  const rc: Record<string, any> = typeof useRuntimeConfig === 'function' ? useRuntimeConfig() : { public: {} }
+  const raw = String(process.env.NUXT_PUBLIC_CARDANO_NETWORK || rc.public?.cardanoNetwork || 'preprod').toLowerCase()
   const network: CardanoNetworkName = raw === 'mainnet' ? 'mainnet' : 'preprod'
   const isTestnet = network !== 'mainnet'
   const hours = Math.max(1, Number(process.env.NUXT_SESSION_TTL_HOURS || rc.sessionTtlHours) || 168)
@@ -108,10 +109,18 @@ export function getWalletConfig(): WalletConfig {
   const orderMetadataLabel = Math.max(1, Number(process.env.NUXT_ORDER_METADATA_LABEL || rc.orderMetadataLabel) || 8181)
   const webhookSecret = String(process.env.NUXT_WEBHOOK_SECRET || rc.webhookSecret || '').trim()
 
+  const databaseUrl = String(
+    process.env.NUXT_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    rc.databaseUrl ||
+    ''
+  ).trim()
+
   return {
     network,
     networkId: isTestnet ? 0 : 1,
     isTestnet,
+    databaseUrl,
     dbPath: String(process.env.NUXT_DB_PATH || rc.dbPath || './.data/pagoda.sqlite'),
     sessionTtlMs: hours * 3600_000,
     trustProxy: rc.trustProxy === true || String(process.env.NUXT_TRUST_PROXY || rc.trustProxy) === 'true',

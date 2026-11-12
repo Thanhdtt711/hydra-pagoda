@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getVietnamDayKey } from '~/lib/time/vietnamDay'
 
 export type CountryId =
   | 'vietnam'
@@ -88,7 +89,7 @@ export const useUserStore = defineStore('user', {
     },
     recordMeditation(minutes: number) {
       this.totalMinutesMeditated += minutes
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVietnamDayKey()
       if (this.lastMeditatedDate !== today) {
         this.streakDays += 1
         this.lastMeditatedDate = today

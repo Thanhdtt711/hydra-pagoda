@@ -1,17 +1,22 @@
-// Kiểm thử đăng nhập ví + tấn công giả mạo. Chạy: node scripts/wallet/test-auth.mjs
-// Cần server đang chạy (mặc định http://127.0.0.1:3013) với NUXT_DB_PATH trỏ tới DB thử.
+// Kiểm thử đăng nhập ví + tấn công giả mạo. Yêu cầu đã build: npm run build.
+// Chạy: node scripts/wallet/test-auth.mjs
+// Mặc định test tự dựng server (cổng 3017) với DB thử. Đặt BASE_URL (và DB_PATH) để chạy với server có sẵn.
 // Giả lập ví CIP-30: dựng COSE_Sign1/COSE_Key đúng chuẩn CIP-8 bằng khóa ed25519 ngẫu nhiên.
-// Không dùng khóa/seed thật nào. Biến DB_PATH (tùy chọn) để test nonce hết hạn.
+// Không dùng khóa/seed thật nào. Biến DB_PATH (tùy chọn khi dùng server có sẵn) để test nonce hết hạn.
 import { ed25519 } from '@noble/curves/ed25519'
 import { blake2b } from '@noble/hashes/blake2b'
 import { bech32 } from '@scure/base'
 import { encode as cborEncode } from 'cbor2'
 import { DatabaseSync } from 'node:sqlite'
 import { randomBytes } from 'node:crypto'
+import { startTestServer } from './_server.mjs'
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:3013'
-const DB_PATH = process.env.DB_PATH
+const SPAWN = !process.env.BASE_URL
+const PORT = Number(process.env.PORT || 3017)
+const BASE = process.env.BASE_URL || `http://127.0.0.1:${PORT}`
+const DB_PATH = process.env.DB_PATH || (SPAWN ? './.data/test-auth.sqlite' : undefined)
 const HOST = new URL(BASE).host
+const testServer = SPAWN ? await startTestServer({ port: PORT, dbPath: DB_PATH }) : null
 const results = []
 const hex = b => Buffer.from(b).toString('hex')
 const log = (name, ok, info = '') => { results.push({ name, ok }); console.log(`${ok ? '✅ PASS' : '❌ FAIL'}  ${name}${info ? ' — ' + info : ''}`) }
@@ -62,7 +67,16 @@ const A = makeWallet(0)
 const ok = await login(A)
 log('Đăng nhập hợp lệ (nonce → ký CIP-8 → verify)', ok.v?.status === 200 && ok.v.json?.account?.address === A.bech, `status=${ok.v?.status}`)
 const cookieHeader = ok.v?.setCookie || ''
-log('Cookie phiên httpOnly + SameSite=Strict', /HttpOnly/i.test(cookieHeader) && /SameSite=Strict/i.test(cookieHeader), cookieHeader.replace(/pagoda_session=[^;]+/, 'pagoda_session=<ẩn>'))
+// Server đặt SameSite theo giao thức (auth.ts startSession): HTTP -> Lax, HTTPS -> None + Secure (hỗ trợ iframe cross-site).
+const isHttpsBase = BASE.startsWith('https:')
+const sameSiteOk = isHttpsBase
+  ? /SameSite=None/i.test(cookieHeader) && /;\s*Secure/i.test(cookieHeader)
+  : /SameSite=Lax/i.test(cookieHeader) && !/;\s*Secure/i.test(cookieHeader)
+log(
+  `Cookie phiên httpOnly + SameSite đúng giao thức (${isHttpsBase ? 'None+Secure' : 'Lax'})`,
+  /HttpOnly/i.test(cookieHeader) && sameSiteOk,
+  cookieHeader.replace(/pagoda_session=[^;]+/, 'pagoda_session=<ẩn>')
+)
 const cookie = cookieHeader.split(';')[0]
 const me = await api('/api/auth/me', { cookie })
 log('Tải lại trang: /api/auth/me giữ phiên + số dư MC', me.json?.authenticated === true && me.json.account.mcBalance === 0, `mc=${me.json?.account?.mcBalance}`)
@@ -155,5 +169,6 @@ log('Rate limit /api/auth/nonce trả 429', limited)
 
 const failed = results.filter(r => !r.ok).length
 console.log(`\nKẾT QUẢ: ${results.length - failed}/${results.length} đạt`)
+await testServer?.stop()
 process.exit(failed ? 1 : 0)
 

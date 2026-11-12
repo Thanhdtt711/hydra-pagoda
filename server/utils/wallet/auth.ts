@@ -20,6 +20,8 @@ export interface PublicAccount {
   id: number
   address: string
   displayName: string
+  walletDisplayName: string
+  fortuneName: string | null
   mcBalance: number
 }
 
@@ -27,6 +29,7 @@ interface AccountRow {
   id: number
   address: string
   display_name: string
+  fortune_name?: string | null
   mc_balance: number
 }
 
@@ -36,9 +39,17 @@ export function apiError(statusCode: number, code: string, message: string): nev
 }
 
 const sha256Hex = (s: string) => createHash('sha256').update(s).digest('hex')
-const toPublic = (r: AccountRow): PublicAccount => ({
-  id: r.id, address: r.address, displayName: r.display_name, mcBalance: r.mc_balance
-})
+const toPublic = (r: AccountRow): PublicAccount => {
+  const fortuneName = r.fortune_name && r.fortune_name.trim() ? r.fortune_name.trim() : null
+  return {
+    id: r.id,
+    address: r.address,
+    displayName: fortuneName || r.display_name,
+    walletDisplayName: r.display_name,
+    fortuneName,
+    mcBalance: r.mc_balance
+  }
+}
 const shortAddress = (a: string) => `${a.slice(0, 10)}…${a.slice(-4)}`
 
 export function requestHost(event: H3Event): string {
@@ -93,19 +104,19 @@ function parseAddressForNetwork(address: unknown): { bytes: Uint8Array; bech32: 
  * Phát hành nonce dùng một lần (hết hạn 5 phút) cho một địa chỉ. Lưu cả thông điệp đã phát
  * hành để lúc verify so khớp từng byte với thứ ví thực sự ký.
  */
-export function issueNonce(event: H3Event, addressInput: unknown) {
+export async function issueNonce(event: H3Event, addressInput: unknown) {
   const cfg = getWalletConfig()
   const { bech32 } = parseAddressForNetwork(addressInput)
   const now = Date.now()
   const nonce = randomBytes(16).toString('hex')
   const domain = requestHost(event)
   const message = buildLoginMessage({ domain, address: bech32, network: cfg.network, nonce, issuedAt: now, expiresAt: now + NONCE_TTL_MS })
-  const db = getDb()
+  const db = await getDb()
   // Dọn dữ liệu hết hạn cơ hội (rẻ, tránh cần cron riêng).
-  db.prepare('DELETE FROM auth_nonces WHERE expires_at < ?').run(now - 3600_000)
-  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now)
-  db.prepare('DELETE FROM ws_tickets WHERE expires_at < ?').run(now - 3600_000)
-  db.prepare('INSERT INTO auth_nonces (nonce, address, domain, message, issued_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)')
+  await db.prepare('DELETE FROM auth_nonces WHERE expires_at < ?').run(now - 3600_000)
+  await db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now)
+  await db.prepare('DELETE FROM ws_tickets WHERE expires_at < ?').run(now - 3600_000)
+  await db.prepare('INSERT INTO auth_nonces (nonce, address, domain, message, issued_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)')
     .run(nonce, bech32, domain, message, now, now + NONCE_TTL_MS)
   return { nonce, message, address: bech32, expiresAt: now + NONCE_TTL_MS, network: cfg.network }
 }
@@ -124,7 +135,7 @@ const isHex = (v: unknown, max: number): v is string =>
  * Xác minh đăng nhập. Mọi nhánh lỗi đều trả 401 chung chung (không lộ bước nào sai) và
  * nonce bị "đốt" ngay từ đầu nên không thể thử lại/replay.
  */
-export function verifyLogin(event: H3Event, input: LoginInput): PublicAccount {
+export async function verifyLogin(event: H3Event, input: LoginInput): Promise<PublicAccount> {
   if (typeof input.nonce !== 'string' || !/^[0-9a-f]{32}$/.test(input.nonce)) apiError(400, 'bad_request', 'Thiếu hoặc sai nonce')
   if (!isHex(input.signature, 8192) || !isHex(input.key, 2048)) apiError(400, 'bad_request', 'Thiếu chữ ký')
   const { bech32: claimedAddress } = parseAddressForNetwork(input.address)
@@ -133,11 +144,11 @@ export function verifyLogin(event: H3Event, input: LoginInput): PublicAccount {
   const fail = (): never => apiError(401, 'auth_failed', 'Xác thực chữ ký thất bại')
 
   // 1) Đốt nonce nguyên tử: chỉ một yêu cầu thắng, nonce hết hạn/đã dùng đều bị từ chối.
-  const row = withTransaction(conn => {
-    const r = conn.prepare('SELECT * FROM auth_nonces WHERE nonce = ?').get(input.nonce as string) as
+  const row = await withTransaction(async conn => {
+    const r = await conn.prepare('SELECT * FROM auth_nonces WHERE nonce = ?').get(input.nonce as string) as
       | { address: string; domain: string; message: string; expires_at: number; used_at: number | null } | undefined
     if (!r) return null
-    const upd = conn.prepare('UPDATE auth_nonces SET used_at = ? WHERE nonce = ? AND used_at IS NULL AND expires_at > ?')
+    const upd = await conn.prepare('UPDATE auth_nonces SET used_at = ? WHERE nonce = ? AND used_at IS NULL AND expires_at > ?')
       .run(now, input.nonce as string, now)
     return Number(upd.changes) === 1 ? r : null
   })
@@ -164,12 +175,12 @@ export function verifyLogin(event: H3Event, input: LoginInput): PublicAccount {
   if (!bytesEqual(signedPayload, res.payload)) return fail()
 
   // 5) Tạo/nạp tài khoản theo địa chỉ ĐÃ XÁC THỰC.
-  return withTransaction(conn => {
-    conn.prepare(
+  return withTransaction(async conn => {
+    await conn.prepare(
       `INSERT INTO accounts (address, display_name, created_at, last_login_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(address) DO UPDATE SET last_login_at = excluded.last_login_at`
     ).run(row.address, shortAddress(row.address), now, now)
-    const acc = conn.prepare('SELECT id, address, display_name, mc_balance FROM accounts WHERE address = ?').get(row.address) as unknown as AccountRow
+    const acc = await conn.prepare('SELECT id, address, display_name, fortune_name, mc_balance FROM accounts WHERE address = ?').get(row.address) as unknown as AccountRow
     return toPublic(acc)
   })
 }
@@ -190,13 +201,14 @@ function extractSessionToken(event: H3Event): string | null {
 }
 
 /** Tạo phiên mới và đặt cookie httpOnly (hỗ trợ cả iframe cross-site SameSite=None). Token ngẫu nhiên 256-bit; DB chỉ giữ hash. */
-export function startSession(event: H3Event, accountId: number): string {
+export async function startSession(event: H3Event, accountId: number): Promise<string> {
   const cfg = getWalletConfig()
   const now = Date.now()
   // Xoay phiên: hủy phiên cũ của trình duyệt này (chống session fixation).
-  destroySession(event)
+  await destroySession(event)
   const token = randomBytes(32).toString('base64url')
-  getDb().prepare('INSERT INTO sessions (token_hash, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
+  const db = await getDb()
+  await db.prepare('INSERT INTO sessions (token_hash, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
     .run(sha256Hex(token), accountId, now, now + cfg.sessionTtlMs)
   const isHttps = isRequestHttps(event)
   setCookie(event, SESSION_COOKIE, token, {
@@ -210,11 +222,12 @@ export function startSession(event: H3Event, accountId: number): string {
 }
 
 /** Trả tài khoản của phiên hiện tại, hoặc null nếu không có/hết hạn. */
-export function getSessionAccount(event: H3Event): PublicAccount | null {
+export async function getSessionAccount(event: H3Event): Promise<PublicAccount | null> {
   const token = extractSessionToken(event)
   if (!token) return null
-  const row = getDb().prepare(
-    `SELECT a.id, a.address, a.display_name, a.mc_balance, s.expires_at
+  const db = await getDb()
+  const row = await db.prepare(
+    `SELECT a.id, a.address, a.display_name, a.fortune_name, a.mc_balance, s.expires_at
        FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ?`
   ).get(sha256Hex(token)) as unknown as (AccountRow & { expires_at: number }) | undefined
   if (!row || row.expires_at <= Date.now()) return null
@@ -222,24 +235,28 @@ export function getSessionAccount(event: H3Event): PublicAccount | null {
 }
 
 /** Bắt buộc đăng nhập; ném 401 nếu không có phiên hợp lệ. */
-export function requireSession(event: H3Event): PublicAccount {
-  const acc = getSessionAccount(event)
+export async function requireSession(event: H3Event): Promise<PublicAccount> {
+  const acc = await getSessionAccount(event)
   if (!acc) apiError(401, 'unauthenticated', 'Chưa đăng nhập hoặc phiên đã hết hạn')
   return acc
 }
 
 /** Xóa phiên hiện tại ở DB và cookie (đăng xuất an toàn). */
-export function destroySession(event: H3Event) {
+export async function destroySession(event: H3Event) {
   const token = extractSessionToken(event)
-  if (token) getDb().prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256Hex(token))
+  if (token) {
+    const db = await getDb()
+    await db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256Hex(token))
+  }
   const isHttps = isRequestHttps(event)
   deleteCookie(event, SESSION_COOKIE, { path: '/', sameSite: isHttps ? 'none' : 'lax', secure: isHttps })
 }
 
 /** Phát vé WS một lần (60s) cho tài khoản đã đăng nhập. */
-export function issueWsTicket(accountId: number): string {
+export async function issueWsTicket(accountId: number): Promise<string> {
   const ticket = randomBytes(24).toString('base64url')
-  getDb().prepare('INSERT INTO ws_tickets (ticket_hash, account_id, expires_at) VALUES (?, ?, ?)')
+  const db = await getDb()
+  await db.prepare('INSERT INTO ws_tickets (ticket_hash, account_id, expires_at) VALUES (?, ?, ?)')
     .run(sha256Hex(ticket), accountId, Date.now() + WS_TICKET_TTL_MS)
   return ticket
 }
@@ -248,17 +265,29 @@ export function issueWsTicket(accountId: number): string {
  * Đổi vé WS lấy tài khoản (dùng trong `_ws.ts`). Dùng một lần: UPDATE có điều kiện đảm bảo
  * vé bị lấy trộm/phát lại không dùng được lần hai.
  */
-export function consumeWsTicket(ticket: unknown): PublicAccount | null {
+export async function consumeWsTicket(ticket: unknown): Promise<PublicAccount | null> {
   if (typeof ticket !== 'string' || ticket.length > 100) return null
   const now = Date.now()
   const h = sha256Hex(ticket)
-  return withTransaction(conn => {
-    const upd = conn.prepare('UPDATE ws_tickets SET used_at = ? WHERE ticket_hash = ? AND used_at IS NULL AND expires_at > ?').run(now, h, now)
+  return withTransaction(async conn => {
+    const upd = await conn.prepare('UPDATE ws_tickets SET used_at = ? WHERE ticket_hash = ? AND used_at IS NULL AND expires_at > ?').run(now, h, now)
     if (Number(upd.changes) !== 1) return null
-    const row = conn.prepare(
-      `SELECT a.id, a.address, a.display_name, a.mc_balance FROM ws_tickets t JOIN accounts a ON a.id = t.account_id WHERE t.ticket_hash = ?`
+    const row = await conn.prepare(
+      `SELECT a.id, a.address, a.display_name, a.fortune_name, a.mc_balance FROM ws_tickets t JOIN accounts a ON a.id = t.account_id WHERE t.ticket_hash = ?`
     ).get(h) as unknown as AccountRow | undefined
     return row ? toPublic(row) : null
   })
+}
+
+/** Chuẩn hóa & lưu họ tên từ hồ sơ Bói Quẻ cho tài khoản (null -> xóa về tên mặc định ví). */
+export async function setAccountFortuneName(accountId: number, rawFullName: string | null): Promise<PublicAccount | null> {
+  const cleaned = typeof rawFullName === 'string'
+    ? rawFullName.replace(/[\x00-\x1F\x7F<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40)
+    : ''
+  const nextValue = cleaned && !cleaned.startsWith('addr_') ? cleaned : null
+  const db = await getDb()
+  await db.prepare('UPDATE accounts SET fortune_name = ? WHERE id = ?').run(nextValue, accountId)
+  const row = await db.prepare('SELECT id, address, display_name, fortune_name, mc_balance FROM accounts WHERE id = ?').get(accountId) as unknown as AccountRow | undefined
+  return row ? toPublic(row) : null
 }
 

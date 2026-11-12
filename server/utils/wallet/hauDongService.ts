@@ -19,10 +19,10 @@
  *   + Cộng dồn Bách Gia (crowdfund >= 50 MC): tích lũy đủ 2,500 MC tự động kích hoạt buổi hầu Bách Gia.
  */
 import { randomBytes } from 'node:crypto'
-import type { DatabaseSync } from 'node:sqlite'
 import { convertSolarToLunar } from '../../../lib/boi/MetaphysicsService'
+import { getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from './auth'
-import { getDb, withTransaction } from './db'
+import { getDb, withTransaction, type DbConn } from './db'
 import { credit, normalizeRequestId, spend } from './mcService'
 
 export interface HauDongDeityInfo {
@@ -168,10 +168,6 @@ interface SessionRow {
   created_at: number
 }
 
-function getVietnamDayKey(now = Date.now()): string {
-  return new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10)
-}
-
 function getLunarDayInfo(now = Date.now()) {
   const vnDate = new Date(now + 7 * 3600 * 1000)
   const dateStr = vnDate.toISOString().slice(0, 10)
@@ -260,9 +256,9 @@ export function buildFiveDeitiesList(customDeityId?: string | null): string[] {
  *   tự động mở 1 phiên Khai Đàn Khánh Thành (`inaugural_welcome`) kéo dài 8 phút để người chơi
  *   bước sang Nhà Hầu Đồng thấy ngay nghi lễ sống động.
  */
-function advanceSessionLifecycle(conn: DatabaseSync, now: number): SessionRow | null {
+async function advanceSessionLifecycle(conn: DbConn, now: number): Promise<SessionRow | null> {
   // 1. Hoàn tất các phiên active đã quá giờ
-  conn
+  await conn
     .prepare(
       `UPDATE hau_dong_sessions
           SET status = 'completed'
@@ -271,20 +267,20 @@ function advanceSessionLifecycle(conn: DatabaseSync, now: number): SessionRow | 
     .run(now)
 
   // 2. Kiểm tra xem đang có phiên active nào không
-  let active = conn
+  let active = await conn
     .prepare(`SELECT * FROM hau_dong_sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT 1`)
     .get() as SessionRow | undefined
 
   if (active) return active
 
   // 3. Nếu chưa có phiên active, kiểm tra hàng chờ queued
-  const nextQueued = conn
+  const nextQueued = await conn
     .prepare(`SELECT * FROM hau_dong_sessions WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1`)
     .get() as SessionRow | undefined
 
   if (nextQueued) {
     const endsAt = now + HAU_DONG_CONFIG.sessionDurationSec * 1000
-    conn
+    await conn
       .prepare(`UPDATE hau_dong_sessions SET status = 'active', started_at = ?, ends_at = ? WHERE session_id = ?`)
       .run(now, endsAt, nextQueued.session_id)
     return {
@@ -300,11 +296,11 @@ function advanceSessionLifecycle(conn: DatabaseSync, now: number): SessionRow | 
   if (sched.isHappeningNow) {
     const vnDayStr = getVietnamDayKey(now)
     const sessionId = `hd_scheduled_11am_${vnDayStr}`
-    const existing = conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
+    const existing = await conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
     if (!existing) {
       const lunar = getLunarDayInfo(now)
       const deities = buildFiveDeitiesList(null)
-      conn
+      await conn
         .prepare(
           `INSERT INTO hau_dong_sessions (
             session_id, trigger_type, sponsor_account_id, sponsor_display_name,
@@ -322,7 +318,7 @@ function advanceSessionLifecycle(conn: DatabaseSync, now: number): SessionRow | 
           sched.nextScheduledAt + HAU_DONG_CONFIG.sessionDurationSec * 1000,
           now
         )
-      active = conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
+      active = await conn.prepare(`SELECT * FROM hau_dong_sessions WHERE session_id = ?`).get(sessionId) as SessionRow | undefined
       if (active && active.status === 'active') return active
     } else if (existing.status === 'active') {
       return existing
@@ -383,8 +379,8 @@ function computeLiveProgress(session: SessionRow, now: number) {
   }
 }
 
-function getCrowdfundProgress(conn: DatabaseSync) {
-  const row = conn
+async function getCrowdfundProgress(conn: DbConn) {
+  const row = await conn
     .prepare(
       `SELECT COALESCE(SUM(amount_mc), 0) AS current_mc, COUNT(*) AS contributor_count
          FROM hau_dong_donations
@@ -392,7 +388,7 @@ function getCrowdfundProgress(conn: DatabaseSync) {
     )
     .get() as { current_mc: number; contributor_count: number }
 
-  const recentContributors = conn
+  const recentContributors = await conn
     .prepare(
       `SELECT d.amount_mc, d.prayer_text, d.created_at, a.display_name
          FROM hau_dong_donations d
@@ -412,9 +408,9 @@ function getCrowdfundProgress(conn: DatabaseSync) {
   }
 }
 
-function getAccountDailyClaimedMc(conn: DatabaseSync, accountId: number, now: number): number {
+async function getAccountDailyClaimedMc(conn: DbConn, accountId: number, now: number): Promise<number> {
   const vnMidnight = new Date(getVietnamDayKey(now) + 'T00:00:00+07:00').getTime()
-  const row = conn
+  const row = await conn
     .prepare(
       `SELECT COALESCE(SUM(claimed_mc), 0) AS total
          FROM hau_dong_attendance
@@ -427,14 +423,14 @@ function getAccountDailyClaimedMc(conn: DatabaseSync, accountId: number, now: nu
 /**
  * Lấy toàn bộ trạng thái Nhà Hầu Đồng cho Frontend HUD, 3D TempleStage và Drawer UI.
  */
-export function getHauDongStatus(accountId: number | null) {
-  const conn = getDb()
+export async function getHauDongStatus(accountId: number | null) {
+  const conn = await getDb()
   const now = Date.now()
-  const activeSession = advanceSessionLifecycle(conn, now)
+  const activeSession = await advanceSessionLifecycle(conn, now)
   const lunarInfo = getLunarDayInfo(now)
-  const crowdfund = getCrowdfundProgress(conn)
+  const crowdfund = await getCrowdfundProgress(conn)
 
-  const queuedSessions = conn
+  const queuedSessions = await conn
     .prepare(
       `SELECT session_id, trigger_type, sponsor_display_name, prayer_text, created_at
          FROM hau_dong_sessions
@@ -450,7 +446,7 @@ export function getHauDongStatus(accountId: number | null) {
       created_at: number
     }>
 
-  const recentSessions = conn
+  const recentSessions = await conn
     .prepare(
       `SELECT session_id, trigger_type, sponsor_display_name, prayer_text, total_pool_mc, started_at
          FROM hau_dong_sessions
@@ -466,7 +462,7 @@ export function getHauDongStatus(accountId: number | null) {
   if (activeSession) {
     liveProgress = computeLiveProgress(activeSession, now)
     if (accountId) {
-      const att = conn
+      const att = await conn
         .prepare(
           `SELECT watch_seconds, is_bowing, claimed_mc, claimed_at
              FROM hau_dong_attendance
@@ -495,7 +491,7 @@ export function getHauDongStatus(accountId: number | null) {
     }
   }
 
-  const dailyClaimedMc = accountId ? getAccountDailyClaimedMc(conn, accountId, now) : 0
+  const dailyClaimedMc = accountId ? await getAccountDailyClaimedMc(conn, accountId, now) : 0
 
   return {
     serverTime: now,
@@ -530,7 +526,7 @@ export function getHauDongStatus(accountId: number | null) {
 /**
  * Công đức Mở Đàn Đặc Cách (`single_open` >= 2,500 MC) hoặc Góp Quỹ Bách Gia (`crowdfund` >= 50 MC).
  */
-export function sponsorHauDongSession(
+export async function sponsorHauDongSession(
   accountId: number,
   input: {
     requestId?: unknown
@@ -569,17 +565,17 @@ export function sponsorHauDongSession(
     180
   )
 
-  const spendRes = spend(accountId, amountMc, 'hau_dong_donation', requestId, {
+  const spendRes = await spend(accountId, amountMc, 'hau_dong_donation', requestId, {
     refType: 'hau_dong_donation',
     metadata: { mode, amountMc, customDeityId, prayerText },
-    onSpent: (conn, { ledgerId, now }) => {
-      const acc = conn.prepare('SELECT display_name FROM accounts WHERE id = ?').get(accountId) as
+    onSpent: async (conn, { ledgerId, now }) => {
+      const acc = await conn.prepare('SELECT display_name FROM accounts WHERE id = ?').get(accountId) as
         | { display_name: string }
         | undefined
       const sponsorName = acc?.display_name || `Thiện Tín #${accountId}`
 
-      advanceSessionLifecycle(conn, now)
-      const currentActive = conn
+      await advanceSessionLifecycle(conn, now)
+      const currentActive = await conn
         .prepare(`SELECT session_id FROM hau_dong_sessions WHERE status = 'active' LIMIT 1`)
         .get() as { session_id: string } | undefined
 
@@ -594,20 +590,20 @@ export function sponsorHauDongSession(
         const deities = buildFiveDeitiesList(customDeityId)
 
         // Nếu đang là phiên inaugural_welcome (mặc định) thì nâng cấp luôn thành phiên Đặc cách của Thanh đồng!
-        const activeFull = conn
+        const activeFull = await conn
           .prepare(`SELECT session_id, trigger_type FROM hau_dong_sessions WHERE status = 'active' LIMIT 1`)
           .get() as { session_id: string; trigger_type: string } | undefined
 
         const startImmediately = !activeFull || activeFull.trigger_type === 'inaugural_welcome'
         if (activeFull && activeFull.trigger_type === 'inaugural_welcome') {
-          conn.prepare(`UPDATE hau_dong_sessions SET status = 'completed', ends_at = ? WHERE session_id = ?`).run(now, activeFull.session_id)
+          await conn.prepare(`UPDATE hau_dong_sessions SET status = 'completed', ends_at = ? WHERE session_id = ?`).run(now, activeFull.session_id)
         }
 
         sessionStatus = startImmediately ? 'active' : 'queued'
         const startedAt = startImmediately ? now : null
         const endsAt = startImmediately ? now + HAU_DONG_CONFIG.sessionDurationSec * 1000 : null
 
-        conn
+        await conn
           .prepare(
             `INSERT INTO hau_dong_sessions (
               session_id, trigger_type, sponsor_account_id, sponsor_display_name,
@@ -631,7 +627,7 @@ export function sponsorHauDongSession(
             now
           )
 
-        conn
+        await conn
           .prepare(
             `INSERT INTO hau_dong_donations (request_id, account_id, session_id, mode, amount_mc, custom_deity_id, prayer_text, ledger_id, created_at)
              VALUES (?, ?, ?, 'single_open', ?, ?, ?, ?, ?)`
@@ -639,7 +635,7 @@ export function sponsorHauDongSession(
           .run(requestId, accountId, createdSessionId, amountMc, customDeityId, prayerText, ledgerId, now)
       } else {
         // Ghi nhận khoản góp chung Bách Gia
-        conn
+        await conn
           .prepare(
             `INSERT INTO hau_dong_donations (request_id, account_id, session_id, mode, amount_mc, custom_deity_id, prayer_text, ledger_id, created_at)
              VALUES (?, ?, NULL, 'crowdfund', ?, ?, ?, ?, ?)`
@@ -647,7 +643,7 @@ export function sponsorHauDongSession(
           .run(requestId, accountId, amountMc, customDeityId, prayerText, ledgerId, now)
 
         // Kiểm tra xem tổng quỹ Bách Gia đã đạt >= 2,500 MC chưa
-        const sumRow = conn
+        const sumRow = await conn
           .prepare(`SELECT COALESCE(SUM(amount_mc), 0) AS total FROM hau_dong_donations WHERE mode = 'crowdfund' AND session_id IS NULL`)
           .get() as { total: number }
         const totalCrowdfundMc = Number(sumRow.total || 0)
@@ -664,7 +660,7 @@ export function sponsorHauDongSession(
           const startedAt = startImmediately ? now : null
           const endsAt = startImmediately ? now + HAU_DONG_CONFIG.sessionDurationSec * 1000 : null
 
-          conn
+          await conn
             .prepare(
               `INSERT INTO hau_dong_sessions (
                 session_id, trigger_type, sponsor_account_id, sponsor_display_name,
@@ -688,7 +684,7 @@ export function sponsorHauDongSession(
               now
             )
 
-          conn
+          await conn
             .prepare(`UPDATE hau_dong_donations SET session_id = ? WHERE mode = 'crowdfund' AND session_id IS NULL`)
             .run(createdSessionId)
         }
@@ -707,7 +703,7 @@ export function sponsorHauDongSession(
     balanceAfter: spendRes.balanceAfter,
     createdSessionId: spendRes.extra.createdSessionId,
     sessionStatus: spendRes.extra.sessionStatus,
-    status: getHauDongStatus(accountId)
+    status: await getHauDongStatus(accountId)
   }
 }
 
@@ -726,7 +722,7 @@ export function startFreeRitualIfIdle(accountId: number | null) {
 /**
  * Ghi nhận Heartbeat hiện diện trong khu vực Nhà Hầu Đồng & động tác Chắp Tay Khánh Hỷ (`isBowing`).
  */
-export function recordHauDongHeartbeat(
+export async function recordHauDongHeartbeat(
   accountId: number,
   input: {
     insideZone?: boolean
@@ -734,25 +730,45 @@ export function recordHauDongHeartbeat(
     deltaSec?: number
   }
 ) {
-  const conn = getDb()
+  const conn = await getDb()
   const now = Date.now()
-  const activeSession = advanceSessionLifecycle(conn, now)
+  const activeSession = await advanceSessionLifecycle(conn, now)
   if (!activeSession || !input.insideZone) {
     return getHauDongStatus(accountId)
   }
 
   const live = computeLiveProgress(activeSession, now)
-  const addSec = Math.max(1, Math.min(15, Math.floor(Number(input.deltaSec) || 5)))
+  const requestedSec = Math.max(1, Math.min(15, Math.floor(Number(input.deltaSec) || 5)))
   const bowingFlag = input.isBowing ? 1 : 0
 
-  conn
+  // Không tin deltaSec của client: số giây cộng thêm không vượt quá thời gian thực đã trôi qua
+  // kể từ heartbeat trước (tối thiểu 1 giây cho lần đầu), chặn bơm watch_seconds bằng cách gửi dồn.
+  const prev = await conn
+    .prepare(
+      `SELECT last_heartbeat_at FROM hau_dong_attendance
+        WHERE session_id = ? AND gia_index = ? AND account_id = ?`
+    )
+    .get(activeSession.session_id, live.giaIndex, accountId) as { last_heartbeat_at: number | null } | undefined
+  const elapsedSec = prev?.last_heartbeat_at ? Math.floor((now - prev.last_heartbeat_at) / 1000) : requestedSec
+  const addSec = Math.max(0, Math.min(requestedSec, elapsedSec))
+  if (addSec === 0) {
+    return getHauDongStatus(accountId)
+  }
+
+  await conn
     .prepare(
       `INSERT INTO hau_dong_attendance (session_id, gia_index, account_id, watch_seconds, is_bowing, claimed_mc, last_heartbeat_at)
        VALUES (?, ?, ?, ?, ?, 0, ?)
        ON CONFLICT(session_id, gia_index, account_id)
        DO UPDATE SET
-         watch_seconds = MIN(96, hau_dong_attendance.watch_seconds + excluded.watch_seconds),
-         is_bowing = MAX(hau_dong_attendance.is_bowing, excluded.is_bowing),
+         watch_seconds = CASE
+           WHEN hau_dong_attendance.watch_seconds + excluded.watch_seconds > 96 THEN 96
+           ELSE hau_dong_attendance.watch_seconds + excluded.watch_seconds
+         END,
+         is_bowing = CASE
+           WHEN excluded.is_bowing > hau_dong_attendance.is_bowing THEN excluded.is_bowing
+           ELSE hau_dong_attendance.is_bowing
+         END,
          last_heartbeat_at = excluded.last_heartbeat_at`
     )
     .run(activeSession.session_id, live.giaIndex, accountId, addSec, bowingFlag, now)
@@ -764,10 +780,15 @@ export function recordHauDongHeartbeat(
  * Thỉnh Lộc Thánh (Ban Lễ) ở Bước 5 của mỗi Giá đồng:
  * Cộng MC trực tiếp vào tài khoản người tham dự thông qua `credit()` nguyên tử.
  */
-export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boolean }) {
-  const conn = getDb()
+export async function claimHauDongBlessing(accountId: number, input?: { isBowing?: boolean }) {
+  // Bọc cả kiểm tra hạn mức, ghi sổ cái, ghi điểm danh và trừ quỹ trong MỘT giao dịch:
+  // nếu bước sau lỗi thì MC đã cộng cũng được hoàn tác (withTransaction lồng nhau dùng lại giao dịch ngoài).
+  return withTransaction((conn) => claimHauDongBlessingTx(conn, accountId, input))
+}
+
+async function claimHauDongBlessingTx(conn: DbConn, accountId: number, input?: { isBowing?: boolean }) {
   const now = Date.now()
-  const activeSession = advanceSessionLifecycle(conn, now)
+  const activeSession = await advanceSessionLifecycle(conn, now)
 
   if (!activeSession) {
     apiError(400, 'no_active_session', 'Hiện tại Điện Thờ chưa mở vấn hầu nào.')
@@ -783,14 +804,14 @@ export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boo
   }
 
   // Kiểm tra hạn mức ngày
-  const dailyClaimed = getAccountDailyClaimedMc(conn, accountId, now)
+  const dailyClaimed = await getAccountDailyClaimedMc(conn, accountId, now)
   const remainingDaily = Math.max(0, HAU_DONG_CONFIG.dailyMaxClaimMc - dailyClaimed)
   if (remainingDaily <= 0) {
     apiError(400, 'daily_cap_reached', `Bạn đã thỉnh tối đa ${HAU_DONG_CONFIG.dailyMaxClaimMc} MC lộc Hầu Đồng trong hôm nay.`)
   }
 
   // Kiểm tra xem đã nhận lộc ở Giá này chưa
-  const existingAtt = conn
+  const existingAtt = await conn
     .prepare(
       `SELECT watch_seconds, is_bowing, claimed_mc
          FROM hau_dong_attendance
@@ -813,7 +834,7 @@ export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boo
   rewardMc = Math.min(rewardMc, remainingDaily, Math.max(10, activeSession.remaining_pool_mc))
 
   const refId = `hd_loc_${activeSession.session_id}_gia${live.giaIndex}_u${accountId}`
-  const creditRes = credit(accountId, rewardMc, 'hau_dong_blessing', {
+  const creditRes = await credit(accountId, rewardMc, 'hau_dong_blessing', {
     refType: 'hau_dong_blessing',
     refId,
     metadata: {
@@ -826,28 +847,37 @@ export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boo
     }
   })
 
-  withTransaction(txConn => {
-    txConn
+  await withTransaction(async txConn => {
+    await txConn
       .prepare(
         `INSERT INTO hau_dong_attendance (
           session_id, gia_index, account_id, watch_seconds, is_bowing, claimed_mc, ledger_id, last_heartbeat_at, claimed_at
         ) VALUES (?, ?, ?, 20, ?, ?, ?, ?, ?)
         ON CONFLICT(session_id, gia_index, account_id)
         DO UPDATE SET
-          is_bowing = MAX(hau_dong_attendance.is_bowing, excluded.is_bowing),
+          is_bowing = CASE
+            WHEN excluded.is_bowing > hau_dong_attendance.is_bowing THEN excluded.is_bowing
+            ELSE hau_dong_attendance.is_bowing
+          END,
           claimed_mc = excluded.claimed_mc,
           ledger_id = excluded.ledger_id,
           claimed_at = excluded.claimed_at`
       )
       .run(activeSession.session_id, live.giaIndex, accountId, isBowing ? 1 : 0, rewardMc, creditRes.ledgerId, now, now)
 
-    txConn
-      .prepare(
-        `UPDATE hau_dong_sessions
-            SET remaining_pool_mc = MAX(0, remaining_pool_mc - ?)
-          WHERE session_id = ?`
-      )
-      .run(rewardMc, activeSession.session_id)
+    // Lần gọi lặp lại (idempotent replay) không được trừ quỹ thêm lần nữa.
+    if (!creditRes.idempotentReplay) {
+      await txConn
+        .prepare(
+          `UPDATE hau_dong_sessions
+              SET remaining_pool_mc = CASE
+                WHEN remaining_pool_mc - ? < 0 THEN 0
+                ELSE remaining_pool_mc - ?
+              END
+            WHERE session_id = ?`
+        )
+        .run(rewardMc, rewardMc, activeSession.session_id)
+    }
   })
 
   return {
@@ -857,7 +887,7 @@ export function claimHauDongBlessing(accountId: number, input?: { isBowing?: boo
     giaIndex: live.giaIndex,
     deityName: live.deityName,
     blessingTitle: live.blessingTitle,
-    status: getHauDongStatus(accountId)
+    status: await getHauDongStatus(accountId)
   }
 }
 

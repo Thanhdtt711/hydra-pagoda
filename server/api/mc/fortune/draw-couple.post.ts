@@ -1,15 +1,15 @@
 // server/api/mc/fortune/draw-couple.post.ts
 // API Thỉnh Quẻ Đài Tơ Duyên Nguyệt Lão (Bói Duyên Cặp Đôi)
 
-import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
+import { assertSameOrigin, requireSession, setAccountFortuneName } from '../../../utils/wallet/auth'
 import { drawCoupleFortune } from '../../../utils/wallet/coupleFortuneService'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:fortune:draw-couple', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<Record<string, any>>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: Record<string, any> = (await readBody<Record<string, any>>(event).catch(() => null)) || {}
 
   const profile = body.profile
   const partnerProfile = body.partnerProfile
@@ -31,7 +31,9 @@ export default defineEventHandler(async (event) => {
   const paymentMode = body.paymentMode === 'mc' ? 'mc' : 'free_daily'
   const requestId = body.requestId ? String(body.requestId) : ''
 
-  const res = drawCoupleFortune(
+  await setAccountFortuneName(account.id, String(profile.fullName).trim())
+
+  const res = await drawCoupleFortune(
     account.id,
     {
       fullName: String(profile.fullName).trim(),

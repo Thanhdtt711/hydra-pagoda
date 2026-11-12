@@ -134,15 +134,15 @@ export const useMeditationStore = defineStore('meditation', {
     guideToHall() {
       if (this.phase !== 'idle' || !stageAdapter) return
       this.phase = 'guiding'
-      this.pushNotice('info', 'Đang dẫn bước vào Chánh Điện', 'Nhân vật đang tự đi qua Chính Môn vào trong điện.')
+      this.pushNotice('info', 'Đang dẫn bước vào Chánh Điện', 'Nhân vật tự đi vào điện.')
       stageAdapter.guideToEntrance(
         () => {
           this.phase = 'idle'
-          this.pushNotice('success', 'Đã vào Chánh Điện', 'Bạn đang ở trong điện. Bấm "Bắt Đầu Tọa Thiền" để nhân vật tìm bồ đoàn.')
+          this.pushNotice('success', 'Đã vào Chánh Điện', 'Bấm Ngồi thiền để tìm bồ đoàn.')
         },
         () => {
           this.phase = 'idle'
-          this.pushNotice('warning', 'Chưa thể tự dẫn bước', 'Có vật cản trên đường. Xin tự điều khiển nhân vật bước vào Chánh Điện.')
+          this.pushNotice('warning', 'Chưa thể tự dẫn bước', 'Có vật cản, hãy tự bước vào điện.')
         }
       )
     },
@@ -152,7 +152,7 @@ export const useMeditationStore = defineStore('meditation', {
       this.clearNotice()
       const stage = stageAdapter
       if (!stage) {
-        this.pushNotice('error', 'Cảnh 3D chưa sẵn sàng', 'Xin đợi cảnh chùa tải xong rồi thử lại.')
+        this.pushNotice('error', 'Cảnh 3D chưa sẵn sàng', 'Đợi cảnh tải xong rồi thử lại.')
         return
       }
 
@@ -161,7 +161,7 @@ export const useMeditationStore = defineStore('meditation', {
         this.pushNotice(
           'warning',
           'Cần vào bên trong Chánh Điện',
-          'Đạo hữu cần bước vào bên trong Đại Hùng Bảo Điện (khu vực bồ đoàn) mới có thể bắt đầu thời khóa tọa thiền.',
+          'Vào trong Đại Hùng Bảo Điện để tìm bồ đoàn.',
           'guide_to_hall'
         )
         return
@@ -186,7 +186,7 @@ export const useMeditationStore = defineStore('meditation', {
             this.pushNotice(
               'error',
               'Hết chỗ ngồi',
-              `Hiện tại toàn bộ ${this.totalSlots} bồ đoàn tọa thiền trong Chánh Điện đều đã có đồng tu tĩnh tọa. Kính mong đạo hữu hoan hỷ chờ giây lát hoặc quay lại sau.`
+              'Mọi bồ đoàn đã có người. Chờ hoặc quay lại sau.'
             )
             return
           }
@@ -205,7 +205,7 @@ export const useMeditationStore = defineStore('meditation', {
 
         if (!slot) {
           this.phase = 'idle'
-          this.pushNotice('warning', 'Bồ đoàn vừa có người ngồi', 'Các chỗ gần bạn vừa có đồng tu ngồi trước. Xin bấm bắt đầu lại để chọn chỗ khác.')
+          this.pushNotice('warning', 'Bồ đoàn vừa có người ngồi', 'Bấm Ngồi thiền lại để chọn chỗ khác.')
           return
         }
 
@@ -219,7 +219,7 @@ export const useMeditationStore = defineStore('meditation', {
         this.expectedRewardMc = session?.rewardMc ?? 0
         this.remainingSec = this.totalSec
         this.phase = 'walking'
-        this.pushNotice('info', 'Đang đến bồ đoàn', `Nhân vật đang tự bước tới bồ đoàn gần nhất (#${slot.id + 1}) và sẽ ngồi quay mặt lên tôn tượng.`)
+        this.pushNotice('info', 'Đang đến bồ đoàn', `Bồ đoàn số ${slot.id + 1}, quay mặt lên tôn tượng.`)
 
         stage.walkToSlot(
           slot,
@@ -245,8 +245,8 @@ export const useMeditationStore = defineStore('meditation', {
         'success',
         'Đang tọa thiền',
         wallet.isConnected
-          ? `Thân tâm bất động, hơi thở theo nhịp 4-4-6. Viên mãn thời khóa bạn sẽ nhận +${this.expectedRewardMc} MC.`
-          : 'Bạn đang thiền ở chế độ khách. Hãy kết nối ví để nhận MC công đức ở thời khóa sau.'
+          ? `Nhịp thở 4-4-6. Viên mãn nhận +${this.expectedRewardMc} MC.`
+          : 'Chế độ khách. Kết nối ví để nhận MC.'
       )
       this.startTicker()
     },
@@ -281,7 +281,7 @@ export const useMeditationStore = defineStore('meditation', {
       let notice: { kind: MeditationNoticeKind; title: string; message: string } = {
         kind: 'success',
         title: 'Viên mãn thời khóa tọa thiền',
-        message: 'Thời khóa đã được ghi nhận. Hãy kết nối ví để nhận MC công đức ở thời khóa sau.'
+        message: 'Đã ghi nhận. Kết nối ví để nhận MC.'
       }
 
       let noticeHydra: any = null
@@ -296,15 +296,15 @@ export const useMeditationStore = defineStore('meditation', {
               kind: 'success',
               title: 'Viên mãn thời khóa tọa thiền',
               message: partial
-                ? `Bạn nhận +${res.creditedMc} MC công đức (chạm giới hạn ${res.dailyCapMc} MC/ngày nên phần còn lại không được cộng).`
-                : `Bạn được ban tặng +${res.creditedMc} MC công đức${res.ledgerId ? ` (mã sổ cái #${res.ledgerId})` : ''}.`
+                ? `+${res.creditedMc} MC, đã chạm trần ngày.`
+                : `+${res.creditedMc} MC`
             }
             zenAudio.playCoinDrop()
           } else {
             notice = {
               kind: 'info',
               title: 'Đã đạt giới hạn công đức hôm nay',
-              message: `Hôm nay bạn đã nhận đủ ${res.dailyCapMc} MC từ tọa thiền. Thời khóa vẫn được ghi nhận vào chuỗi tu tập.`
+              message: 'Đủ rồi hôm nay.'
             }
           }
           void economy.loadMeditationStatus().catch(() => undefined)
@@ -312,7 +312,7 @@ export const useMeditationStore = defineStore('meditation', {
           notice = {
             kind: 'error',
             title: 'Chưa nhận được thưởng MC',
-            message: errorMessage(e, 'Không thể xác nhận phiên thiền với máy chủ.')
+            message: errorMessage(e, 'Chưa xác nhận được, thử lại sau.')
           }
         }
       }
@@ -332,7 +332,7 @@ export const useMeditationStore = defineStore('meditation', {
       stageAdapter?.cancelWalk()
       this.releaseSeat(true)
       this.phase = 'idle'
-      this.pushNotice('info', 'Đã xả thiền sớm', 'Thời khóa chưa viên mãn nên chưa nhận MC. Khi sẵn sàng, bạn có thể bắt đầu lại.')
+      this.pushNotice('info', 'Đã xả thiền sớm', 'Chưa viên mãn nên chưa nhận MC.')
       if (token) {
         try {
           await economy.cancelMeditation(token)
@@ -349,7 +349,7 @@ export const useMeditationStore = defineStore('meditation', {
       const token = this.sessionToken
       this.releaseSeat(true)
       this.phase = 'idle'
-      this.pushNotice('warning', 'Không đến được bồ đoàn', 'Có vật cản trên đường. Xin thử lại hoặc tự bước đến gần bồ đoàn trống.')
+      this.pushNotice('warning', 'Không đến được bồ đoàn', 'Có vật cản, thử lại hoặc tự bước tới.')
       if (token) void economy.cancelMeditation(token).catch(() => undefined)
     },
 

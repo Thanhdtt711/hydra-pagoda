@@ -23,8 +23,8 @@ const emit = defineEmits<{
   <component
     :is="props.interactive ? 'button' : 'div'"
     :type="props.interactive ? 'button' : undefined"
-    class="ui-chip inline-flex items-center gap-2 min-h-[36px] px-3 rounded-[4px] bg-surface-elevated border border-hairline text-primary font-sans whitespace-nowrap"
-    :class="props.interactive ? 'ui-chip--interactive ui-focus-ring cursor-pointer hover:border-[var(--border-strong,#474d57)] transition-colors' : ''"
+    class="ui-chip inline-flex items-center gap-2 min-h-[36px] px-3 rounded-[2px] bg-surface-elevated border border-hairline text-primary font-sans whitespace-nowrap"
+    :class="props.interactive ? 'ui-chip--interactive ui-focus-ring cursor-pointer hover:border-[var(--border-strong,#4a4237)] transition-colors' : ''"
     @click="props.interactive ? emit('click') : undefined"
   >
     <span
@@ -52,6 +52,6 @@ const emit = defineEmits<{
 
 <style scoped>
 .ui-chip--interactive:hover {
-  background-color: #333b44;
+  background-color: #332d26;
 }
 </style>

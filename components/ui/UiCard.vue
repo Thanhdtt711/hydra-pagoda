@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface Props {
-  variant?: 'card-dark' | 'elevated-dark' | 'card-light' | 'card' | 'elevated'
+  variant?: 'subtle' | 'card-dark' | 'elevated-dark' | 'card-light' | 'card' | 'elevated'
   rounded?: 'sm' | 'md' | 'lg' | 'xl'
   padding?: 'sm' | 'md' | 'lg' | 'xl' | 'none'
   interactive?: boolean
@@ -29,19 +29,20 @@ const props = withDefaults(defineProps<Props>(), {
 </template>
 
 <style scoped>
+.ui-card--subtle,
 .ui-card--card-dark,
 .ui-card--card,
 .ui-card--card-light {
-  background-color: var(--surface-card-dark, #1e2329);
-  border-color: var(--hairline-on-dark, #2b3139);
-  color: var(--body, #eaecef);
+  background-color: var(--surface-card-dark, #1a1714);
+  border-color: var(--hairline-on-dark, #26221d);
+  color: var(--body, #ede4d3);
 }
 
 .ui-card--elevated-dark,
 .ui-card--elevated {
-  background-color: var(--surface-elevated-dark, #2b3139);
-  border-color: var(--hairline-on-dark, #2b3139);
-  color: var(--body, #eaecef);
+  background-color: var(--surface-elevated-dark, #26221d);
+  border-color: var(--hairline-on-dark, #26221d);
+  color: var(--body, #ede4d3);
 }
 
 .ui-card--r-sm { border-radius: var(--radius-sm, 4px); }
@@ -60,7 +61,7 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .ui-card--interactive:hover {
-  background-color: var(--surface-elevated-dark, #2b3139);
-  border-color: var(--border-strong, #474d57);
+  background-color: var(--surface-elevated-dark, #26221d);
+  border-color: var(--border-strong, #4a4237);
 }
 </style>

@@ -14,13 +14,13 @@ test('1. Kiểm tra catalog gói thẻ phía server', () => {
   assert.strictEqual(nguUan.guaranteedRarity, 'rare')
 })
 
-test('2. Kịch bản mua và mở Gói Ngũ Uẩn (Gacha Loop & SQLite Ledger)', () => {
-  const db = getDb()
+test('2. Kịch bản mua và mở Gói Ngũ Uẩn (Gacha Loop & SQLite Ledger)', async () => {
+  const db = await getDb()
   const now = Date.now()
   const testAddr = `addr_test_cards_${now}`
 
   // Tạo tài khoản test với số dư 5.000 MC
-  const accRes = db.prepare(`
+  const accRes = await db.prepare(`
     INSERT INTO accounts (address, display_name, mc_balance, created_at, last_login_at)
     VALUES (?, 'Test Pilgrim Cards', 5000, ?, ?)
   `).run(testAddr, now, now)
@@ -30,7 +30,7 @@ test('2. Kịch bản mua và mở Gói Ngũ Uẩn (Gacha Loop & SQLite Ledger)'
 
   // Mở gói Ngũ Uẩn (2.200 MC)
   const reqId = `req_pack_${now}`
-  const openRes = buyAndOpenCardPack(accountId, 'pack_ngu_uan', reqId)
+  const openRes = await buyAndOpenCardPack(accountId, 'pack_ngu_uan', reqId)
 
   assert.strictEqual(openRes.spentMc, 2200, 'Phải trừ đúng 2.200 MC')
   assert.strictEqual(openRes.balanceAfter, 2800, 'Số dư sau mở phải còn 2.800 MC')
@@ -42,22 +42,22 @@ test('2. Kịch bản mua và mở Gói Ngũ Uẩn (Gacha Loop & SQLite Ledger)'
   assert.ok(hasRarePlus, 'Phải đảm bảo ít nhất 1 thẻ Rare+')
 
   // Kiểm tra bảng card_inventory
-  const invRows = db.prepare('SELECT * FROM card_inventory WHERE account_id = ?').all(accountId)
+  const invRows = await db.prepare('SELECT * FROM card_inventory WHERE account_id = ?').all(accountId)
   assert.strictEqual(invRows.length, 5, 'Bảng card_inventory phải có đúng 5 bản ghi')
 
   // Kiểm tra bảng mc_ledger
-  const ledgerRow = db.prepare(`
+  const ledgerRow = await db.prepare(`
     SELECT * FROM mc_ledger WHERE account_id = ? AND reason = 'card_pack_purchase' AND ref_id = ?
   `).get(accountId, reqId)
   assert.ok(ledgerRow, 'Phải có bản ghi mc_ledger với reason card_pack_purchase')
   assert.strictEqual(ledgerRow.delta_mc, -2200)
 
   // Kiểm tra getUserCardInventory
-  const userInv = getUserCardInventory(accountId)
+  const userInv = await getUserCardInventory(accountId)
   assert.ok(userInv.length >= 1 && userInv.length <= 5, 'Inventory phải thống kê theo thẻ')
 
   // 3. Kiểm tra Idempotency (gửi lại cùng requestId)
-  const replayRes = buyAndOpenCardPack(accountId, 'pack_ngu_uan', reqId)
+  const replayRes = await buyAndOpenCardPack(accountId, 'pack_ngu_uan', reqId)
   assert.strictEqual(replayRes.idempotentReplay, true, 'Phải phát hiện replay')
   assert.strictEqual(replayRes.balanceAfter, 2800, 'Không bị trừ tiền lần 2')
   assert.strictEqual(replayRes.extra.cards.length, 5, 'Phải trả về đúng 5 thẻ cũ')
@@ -66,14 +66,14 @@ test('2. Kịch bản mua và mở Gói Ngũ Uẩn (Gacha Loop & SQLite Ledger)'
   const reqFailId = `req_fail_${now}`
   let threwError = false
   try {
-    buyAndOpenCardPack(accountId, 'pack_bat_nha', reqFailId)
+    await buyAndOpenCardPack(accountId, 'pack_bat_nha', reqFailId)
   } catch (err) {
     threwError = true
   }
   assert.ok(threwError, 'Phải ném lỗi khi không đủ MC')
 
   // Số dư vẫn phải nguyên vẹn 2.800 MC
-  const accCheck = db.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId)
+  const accCheck = await db.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId)
   assert.strictEqual(accCheck.mc_balance, 2800, 'Số dư không bị thay đổi khi transaction lỗi')
 })
 

@@ -1,13 +1,15 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { claimHauDongBlessing } from '../../../utils/wallet/hauDongService'
 import { getHydraProof } from '../../../utils/hydra/hydraQueue'
+import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async event => {
   assertSameOrigin(event)
-  const acc = requireSession(event)
+  rateLimit(event, 'mc:hau-dong:claim', 30, 60_000)
+  const acc = await requireSession(event)
   const body = (await readBody(event).catch(() => ({}))) as Record<string, unknown>
 
-  const res = claimHauDongBlessing(acc.id, {
+  const res = await claimHauDongBlessing(acc.id, {
     isBowing: Boolean(body.isBowing)
   })
 

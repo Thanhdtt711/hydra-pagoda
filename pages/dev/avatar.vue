@@ -11,7 +11,7 @@
           <span>VẠN CẢNH THIỀN TỰ</span>
         </NuxtLink>
         <span class="text-secondary">/</span>
-        <span class="text-xs font-semibold tracking-wider text-secondary uppercase font-numbers">Avatar Turntable Studio (Low-poly 7 đầu)</span>
+        <span class="text-xs font-semibold text-secondary font-numbers">Avatar Turntable Studio (Low-poly 7 đầu)</span>
       </div>
 
       <!-- Quick Camera Views -->
@@ -72,7 +72,7 @@
     <aside class="absolute left-4 top-20 bottom-4 w-80 bg-surface-card rounded-md border border-hairline shadow-xl p-4 flex flex-col gap-4 overflow-y-auto">
       <!-- 1. Quốc gia & Cổ phục -->
       <div>
-        <h3 class="text-xs font-bold text-gold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <h3 class="text-xs font-bold text-gold mb-2 flex items-center gap-1.5">
           <ZenIcon name="pagoda" :size="14" />
           <span>1. Quốc Gia & Cổ Phục (9 Nước)</span>
         </h3>
@@ -92,7 +92,7 @@
 
       <!-- 2. Dáng Người (3 Body Shapes) -->
       <div>
-        <h3 class="text-xs font-bold text-gold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <h3 class="text-xs font-bold text-gold mb-2 flex items-center gap-1.5">
           <ZenIcon name="users" :size="14" />
           <span>2. Vóc Dáng (Body Shape)</span>
         </h3>
@@ -111,7 +111,7 @@
 
       <!-- 3. Hoạt Ảnh (Animations) -->
       <div>
-        <h3 class="text-xs font-bold text-gold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <h3 class="text-xs font-bold text-gold mb-2 flex items-center gap-1.5">
           <ZenIcon name="lotus" :size="14" />
           <span>3. Hoạt Ảnh</span>
         </h3>
@@ -131,7 +131,7 @@
 
       <!-- 4. Cấp Độ Chi Tiết (LOD Level) -->
       <div>
-        <h3 class="text-xs font-bold text-gold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <h3 class="text-xs font-bold text-gold mb-2 flex items-center gap-1.5">
           <ZenIcon name="sparkles" :size="14" />
           <span>4. Cấp Độ Chi Tiết (LOD)</span>
         </h3>
@@ -434,7 +434,7 @@ aside::-webkit-scrollbar-track {
   background: transparent;
 }
 aside::-webkit-scrollbar-thumb {
-  background: var(--hairline-on-dark, #2b3139);
+  background: var(--hairline-on-dark, #26221d);
   border-radius: 9999px;
 }
 </style>

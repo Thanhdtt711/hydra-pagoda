@@ -12,10 +12,10 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:meditation:start', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<{ durationMin?: unknown; slotId?: unknown }>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: { durationMin?: unknown; slotId?: unknown } = (await readBody<{ durationMin?: unknown; slotId?: unknown }>(event).catch(() => null)) || {}
 
-  const session = startMeditationSession(account.id, body.durationMin, body.slotId)
+  const session = await startMeditationSession(account.id, body.durationMin, body.slotId)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return { ok: true, ...session }
 })

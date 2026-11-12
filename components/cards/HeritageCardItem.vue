@@ -43,10 +43,10 @@ const rarityConfig = computed(() => {
       return {
         label: 'Chân Như',
         tier: 'Bậc IV',
-        border: 'border-amber-400/90 shadow-[0_0_20px_rgba(252,213,53,0.35)]',
+        border: 'border-amber-400/90',
         innerBorder: 'border-amber-400/40',
         cornerColor: 'text-amber-400',
-        ribbonBg: 'bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 text-canvas-dark font-black',
+        ribbonBg: 'bg-gold text-canvas-dark font-black',
         glowText: 'text-amber-300',
         accentBg: 'bg-amber-400/10'
       }
@@ -54,10 +54,10 @@ const rarityConfig = computed(() => {
       return {
         label: 'Giác Ngộ',
         tier: 'Bậc III',
-        border: 'border-purple-400/90 shadow-[0_0_16px_rgba(192,132,252,0.3)]',
+        border: 'border-purple-400/90',
         innerBorder: 'border-purple-400/40',
         cornerColor: 'text-purple-400',
-        ribbonBg: 'bg-gradient-to-r from-purple-700 via-purple-400 to-purple-700 text-white font-bold',
+        ribbonBg: 'bg-purple-500 text-white font-bold',
         glowText: 'text-purple-300',
         accentBg: 'bg-purple-400/10'
       }
@@ -65,10 +65,10 @@ const rarityConfig = computed(() => {
       return {
         label: 'Tinh Tấn',
         tier: 'Bậc II',
-        border: 'border-sky-400/80 shadow-[0_0_12px_rgba(56,189,248,0.25)]',
+        border: 'border-sky-400/80',
         innerBorder: 'border-sky-400/30',
         cornerColor: 'text-sky-400',
-        ribbonBg: 'bg-gradient-to-r from-sky-700 via-sky-400 to-sky-700 text-white font-bold',
+        ribbonBg: 'bg-sky-600 text-white font-bold',
         glowText: 'text-sky-300',
         accentBg: 'bg-sky-400/10'
       }
@@ -110,7 +110,7 @@ const countryLabel = computed(() => {
     <!-- THẺ BÀI MẶT TRƯỚC (ĐÃ LẬT / HIỂN THỊ CHI TIẾT) -->
     <div
       v-if="isFlipped"
-      class="w-full h-full rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-[#1a1e24] via-[#14171c] to-[#0e1115] border transition-all"
+      class="w-full h-full rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden bg-[#14120f] border transition-all"
       :class="[
         rarityConfig.border,
         !isOwned ? 'opacity-70 saturate-50' : ''
@@ -174,7 +174,7 @@ const countryLabel = computed(() => {
         <!-- Lớp phủ sương mờ phong ấn nếu chưa sở hữu -->
         <div
           v-if="!isOwned"
-          class="absolute inset-0 bg-canvas-dark/65 backdrop-blur-[1px] flex flex-col items-center justify-center text-center p-2"
+          class="absolute inset-0 bg-canvas-dark/65 flex flex-col items-center justify-center text-center p-2"
         >
           <div class="w-8 h-8 rounded-full bg-surface-elevated/90 border border-hairline flex items-center justify-center text-secondary mb-1">
             <ZenIcon name="sparkles" :size="14" />
@@ -218,7 +218,7 @@ const countryLabel = computed(() => {
     <!-- THẺ BÀI MẶT ÚP (CHƯA LẬT - PHONG CÁCH BÙA CHÚ PHONG ẤN DI SẢN MẠ VÀNG) -->
     <div
       v-else
-      class="w-full h-full rounded-xl p-3 flex flex-col items-center justify-between text-center relative overflow-hidden bg-gradient-to-b from-[#181d24] via-[#111419] to-[#0a0d10] border border-amber-400/50 shadow-xl group-hover:border-gold group-hover:shadow-[0_0_20px_rgba(252,213,53,0.25)] transition-all"
+      class="w-full h-full rounded-xl p-3 flex flex-col items-center justify-between text-center relative overflow-hidden bg-[#14120f] border border-amber-400/50 shadow-xl group-hover:border-gold transition-all"
     >
       <!-- Khung viền chỉ mạ vàng hoa văn góc -->
       <div class="absolute inset-1.5 rounded-lg border border-amber-400/25 pointer-events-none p-1 flex flex-col justify-between">
@@ -234,17 +234,17 @@ const countryLabel = computed(() => {
 
       <!-- Header mặt sau: Nhãn thanh tịnh -->
       <div class="z-10 pt-1 text-center">
-        <span class="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/30 text-gold text-xs font-semibold tracking-wider uppercase">
+        <span class="px-2 py-0.5 rounded-[2px] bg-gold/10 border border-gold/30 text-gold text-xs font-semibold">
           Di Sản Cổ Tự
         </span>
       </div>
 
       <!-- Tâm điểm: Đồ án Bát Nhã Mandala -->
       <div class="my-auto flex flex-col items-center justify-center space-y-2 z-10">
-        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-600/30 via-gold/20 to-amber-400/30 border border-gold/60 flex items-center justify-center text-gold shadow-[0_0_16px_rgba(252,213,53,0.3)] group-hover:scale-110 transition-transform duration-300">
-          <ZenIcon name="sparkles" :size="20" class="animate-pulse text-gold" />
+        <div class="w-12 h-12 rounded-full bg-gold/15 border border-gold/60 flex items-center justify-center text-gold group-hover:scale-110 transition-transform duration-300">
+          <ZenIcon name="sparkles" :size="20" class="text-gold" />
         </div>
-        <div class="text-xs font-bold text-white tracking-wide">
+        <div class="text-xs font-bold text-white">
           Chạm Để Lật
         </div>
       </div>

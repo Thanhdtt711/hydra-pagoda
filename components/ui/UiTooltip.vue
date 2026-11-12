@@ -24,7 +24,7 @@ const open = ref(false)
       type="button"
       :aria-label="props.label"
       :aria-expanded="open ? 'true' : 'false'"
-      class="ui-tooltip-btn ui-focus-ring inline-flex items-center justify-center w-8 h-8 rounded-[4px] bg-transparent border-none text-secondary hover:text-primary hover:bg-surface-elevated cursor-pointer transition-colors"
+      class="ui-tooltip-btn ui-focus-ring inline-flex items-center justify-center w-8 h-8 rounded-[2px] bg-transparent border-none text-secondary hover:text-primary hover:bg-surface-elevated cursor-pointer transition-colors"
       @click="open = !open"
       @focus="open = true"
       @blur="open = false"
@@ -35,7 +35,7 @@ const open = ref(false)
     <div
       v-if="open"
       role="tooltip"
-      class="ui-tooltip-content absolute top-[calc(100%+8px)] right-0 z-50 w-64 p-3 rounded-[6px] bg-surface-elevated border border-hairline font-sans text-xs text-primary leading-normal shadow-xl select-text"
+      class="ui-tooltip-content absolute top-[calc(100%+8px)] right-0 z-50 w-64 p-3 rounded-[2px] bg-surface-elevated border border-hairline font-sans text-xs text-primary leading-normal shadow-2xl select-text"
     >
       {{ props.text }}
     </div>

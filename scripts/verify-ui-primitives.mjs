@@ -26,6 +26,16 @@ const vueFiles = [
 const bannedPattern = /[✦✧◎◈☯☸✓✕×▶▼★●○→⚙⚠ℹ]|[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{26FF}]/u
 const smallFontPattern = /\bfont-size:\s*(?:[0-9]|10|11)px\b|text-\[(?:[0-9]|10|11)px\]/i
 
+// Dấu hiệu "AI làm" đã loại bỏ ở Giai đoạn 3, không cho quay lại
+const aiSignPatterns = [
+  { re: /backdrop-blur|backdrop-filter/, label: 'kính mờ (glassmorphism)' },
+  { re: /\buppercase\b[^"']*\btracking-wid?e?r?\b|\btracking-wid?e?r?\b[^"']*\buppercase\b/, label: 'nhãn chữ hoa giãn chữ' },
+  { re: /shadow-\[0_0_(?:[4-9]|\d{2,})px/, label: 'bóng phát sáng (glow)' },
+  { re: /Cinzel|Playfair/, label: 'font không có subset vietnamese' },
+  { re: /ui-font-serif|Noto Serif Display/, label: 'font serif tiêu đề đã bỏ, dùng Be Vietnam Pro' },
+  { re: /#fcd535|#FCD535|#0b0e11|#1e2329/, label: 'màu Binance cũ' }
+]
+
 let hasError = false
 for (const file of vueFiles) {
   if (!fs.existsSync(file)) {
@@ -44,6 +54,12 @@ for (const file of vueFiles) {
     if (smallFontPattern.test(line)) {
       console.log(`[FONT < 12px] ${file}:${idx + 1} -> ${line.trim()}`)
       hasError = true
+    }
+    for (const rule of aiSignPatterns) {
+      if (rule.re.test(line)) {
+        console.log(`[AI-SIGN: ${rule.label}] ${file}:${idx + 1} -> ${line.trim()}`)
+        hasError = true
+      }
     }
   })
 }

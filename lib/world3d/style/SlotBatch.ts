@@ -49,8 +49,8 @@ export class SlotBatch {
         return this
     }
 
-    public box(slot: PaletteSlot, w: number, h: number, d: number, x: number, y: number, z: number, ry = 0): this {
-        return this.add(slot, LowPolyBuilder.box(w, h, d), { position: [x, y, z], rotation: [0, ry, 0] })
+    public box(slot: PaletteSlot, w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): this {
+        return this.add(slot, LowPolyBuilder.box(w, h, d), { position: [x, y, z], rotation: [rx, ry, rz] })
     }
 
     public cylinder(
@@ -61,9 +61,12 @@ export class SlotBatch {
         segments: number,
         x: number,
         y: number,
-        z: number
+        z: number,
+        rx = 0,
+        ry = 0,
+        rz = 0
     ): this {
-        return this.add(slot, LowPolyBuilder.cylinder(rTop, rBottom, h, segments), { position: [x, y, z] })
+        return this.add(slot, LowPolyBuilder.cylinder(rTop, rBottom, h, segments), { position: [x, y, z], rotation: [rx, ry, rz] })
     }
 
     public cone(slot: PaletteSlot, r: number, h: number, segments: number, x: number, y: number, z: number): this {

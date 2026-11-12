@@ -33,6 +33,9 @@ export interface AvatarPalette {
     countryKey?: PilgrimCountry
     gender?: AvatarGender
     beard?: boolean
+    beardColor?: number
+    elderEyebrows?: boolean
+    monkSpots?: boolean
 }
 
 export const AVATAR_PALETTES: Record<PilgrimCountry, AvatarPalette> = {
@@ -171,6 +174,29 @@ export const AVATAR_PALETTES: Record<PilgrimCountry, AvatarPalette> = {
         blushColor: 0xf49298,
         countryKey: 'western'
     }
+}
+
+/**
+ * Bảng màu & tạo hình riêng cho NPC Thầy Trụ Trì (đầu trọc không tóc/không mũ, râu tóc bạc, mặc áo cà sa).
+ */
+export const ABBOT_PALETTE: AvatarPalette = {
+    style: 'ca_sa',
+    robeColor: 0x734422,
+    trimColor: 0xd9801e,
+    innerColor: 0x522f17,
+    sashColor: 0xf2c144,
+    skinColor: 0xefceb1,
+    hatKind: 'shaved_monk',
+    hatColor: 0xd9801e,
+    hairKind: 'none',
+    hairColor: 0xe6e8ec,
+    shoesColor: 0x382315,
+    blushColor: 0,
+    gender: 'male',
+    beard: true,
+    beardColor: 0xe6e8ec,
+    elderEyebrows: true,
+    monkSpots: true
 }
 
 /**
@@ -552,13 +578,15 @@ function buildHeadParts(p: AvatarPalette, cStyle: PilgrimCountry): ColoredPart[]
         parts.push(makePart(sph(0.013, 5, 4), 0xffffff, { x: s * 0.132 - 0.012, y: hy + 0.022, z: 0.322 }))
 
         if (isSolemnNpc && isMale) {
+            const browColor = p.elderEyebrows ? (p.beardColor ?? 0xe6e8ec) : dark
+            const browH = p.elderEyebrows ? 0.024 : 0.018
             parts.push(
-                makePart(box(0.088, 0.018, 0.016), dark, {
+                makePart(box(0.095, browH, 0.018), browColor, {
                     x: s * 0.135,
                     y: hy + 0.082,
                     z: 0.296,
                     ry: -s * 0.25,
-                    rz: s * 0.10
+                    rz: s * (p.elderEyebrows ? -0.06 : 0.10)
                 })
             )
         } else {
@@ -590,12 +618,13 @@ function buildHeadParts(p: AvatarPalette, cStyle: PilgrimCountry): ColoredPart[]
         })
     )
 
-    // Râu dài uy nghiêm (dành cho tượng Đức Thánh Trần / bậc Vương phụ)
+    // Râu dài uy nghiêm (dành cho Thầy Trụ Trì lớn tuổi / tượng Đức Thánh Trần)
     if (p.beard) {
+        const beardCol = p.beardColor ?? p.hairColor
         parts.push(
-            makePart(cone(0.085, 0.28, 6), p.hairColor, {
+            makePart(cone(0.088, 0.28, 6), beardCol, {
                 x: 0,
-                y: hy - 0.28,
+                y: hy - 0.27,
                 z: 0.26,
                 rx: Math.PI,
                 sx: 0.95,
@@ -603,11 +632,44 @@ function buildHeadParts(p: AvatarPalette, cStyle: PilgrimCountry): ColoredPart[]
                 sz: 0.45
             })
         )
+        if (p.elderEyebrows) {
+            for (const s of [-1, 1]) {
+                parts.push(
+                    makePart(box(0.068, 0.020, 0.020), beardCol, {
+                        x: s * 0.048,
+                        y: hy - 0.098,
+                        z: 0.308,
+                        ry: -s * 0.18,
+                        rz: -s * 0.22
+                    })
+                )
+            }
+        }
     }
 
     // Chấm đỏ Bindi giữa trán cho Ấn Độ
     if (cStyle === 'india' && !isMale) {
         parts.push(makePart(sph(0.016, 6, 5), 0xd91e2a, { x: 0, y: hy + 0.065, z: 0.315, sz: 0.4 }))
+    }
+
+    const isShavedHead = p.hairKind === 'none'
+    if (isShavedHead) {
+        if (p.monkSpots) {
+            // 6 dấu hương đinh (giới đinh) đặc trưng nhà sư trên đỉnh trán
+            const spotColor = 0xb58668
+            for (const rowY of [0.22, 0.265]) {
+                for (const colX of [-0.048, 0, 0.048]) {
+                    parts.push(
+                        makePart(sph(0.010, 5, 4), spotColor, {
+                            x: colX,
+                            y: hy + rowY,
+                            z: 0.215 - (rowY - 0.22) * 0.55
+                        })
+                    )
+                }
+            }
+        }
+        return parts
     }
 
     // Mũ tóc đỉnh đầu & 2 mái tóc rẽ ngôi trước trán (giống 100% giữa Nam và Nữ)
@@ -760,7 +822,59 @@ function buildUpper(p: AvatarPalette): ColoredPart[] {
     } else if (cStyle === 'korea') {
         parts.push(...buildDiagonalChestSashParts(p.trimColor, p.sashColor))
     } else if (cStyle === 'thailand' || cStyle === 'india') {
-        parts.push(...buildDiagonalChestSashParts(p.trimColor, null))
+        if (p.hairKind === 'none') {
+            // Y cà sa quấn chéo vai + đai y + khoen vàng + tràng hạt cho Sư Thầy / Thầy Trụ Trì
+            const wrapPtsFront = [
+                new THREE.Vector3(0.11, 1.18 - hipY, 0.125),
+                new THREE.Vector3(0.02, 1.08 - hipY, 0.155),
+                new THREE.Vector3(-0.08, 0.96 - hipY, 0.162),
+                new THREE.Vector3(-0.18, 0.84 - hipY, 0.145),
+                new THREE.Vector3(-0.23, 0.75 - hipY, 0.08)
+            ]
+            const wrapPtsBack = [
+                new THREE.Vector3(0.11, 1.18 - hipY, -0.12),
+                new THREE.Vector3(0.02, 1.07 - hipY, -0.145),
+                new THREE.Vector3(-0.08, 0.95 - hipY, -0.152),
+                new THREE.Vector3(-0.18, 0.83 - hipY, -0.135),
+                new THREE.Vector3(-0.23, 0.75 - hipY, -0.07)
+            ]
+            parts.push(
+                makePart(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wrapPtsFront), 16, 0.062, 7, false), p.trimColor, {
+                    z: 0.065,
+                    sz: 0.45
+                })
+            )
+            parts.push(
+                makePart(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wrapPtsBack), 16, 0.062, 7, false), p.trimColor, {
+                    z: -0.06,
+                    sz: 0.45
+                })
+            )
+            // Vạt cà sa phủ vai phải / hông & đai lưng màu nghệ
+            parts.push(makePart(cyl(0.212, 0.224, 0.14, 12), p.trimColor, { x: 0, y: 0.73 - hipY, z: 0, sz: 0.68 }))
+            parts.push(makePart(cyl(0.226, 0.228, 0.024, 12), p.sashColor, { x: 0, y: 0.80 - hipY, z: 0, sz: 0.69 }))
+            // Khoen vàng y hậu (cà sa móc vai) trước ngực
+            parts.push(
+                makePart(new THREE.TorusGeometry(0.030, 0.008, 5, 10), p.sashColor, {
+                    x: 0.07,
+                    y: 1.08 - hipY,
+                    z: 0.165,
+                    rx: -0.18,
+                    ry: 0.15
+                })
+            )
+            // Tràng hạt gỗ đeo cổ buông nhẹ
+            const beadCount = 9
+            for (let bi = 0; bi < beadCount; bi++) {
+                const u = bi / (beadCount - 1) - 0.5
+                const bx = u * 0.16
+                const by = 1.15 - Math.cos(u * Math.PI) * 0.11 - hipY
+                const bz = 0.125 + Math.cos(u * Math.PI) * 0.042
+                parts.push(makePart(sph(0.015, 5, 4), 0x42220e, { x: bx, y: by, z: bz }))
+            }
+        } else {
+            parts.push(...buildDiagonalChestSashParts(p.trimColor, null))
+        }
     } else if (cStyle === 'tibet') {
         parts.push(...buildDiagonalChestSashParts(p.trimColor, p.sashColor))
     } else if (cStyle === 'singapore') {

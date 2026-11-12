@@ -49,21 +49,20 @@ Dựa trên tọa độ chuẩn trong `lib/world3d/world/HallLayout.ts` và `lib
 
 | Phương án | Tọa độ thế giới `(x, y, z)` | Vị trí trực quan trong chùa | Ưu điểm | Nhược điểm |
 | :--- | :--- | :--- | :--- | :--- |
-| **Phương án A (Khuyên dùng): Góc Tiếp Khách Hữu Điện cạnh Bàn thờ** | `(6.6, 1.35, -17.8)` hướng mặt `yaw ≈ -0.65 rad` (quay chếch Tây Nam về phía cửa & khu bồ đoàn) | Bên phải bệ Tam Bảo (phía sau cột lim Hữu `(8.0, -16.5)`), trên chiếc chiếu cói và bàn trà gỗ thấp | Không đè bất kỳ bồ đoàn hay lối đi nào trong `HallLayout.ts`, không gian tĩnh lặng trang nghiêm, đúng tinh thần "ngồi yên tĩnh trong chùa" | Người chơi mới phải đi sâu vào trong Chánh Điện mới nhìn thấy thầy |
-| **Phương án B (Dễ thấy nhất): Tiền Điện bên Hữu Chính Môn** | `(2.8, 1.35, -0.9)` hoặc trên thềm hiên `(3.2, 1.35, 1.9)` | Ngay cạnh cửa bước vào Đại Hùng Bảo Điện | Người chơi vừa bước qua cửa chính là gặp thầy đón tiếp ngay | Gần cửa ra vào dễ tạo cảm giác hơi chật nếu nhiều người chơi đi qua Chính Môn cùng lúc |
+| **Phương án 1: Góc Tiếp Khách Hữu Điện cạnh Bàn thờ** | `(6.6, 1.35, -17.8)` hướng mặt `yaw ≈ -0.65 rad` (quay chếch Tây Nam) | Ngồi bên phải bệ Tam Bảo (phía sau cột lim Hữu `(8.0, -16.5)`), trên chiếu cói và bàn trà gỗ thấp | Không đè bồ đoàn hay lối đi, không gian nội điện tĩnh lặng | Người chơi mới phải đi sâu vào trong Chánh Điện mới nhìn thấy thầy |
+| **Phương án 2 (Đã chọn): Đứng ngoài Hiên Tiền Điện (Thềm Hữu Chính Môn)** | `(3.85, 1.35, 2.25)` hướng mặt `yaw ≈ -0.35 rad` (hướng chếch về sân chùa & bậc thềm) | Đứng điềm đạm bên ngoài cửa Chính Môn trên thềm Đại Hùng Bảo Điện, ngay lối từ bậc tam cấp bước lên | Dễ nhìn thấy ngay khi bước vào sân chùa; đón khách tự nhiên, không chắn cửa Chính Môn hay cột hiên `(2.75, 1.5)` | Không nằm sâu bên trong nội điện |
 
-**Chốt kỹ thuật cho Phương án A (kèm biển chỉ dẫn nhẹ ở cửa nếu cần):**
+**Chốt kỹ thuật cho Phương án 2 (Thầy Trụ Trì đứng ngoài Hiên Tiền Điện):**
 
-- Thêm hằng số `ABBOT_SEAT` vào `HallLayout.ts` (Single Source of Truth) với `center: { x: 6.6, y: 1.35, z: -17.8 }`, `interactionRadius: 2.8`, `clearanceRadius: 1.2`.
-- Bổ sung `InteractionTarget = ... | 'abbot'` trong `TempleStage.ts`, kiểm tra `checkProximity()` khi khoảng cách người chơi tới `ABBOT_SEAT` `< 2.8m` để hiện gợi ý tương tác (ví dụ bấm `[E]` hoặc nhấp chuột trực tiếp vào thầy).
-- Hỗ trợ raycasting khi người chơi click trực tiếp vào mesh của Thầy Trụ Trì (tương tự `meritBox` và `fortuneTable`) để tự động đi bộ lại gần hoặc mở ngay khung trò chuyện.
+- Thêm hằng số `ABBOT_SPOT` vào `HallLayout.ts` (Single Source of Truth) với `center: { x: 3.85, y: 1.35, z: 2.25 }`, `yaw: -0.35`, `interactionRadius: 3.0`, `colliderRadius: 0.48`. Vị trí này nằm hoàn toàn ngoài vùng bồ đoàn thiền, cách cột hiên `(2.75, 1.5)` hơn `1.3m`, và không chắn `door_main_center` (`x = 0`) lẫn `door_main_right` (`x = 5.5`).
+- Bổ sung `InteractionTarget = ... | 'abbot'` trong `TempleStage.ts`, kiểm tra `checkProximity()` khi khoảng cách người chơi tới `ABBOT_SPOT` `< 3.0m` để hiện gợi ý tương tác (bấm `[E]` hoặc chuột phải vào thầy để mở hội thoại).
+- Hỗ trợ raycasting hoặc chạm gần khi người chơi đứng trước thầy để quay đầu nhẹ hướng về người chơi và mở khung trò chuyện.
 
-### 2.2. Tạo hình 3D, Tiểu cảnh & Biểu cảm (`emotion`)
+### 2.2. Tạo hình 3D & Biểu cảm (`emotion`)
 
-- **Nhân vật 3D:** Tái sử dụng hệ thống low-poly từ `lib/world3d/characters/AvatarGeometry.ts` với biến thể `hatKind: 'shaved_monk'`, y áo nâu sòng hoặc áo tràng lam/vàng nhạt trang nhã, tràng hạt gỗ đeo cổ, tư thế ngồi kiết già/bán già trên bồ đoàn rơm dày.
-- **Tiểu cảnh quanh chỗ thầy ngồi:** Một án thư gỗ thấp (`0.9m x 0.55m x 0.35m`), bộ ấm chén trà gốm mộc, một quyển kinh mở đặt gọn và một bình hoa sen nhỏ.
-- **Nameplate 3D:** Sử dụng `NameplateAtlas.ts` hiển thị tên **"Thầy Trụ Trì"** với chữ sắc vàng nhạt dễ đọc, không dùng ký tự emoji thô.
-- **Chuyển động nhỏ (Idle Animation):** Nhịp thở nhẹ, thỉnh thoảng gật đầu khẽ hoặc chắp tay khi người chơi lại gần vùng `R <= 3.5m`. Khi JSON trả về `emotion` (`calm | smile | thoughtful | serious`), UI Drawer sẽ đổi sắc thái khung chân dung/huy hiệu trạng thái và kích hoạt cử chỉ nhẹ tương ứng trên mô hình 3D (ví dụ `smile` hơi nghiêng đầu thân thiện, `thoughtful` đưa tay lần tràng hạt).
+- **Nhân vật 3D:** Tái sử dụng hệ thống low-poly từ `lib/world3d/characters/AvatarGeometry.ts` với biến thể `hatKind: 'shaved_monk'`, y áo nâu sòng / vàng cà sa trang nhã, tràng hạt gỗ đeo cổ, tư thế đứng điềm đạm hai tay chắp nhẹ trước ngực.
+- **Nameplate 3D:** Sử dụng `NameplateHelper.ts` hiển thị tên **"Thầy Trụ Trì"** với sắc chữ vàng nhạt dễ đọc, không dùng ký tự emoji thô.
+- **Chuyển động nhỏ (Idle Animation):** Nhịp thở nhẹ, thỉnh thoảng gật đầu khẽ hoặc hơi xoay mặt về phía người chơi khi đứng gần `R <= 4.5m`. Khi JSON trả về `emotion` (`calm | smile | thoughtful | serious`), UI Drawer sẽ đổi sắc thái huy hiệu trạng thái và kích hoạt cử chỉ nhẹ tương ứng trên mô hình 3D.
 
 ---
 
@@ -120,7 +119,25 @@ Mỗi câu hỏi gợi ý nên gắn thêm `id`, `topic` (khớp 10 thư mục) 
 9. Pháp luật quy định thế nào về hoạt động tôn giáo, lễ hội?
 10. Làm sao để bớt lo âu, giữ tâm bình an?
 11. Thiền là gì? Người mới nên bắt đầu thế nào?
-
+12. Bát chánh đạo gồm những gì? Áp dụng vào đời sống ra sao?
+13. Vô thường và vô ngã nghĩa là gì? Hiểu để làm gì?
+14. Luân hồi có thật không? Phật giáo nói thế nào?
+15. Tam bảo là gì? Quy y Tam bảo nghĩa là gì?
+16. Từ bi hỉ xả là gì? Làm sao rèn luyện trong đời thường?
+17. Lục độ ba la mật gồm những gì?
+18. Thập thiện là gì? Khác ngũ giới ở điểm nào?
+19. Bát quan trai giới là gì? Ai có thể thọ trì?
+20. Tụng kinh, niệm Phật có lợi ích gì? Nên bắt đầu từ đâu?
+21. Thiền phái Trúc Lâm là gì? Có điểm gì đặc sắc?
+22. Phật giáo Bắc tông, Nam tông và Khất sĩ khác nhau thế nào?
+23. Ý nghĩa lễ Phật đản và lễ Vu lan là gì?
+24. Âm dương, ngũ hành trong Kinh Dịch là gì? Có liên quan đến đời sống không?
+25. Xem bói, xem quẻ có đáng tin không? Thầy nhìn nhận thế nào?
+26. Giáo hội Phật giáo Việt Nam là gì? Tổ chức hoạt động ra sao?
+27. Quy tắc ứng xử, trang phục khi vào chùa là gì?
+28. Cúng dường và công đức: bao nhiêu là đủ, có bắt buộc không?
+29. Làm sao đối diện với mất mát, chia ly và nỗi buồn?
+30. Trong game này, tôi tham dự lễ, nhận lộc và góp công đức như thế nào?
 ---
 
 ## 5. Kiến trúc Kho Tri thức RAG (`data/`)

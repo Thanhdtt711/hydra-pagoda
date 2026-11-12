@@ -3,6 +3,13 @@ import tailwindcss from '@tailwindcss/vite'
 // Nuxt 3 config for Hydra Pagoda (Virtual Sacred Pilgrimage MMO)
 export default defineNuxtConfig({
   ssr: false, // SPA Mode for WebGL 3D, Web Audio API and Cardano Web3 Wallet integrations
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        allowImportingTsExtensions: true // server/utils import .ts de chay duoc bang node --experimental-strip-types
+      }
+    }
+  },
   compatibilityDate: '2025-07-15',
   experimental: {
     appManifest: false
@@ -35,6 +42,7 @@ export default defineNuxtConfig({
   // Ví Cardano & MC coin. Mọi giá trị ghi đè bằng biến môi trường NUXT_* (xem .env.example).
   // Chỉ `public.*` được gửi xuống trình duyệt; phần còn lại là bí mật/vận hành phía server.
   runtimeConfig: {
+    databaseUrl: '', // NUXT_DATABASE_URL (hoặc DATABASE_URL) - dùng Supabase PostgreSQL khi có, trống = SQLite
     dbPath: './.data/pagoda.sqlite', // NUXT_DB_PATH
     // Hydra L2 (Hybrid, mặc định TẮT; xem .env.example). Cũng đọc trực tiếp HYDRA_L2_ENABLED / HYDRA_NODE_WS_URL.
     hydraL2Enabled: false, // NUXT_HYDRA_L2_ENABLED
@@ -52,6 +60,9 @@ export default defineNuxtConfig({
     orderTtlMinutes: 30, // NUXT_ORDER_TTL_MINUTES (hạn đơn mặc định 30 phút)
     orderMetadataLabel: 8181, // NUXT_ORDER_METADATA_LABEL (nhãn metadata gắn orderId)
     webhookSecret: '', // NUXT_WEBHOOK_SECRET (tùy chọn cho Blockfrost webhook)
+    abbotLlmApiKey: '', // NUXT_ABBOT_LLM_API_KEY (tùy chọn: nếu để trống sẽ dùng chế độ RAG offline)
+    abbotLlmBaseUrl: 'https://generativelanguage.googleapis.com/v1beta', // NUXT_ABBOT_LLM_BASE_URL
+    abbotLlmModel: 'gemini-2.5-flash', // NUXT_ABBOT_LLM_MODEL
     public: {
       cardanoNetwork: 'preprod', // NUXT_PUBLIC_CARDANO_NETWORK: 'preprod' | 'mainnet'
       appCenterOrigin: 'https://beta.hydraone.app,https://developers-portal-beta.hydraone.app,https://dev.hydraone.app,https://portal.hydraone.app,https://alpha.hydraone.app,https://hydraone.app' // NUXT_PUBLIC_APP_CENTER_ORIGIN
@@ -67,7 +78,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,600&display=swap'
+          href: 'https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,600;1,400&display=swap'
         }
       ]
     }

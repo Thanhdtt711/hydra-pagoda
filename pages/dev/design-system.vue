@@ -38,21 +38,21 @@ const selectedMethod = ref('method-a')
       <!-- Header -->
       <header class="pb-6 border-b border-hairline">
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-xs uppercase tracking-wider text-secondary font-semibold">Hệ Thống Thiết Kế</span>
-          <UiBadge variant="warning">BINANCE SPEC DARK</UiBadge>
+          <span class="text-xs text-secondary font-semibold">Hệ Thống Thiết Kế</span>
+          <UiBadge variant="warning">Sơn mài và vàng thếp</UiBadge>
         </div>
         <h1 class="text-2xl font-bold tracking-tight text-white mb-2">Vạn Cảnh Thiền Tự — Thư Viện UI Primitives</h1>
         <p class="text-sm text-secondary leading-normal max-w-3xl">
-          Hệ thiết kế tài chính kỷ luật Binance Dark. Inter cho chữ chạy, IBM Plex Sans cho số liệu (tabular-nums), một accent vàng #fcd535 duy nhất, không biểu tượng cảm xúc, không gradient trang trí, không hiệu ứng kính mờ.
+          Hệ thiết kế sơn mài và vàng thếp. Be Vietnam Pro cho tiêu đề và chữ chạy, IBM Plex Sans cho số liệu (tabular-nums), vàng thếp #c9a24b làm màu nhấn và son ấn #b8372b chỉ cho nút chính, không biểu tượng cảm xúc, không gradient trang trí, không hiệu ứng kính mờ.
         </p>
       </header>
 
       <!-- Section: Typography & Numbers -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">1. Kiểu Chữ &amp; Số Liệu (Typography &amp; Tabular Numbers)</h2>
+        <h2 class="text-base font-bold text-white">1. Kiểu Chữ &amp; Số Liệu (Typography &amp; Tabular Numbers)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <UiCard variant="card-dark" padding="md">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Font Chữ Chạy: Inter (>= 12px)</h3>
+            <h3 class="text-xs font-semibold text-secondary mb-3">Font thân chữ: Be Vietnam Pro (>= 12px)</h3>
             <div class="space-y-3">
               <div>
                 <span class="text-xs text-secondary block">H1 / 24px Bold</span>
@@ -76,7 +76,7 @@ const selectedMethod = ref('method-a')
           </UiCard>
 
           <UiCard variant="card-dark" padding="md">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Số Liệu: IBM Plex Sans (tabular-nums)</h3>
+            <h3 class="text-xs font-semibold text-secondary mb-3">Số Liệu: IBM Plex Sans (tabular-nums)</h3>
             <div class="space-y-4">
               <div class="flex items-center justify-between py-2 border-b border-hairline">
                 <span class="text-sm text-secondary">Số dư MC Coin:</span>
@@ -101,11 +101,11 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Buttons -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">2. Nút Bấm (UiButton) — Tối Đa 1–2 Nút Vàng #fcd535 Mỗi Màn</h2>
+        <h2 class="text-base font-bold text-white">2. Nút Bấm (UiButton) — Tối Đa 1–2 Nút Vàng #c9a24b Mỗi Màn</h2>
         <UiCard variant="card-dark" padding="md">
           <div class="space-y-6">
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-2">Các biến thể chính (40px chuẩn)</span>
+              <span class="text-xs font-semibold text-secondary block mb-2">Các biến thể chính (40px chuẩn)</span>
               <div class="flex flex-wrap items-center gap-3">
                 <UiButton variant="primary">Hành Động Chính (Vàng)</UiButton>
                 <UiButton variant="secondary">Hành Động Phụ (Tối)</UiButton>
@@ -115,9 +115,9 @@ const selectedMethod = ref('method-a')
             </div>
 
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-2">Trạng thái (Disabled, Loading, Kích thước nhỏ 28px)</span>
+              <span class="text-xs font-semibold text-secondary block mb-2">Trạng thái (Disabled, Loading, Kích thước nhỏ 28px)</span>
               <div class="flex flex-wrap items-center gap-3">
-                <UiButton variant="primary" disabled>Nút Vàng Khóa (#3a3a1f)</UiButton>
+                <UiButton variant="primary" disabled>Nút Vàng Khóa (#3a3320)</UiButton>
                 <UiButton variant="secondary" disabled>Nút Phụ Khóa</UiButton>
                 <UiButton variant="primary" loading>Đang Xử Lý</UiButton>
                 <UiButton variant="primary" size="sm">Nạp MC</UiButton>
@@ -131,16 +131,16 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Tabs -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">3. Thanh Điều Hướng Tab (UiTabs) — Gạch Chân Vàng 2px</h2>
+        <h2 class="text-base font-bold text-white">3. Thanh Điều Hướng Tab (UiTabs) — Gạch Chân Vàng 2px</h2>
         <UiCard variant="card-dark" padding="md">
           <div class="space-y-6">
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-3">Kiểu 1: Gạch chân (Horizontal) — Thanh cuộn ngang phẳng</span>
+              <span class="text-xs font-semibold text-secondary block mb-3">Kiểu 1: Gạch chân (Horizontal) — Thanh cuộn ngang phẳng</span>
               <UiTabs v-model="activeTab" :items="tabOptions" layout="horizontal" />
             </div>
 
             <div class="pt-4 border-t border-hairline">
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-3">Kiểu 2: Phân đoạn (Segmented)</span>
+              <span class="text-xs font-semibold text-secondary block mb-3">Kiểu 2: Phân đoạn (Segmented)</span>
               <UiTabs v-model="activeTab" :items="tabOptions" layout="segmented" />
             </div>
           </div>
@@ -149,7 +149,7 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Selectable Cards -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">4. Thẻ Chọn (UiSelectableCard) — Viền Vàng + Tick SVG Khi Chọn</h2>
+        <h2 class="text-base font-bold text-white">4. Thẻ Chọn (UiSelectableCard) — Viền Vàng + Tick SVG Khi Chọn</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <UiSelectableCard
             v-for="method in fortuneMethods"
@@ -167,7 +167,7 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Inputs -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">5. Ô Nhập Liệu (UiInput) — Chiều Cao 40px, Focus Viền Vàng</h2>
+        <h2 class="text-base font-bold text-white">5. Ô Nhập Liệu (UiInput) — Chiều Cao 40px, Focus Viền Vàng</h2>
         <UiCard variant="card-dark" padding="md">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <UiInput v-model="sampleInputValue" placeholder="Nhập địa chỉ ví hoặc từ khóa..." />
@@ -179,11 +179,11 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Badges & Chips -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">6. Huy Hiệu &amp; Thẻ Tài Nguyên (UiBadge, UiChip, UiStatCell)</h2>
+        <h2 class="text-base font-bold text-white">6. Huy Hiệu &amp; Thẻ Tài Nguyên (UiBadge, UiChip, UiStatCell)</h2>
         <UiCard variant="card-dark" padding="md">
           <div class="space-y-4">
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-2">Huy Hiệu Trạng Thái (UiBadge)</span>
+              <span class="text-xs font-semibold text-secondary block mb-2">Huy Hiệu Trạng Thái (UiBadge)</span>
               <div class="flex flex-wrap items-center gap-2">
                 <UiBadge variant="neutral">NEUTRAL</UiBadge>
                 <UiBadge variant="warning" dot>TESTNET (PREPROD)</UiBadge>
@@ -194,7 +194,7 @@ const selectedMethod = ref('method-a')
             </div>
 
             <div class="pt-3 border-t border-hairline">
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-2">Thẻ HUD (UiChip) &amp; Phím Tắt (UiKeycap)</span>
+              <span class="text-xs font-semibold text-secondary block mb-2">Thẻ HUD (UiChip) &amp; Phím Tắt (UiKeycap)</span>
               <div class="flex flex-wrap items-center gap-3">
                 <UiChip value="3" label="Ngày Tu" />
                 <UiChip value="0 MC" label="Hành Trang" dot-color="warning" />
@@ -210,7 +210,7 @@ const selectedMethod = ref('method-a')
             </div>
 
             <div class="pt-3 border-t border-hairline">
-              <span class="text-xs font-semibold uppercase tracking-wider text-secondary block mb-2">Ô Thống Kê 2 Dòng (UiStatCell)</span>
+              <span class="text-xs font-semibold text-secondary block mb-2">Ô Thống Kê 2 Dòng (UiStatCell)</span>
               <div class="flex flex-wrap items-center gap-8">
                 <UiStatCell label="Lượt Hôm Nay" value="1/1" variant="success" />
                 <UiStatCell label="Số Dư Off-Chain" value="0" unit="MC" highlight>
@@ -227,7 +227,7 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Markets Row Format -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">7. Dòng Dữ Liệu Kiểu Thị Trường (UiDataRow) — Phẳng, Viền Mảnh</h2>
+        <h2 class="text-base font-bold text-white">7. Dòng Dữ Liệu Kiểu Thị Trường (UiDataRow) — Phẳng, Viền Mảnh</h2>
         <UiCard variant="card-dark" padding="none">
           <UiDataRow
             title="Xin Xăm Bát Quái"
@@ -267,7 +267,7 @@ const selectedMethod = ref('method-a')
 
       <!-- Section: Right-side Drawer Panel Trigger -->
       <section class="space-y-4">
-        <h2 class="text-base font-bold text-white tracking-wide">8. Panel Đóng/Mở Bên Phải (UiModal Side Drawer)</h2>
+        <h2 class="text-base font-bold text-white">8. Panel Đóng/Mở Bên Phải (UiModal Side Drawer)</h2>
         <div>
           <UiButton variant="primary" @click="showSidePanel = true">Mở Thử Nghiệm Panel Bên Phải</UiButton>
         </div>

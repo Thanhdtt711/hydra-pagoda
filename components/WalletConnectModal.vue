@@ -4,6 +4,7 @@ import { useWalletStore, KNOWN_WALLETS, type OrderStatus } from '~/stores/wallet
 import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
 import UiModal from '~/components/ui/UiModal.vue'
 import UiButton from '~/components/ui/UiButton.vue'
+import { t } from '~/lib/ui/copy'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import UiSelectableCard from '~/components/ui/UiSelectableCard.vue'
 import UiTabs from '~/components/ui/UiTabs.vue'
@@ -61,17 +62,18 @@ function onCustomAdaChange() {
   selectedAda.value = n
 }
 
-const hydraStatus = ref<{ enabled: boolean; connected: boolean; headStatus: string; latestSnapshotNo: number; confirmedL2Txs: number; mode: string } | null>(null)
+const hydraStatus = ref<{ enabled: boolean; connected: boolean; headStatus: string; latestSnapshotNo: number; confirmedL2Txs: number; mode: string; dbEngine?: 'postgres' | 'sqlite' } | null>(null)
 const hydraLabel = computed(() => {
   const s = hydraStatus.value
-  if (!s || !s.enabled) return 'Sổ cái cục bộ (Hydra L2 tắt)'
-  if (s.mode === 'hydra_l2') return `Hydra L2 - Head ${s.headStatus} - Snapshot #${s.latestSnapshotNo} - ${s.confirmedL2Txs} tx xác nhận`
-  return `Hydra L2 chưa sẵn sàng (${s.headStatus}) - dùng sổ cái cục bộ`
+  const dbText = s?.dbEngine === 'postgres' ? 'CSDL: PostgreSQL (Supabase)' : 'CSDL: SQLite (cục bộ)'
+  if (!s || !s.enabled) return `${dbText} · Hydra L2 tắt`
+  if (s.mode === 'hydra_l2') return `${dbText} · Hydra L2 - Head ${s.headStatus} - Snapshot #${s.latestSnapshotNo} - ${s.confirmedL2Txs} tx xác nhận`
+  return `${dbText} · Hydra L2 chưa sẵn sàng (${s.headStatus})`
 })
 
 onMounted(async () => {
   try {
-    hydraStatus.value = await $fetch('/api/hydra/status')
+    hydraStatus.value = (await $fetch<unknown>('/api/hydra/status' as string)) as typeof hydraStatus.value
   } catch { hydraStatus.value = null }
   installedList.value = await wallet.detectInstalledWallets()
   if (wallet.isConnected) {
@@ -178,7 +180,7 @@ function formatTime(ts: number): string {
         <!-- Khi chạy trong Iframe HydraOne: Hướng dẫn kết nối từ Header cha -->
         <div v-if="wallet.isIframeMode" class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-3">
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0 mt-0.5">
+            <div class="w-10 h-10 rounded bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0 mt-0.5">
               <ZenIcon name="wallet" :size="20" class="text-binance-yellow" />
             </div>
             <div class="min-w-0 flex-1">
@@ -187,7 +189,7 @@ function formatTime(ts: number): string {
                 <UiBadge variant="warning">Iframe Host</UiBadge>
               </div>
               <p class="text-xs text-secondary mt-1 leading-normal">
-                Vạn Cảnh Thiền Tự đang nhúng trong hệ sinh thái HydraOne. Vui lòng bấm nút <span class="text-primary font-semibold">"Kết nối"</span> ở góc trên bên phải thanh menu HydraOne để tự động đăng nhập.
+                {{ t('desc.walletIframe') }}
               </p>
             </div>
           </div>
@@ -200,7 +202,7 @@ function formatTime(ts: number): string {
               :loading="isSyncingBridge"
               @click="handleSyncHydraBridge"
             >
-              Làm Mới Trạng Thái Ví
+              {{ t('btn.refreshWallet') }}
             </UiButton>
           </div>
         </div>
@@ -208,11 +210,11 @@ function formatTime(ts: number): string {
         <!-- Khi chạy ngoài Iframe: Kết nối CIP-30 thông thường -->
         <template v-else>
           <p class="text-sm text-secondary leading-normal m-0">
-            Chọn ví Cardano để kết nối. Bạn sẽ ký một thông điệp CIP-8 để xác minh quyền sở hữu ví — hoàn toàn không tốn phí, không gửi giao dịch on-chain.
+            {{ t('desc.walletConnect') }}
           </p>
 
           <!-- Thông báo lỗi kết nối nếu có -->
-          <div v-if="wallet.errorMessage" role="alert" class="p-3 rounded-[6px] bg-trading-down/10 border border-trading-down/30 text-xs">
+          <div v-if="wallet.errorMessage" role="alert" class="p-3 rounded-[2px] bg-trading-down/10 border border-trading-down/30 text-xs">
             <div class="flex items-start gap-2.5">
               <ZenIcon name="circle-alert" :size="16" class="text-trading-down shrink-0 mt-0.5" />
               <div class="min-w-0 flex-1">
@@ -228,7 +230,7 @@ function formatTime(ts: number): string {
           <!-- THẺ VÍ ETERNL DUY NHẤT -->
           <div class="p-3.5 rounded-lg bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0 overflow-hidden">
+              <div class="w-10 h-10 rounded bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0 overflow-hidden">
                 <img
                   src="/images/eternl-logo.png"
                   alt="Eternl"
@@ -263,7 +265,7 @@ function formatTime(ts: number): string {
                 :href="eternlWallet.url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex items-center justify-center px-3 h-8 rounded-[4px] bg-surface-card border border-hairline text-xs font-semibold text-primary hover:bg-surface-elevated transition-colors"
+                class="inline-flex items-center justify-center px-3 h-[40px] shrink-0 rounded-[2px] bg-surface-card border border-hairline text-xs font-semibold text-primary hover:bg-surface-elevated transition-colors"
               >
                 Cài Đặt
               </a>
@@ -271,10 +273,10 @@ function formatTime(ts: number): string {
           </div>
         </template>
 
-        <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline flex items-start gap-2.5">
+        <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline flex items-start gap-2.5">
           <ZenIcon name="info" :size="16" class="text-secondary shrink-0 mt-0.5" />
           <span class="text-xs text-secondary leading-normal">
-            Hệ thống tuân thủ nghiêm ngặt bảo mật Non-Custodial: Tuyệt đối không giữ khóa riêng, không tự ý kích hoạt chuyển khoản khi chưa được bạn duyệt.
+            {{ t('desc.nonCustodial') }}
           </span>
         </div>
       </div>
@@ -282,10 +284,10 @@ function formatTime(ts: number): string {
       <!-- TRẠNG THÁI 2: ĐÃ KẾT NỐI VÍ -->
       <div v-else class="space-y-4">
         <!-- Identity Bar -->
-        <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
+        <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
           <div class="flex items-center gap-2.5 min-w-0">
             <img v-if="wallet.walletKey !== 'hydraone'" src="/images/eternl-logo.png" alt="Eternl" class="w-7 h-7 rounded shrink-0 object-contain" />
-            <div v-else class="w-7 h-7 rounded bg-[#181a20] border border-hairline flex items-center justify-center shrink-0">
+            <div v-else class="w-7 h-7 rounded bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0">
               <ZenIcon name="wallet" :size="14" class="text-binance-yellow" />
             </div>
             <div class="min-w-0">
@@ -309,11 +311,11 @@ function formatTime(ts: number): string {
 
         <!-- Balances Grid -->
         <div class="grid grid-cols-2 gap-2.5">
-          <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline">
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline">
             <span class="text-xs text-secondary block mb-1">Số dư ví Cardano</span>
             <span class="text-base font-bold font-numbers text-primary">{{ wallet.adaBalance }} ADA</span>
           </div>
-          <div class="p-3 rounded-[6px] bg-surface-elevated border border-primary/40">
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-primary/40">
             <span class="text-xs text-secondary block mb-1">Số dư MC trong game</span>
             <span class="text-base font-bold font-numbers text-gold">{{ wallet.mcBalance.toLocaleString() }} MC</span>
           </div>
@@ -335,7 +337,7 @@ function formatTime(ts: number): string {
         <!-- TAB 1: NẠP MC COIN -->
         <div v-if="activeTab === 'buy'" class="space-y-4 pt-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Chọn gói ADA nạp nhanh</span>
+            <span class="text-xs font-semibold text-secondary">Chọn gói ADA nạp nhanh</span>
             <span class="text-xs font-numbers text-secondary">1 ADA = 1.000 MC</span>
           </div>
 
@@ -377,40 +379,40 @@ function formatTime(ts: number): string {
           </div>
 
           <!-- Summary card -->
-          <div class="p-3 rounded-[6px] bg-surface-elevated border border-hairline">
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline">
             <div class="text-sm text-primary leading-normal">
               Bạn trả <strong class="font-numbers">{{ parsedAda >= 2 ? parsedAda.toLocaleString() : '0' }} ADA</strong>
               <span class="text-xs text-secondary"> (chưa gồm phí mạng ~0.2 ADA)</span>
               để nhận <strong class="text-gold font-numbers">{{ parsedAda >= 2 ? previewMc.toLocaleString() : '0' }} MC</strong>
             </div>
             <p class="text-xs text-secondary mt-1 leading-normal m-0">
-              Hệ thống cộng MC tự động sau khi giao dịch đạt đủ xác nhận trên chuỗi Cardano ({{ wallet.isTestnet ? 'Preprod' : 'Mainnet' }}).
+              {{ t('desc.walletTopup') }} ({{ wallet.isTestnet ? 'Preprod' : 'Mainnet' }})
             </p>
           </div>
 
           <!-- Tiến trình nạp -->
-          <div v-if="wallet.purchasePhase !== 'idle'" class="p-3 rounded-[6px] bg-surface-elevated border border-hairline">
+          <div v-if="wallet.purchasePhase !== 'idle'" class="p-3 rounded-[2px] bg-surface-elevated border border-hairline">
             <div class="grid grid-cols-4 gap-1.5 text-center text-xs font-medium text-secondary">
               <div
-                class="py-1.5 px-1 rounded-[4px]"
+                class="py-1.5 px-1 rounded-[2px]"
                 :class="['creating_order', 'awaiting_signature'].includes(wallet.purchasePhase) ? 'bg-primary/20 text-gold font-semibold' : 'bg-surface-card text-trading-up'"
               >
                 1. Chờ ký
               </div>
               <div
-                class="py-1.5 px-1 rounded-[4px]"
+                class="py-1.5 px-1 rounded-[2px]"
                 :class="wallet.purchasePhase === 'submitting_tx' ? 'bg-primary/20 text-gold font-semibold' : ['awaiting_confirmation', 'completed'].includes(wallet.purchasePhase) ? 'bg-surface-card text-trading-up' : 'bg-surface-card text-secondary'"
               >
                 2. Đã gửi
               </div>
               <div
-                class="py-1.5 px-1 rounded-[4px]"
+                class="py-1.5 px-1 rounded-[2px]"
                 :class="wallet.purchasePhase === 'awaiting_confirmation' ? 'bg-primary/20 text-gold font-semibold' : wallet.purchasePhase === 'completed' ? 'bg-surface-card text-trading-up' : 'bg-surface-card text-secondary'"
               >
                 3. Xác nhận
               </div>
               <div
-                class="py-1.5 px-1 rounded-[4px]"
+                class="py-1.5 px-1 rounded-[2px]"
                 :class="wallet.purchasePhase === 'completed' ? 'bg-surface-card text-trading-up' : wallet.purchasePhase === 'error' ? 'bg-trading-down/20 text-trading-down font-semibold' : 'bg-surface-card text-secondary'"
               >
                 {{ wallet.purchasePhase === 'error' ? '4. Lỗi' : '4. Xong' }}
@@ -448,7 +450,8 @@ function formatTime(ts: number): string {
             :disabled="parsedAda < 2"
             @click="handleBuyMc"
           >
-            {{ `Xác nhận nạp ${parsedAda >= 2 ? previewMc.toLocaleString() : 0} MC (${parsedAda >= 2 ? parsedAda : 0} ADA)` }}
+            {{ t('btn.topupConfirm', { mc: parsedAda >= 2 ? previewMc.toLocaleString() : 0 }) }}
+            <span class="font-numbers ml-1">{{ parsedAda >= 2 ? parsedAda : 0 }} ADA</span>
           </UiButton>
 
           <UiButton
@@ -457,14 +460,14 @@ function formatTime(ts: number): string {
             block
             @click="handleResetPurchase"
           >
-            Tiếp tục nạp đơn mới
+            {{ t('btn.newTopup') }}
           </UiButton>
         </div>
 
         <!-- TAB 2: LỊCH SỬ NẠP -->
         <div v-if="activeTab === 'history'" class="space-y-3 pt-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Đơn nạp gần đây</span>
+            <span class="text-xs font-semibold text-secondary">Đơn nạp gần đây</span>
             <UiButton variant="ghost" size="sm" @click="wallet.fetchOrders()">Làm mới</UiButton>
           </div>
 
@@ -476,7 +479,7 @@ function formatTime(ts: number): string {
             <div
               v-for="ord in wallet.orders"
               :key="ord.orderId"
-              class="p-3 rounded-[6px] bg-surface-elevated border border-hairline"
+              class="p-3 rounded-[2px] bg-surface-elevated border border-hairline"
             >
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-sm font-bold font-numbers text-primary">

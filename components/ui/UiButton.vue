@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
       `ui-btn--${props.variant}`,
       `ui-btn--${props.size}`,
       props.block ? 'w-full' : '',
-      props.pill ? 'rounded-full px-6' : 'rounded-[6px]'
+      props.pill ? 'rounded-full px-6' : 'rounded-[2px]'
     ]"
   >
     <ZenIcon v-if="props.loading" name="loader-circle" :size="16" class="animate-spin mr-1.5" />
@@ -66,42 +66,42 @@ const props = withDefaults(defineProps<Props>(), {
   font-size: 16px;
 }
 
-/* Primary CTA: Nút vàng duy nhất mỗi màn, chữ đen #181a20 */
+/* Primary CTA: ấn son, hành động chính duy nhất mỗi màn, chữ kem */
 .ui-btn--primary {
-  background-color: var(--primary, #fcd535);
-  color: var(--on-primary, #181a20);
-  border-color: var(--primary, #fcd535);
+  background-color: var(--seal, #b8372b);
+  color: var(--on-seal, #f6ecd8);
+  border-color: var(--seal, #b8372b);
 }
 
 .ui-btn--primary:hover:not(:disabled) {
-  background-color: var(--primary-active, #f0b90b);
-  border-color: var(--primary-active, #f0b90b);
+  background-color: var(--seal-active, #9e2d22);
+  border-color: var(--seal-active, #9e2d22);
 }
 
 .ui-btn--primary:active:not(:disabled) {
-  background-color: var(--primary-active, #f0b90b);
+  background-color: var(--seal-active, #9e2d22);
 }
 
 .ui-btn--primary:disabled {
-  background-color: var(--primary-disabled, #3a3a1f) !important;
-  color: var(--muted, #707a8a) !important;
-  border-color: var(--primary-disabled, #3a3a1f) !important;
+  background-color: var(--seal-disabled, #4a2622) !important;
+  color: var(--muted, #968b79) !important;
+  border-color: var(--seal-disabled, #4a2622) !important;
   cursor: not-allowed;
 }
 
 /* Secondary CTA: Thẻ elevated phẳng */
 .ui-btn--secondary,
 .ui-btn--secondary-light {
-  background-color: var(--surface-card-dark, #1e2329);
-  color: var(--body, #eaecef);
-  border-color: var(--hairline-on-dark, #2b3139);
+  background-color: var(--surface-card-dark, #1a1714);
+  color: var(--body, #ede4d3);
+  border-color: var(--hairline-on-dark, #26221d);
 }
 
 .ui-btn--secondary:hover:not(:disabled),
 .ui-btn--secondary-light:hover:not(:disabled) {
-  background-color: var(--surface-elevated-dark, #2b3139);
-  border-color: var(--surface-elevated-dark, #2b3139);
-  color: var(--on-dark, #ffffff);
+  background-color: var(--surface-elevated-dark, #26221d);
+  border-color: var(--surface-elevated-dark, #26221d);
+  color: var(--on-dark, #f5eddc);
 }
 
 .ui-btn--secondary:disabled,
@@ -113,13 +113,13 @@ const props = withDefaults(defineProps<Props>(), {
 /* Ghost */
 .ui-btn--ghost {
   background-color: transparent;
-  color: var(--text-secondary, #929aa5);
+  color: var(--text-secondary, #a89c88);
   border-color: transparent;
 }
 
 .ui-btn--ghost:hover:not(:disabled) {
-  background-color: var(--surface-card-dark, #1e2329);
-  color: var(--body, #eaecef);
+  background-color: var(--surface-card-dark, #1a1714);
+  color: var(--body, #ede4d3);
 }
 
 .ui-btn--ghost:disabled {
@@ -130,7 +130,7 @@ const props = withDefaults(defineProps<Props>(), {
 /* Link */
 .ui-btn--link {
   background-color: transparent;
-  color: var(--primary, #fcd535);
+  color: var(--primary, #c9a24b);
   border-color: transparent;
   padding: 0;
   height: auto;

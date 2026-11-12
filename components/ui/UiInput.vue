@@ -1,7 +1,7 @@
 <script setup lang="ts">
 interface Props {
   modelValue?: string | number
-  type?: 'text' | 'number' | 'email' | 'password' | 'search'
+  type?: 'text' | 'date' | 'number' | 'email' | 'password' | 'search'
   placeholder?: string
   disabled?: boolean
   readonly?: boolean
@@ -46,10 +46,10 @@ function onInput(event: Event) {
 
 <template>
   <div
-    class="ui-input-wrap flex items-center w-full rounded-[6px] border bg-surface-card border-hairline text-primary transition-colors font-sans"
+    class="ui-input-wrap flex items-center w-full rounded-[2px] border bg-surface-card border-hairline text-primary transition-colors font-sans"
     :class="[
       props.size === 'sm' ? 'min-h-[32px] px-2 gap-1.5' : 'min-h-[40px] px-3 gap-2',
-      props.disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-[#474d57]',
+      props.disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-[#4a4237]',
       props.error ? '!border-trading-down focus-within:!ring-1 focus-within:!ring-trading-down' : 'focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'
     ]"
   >

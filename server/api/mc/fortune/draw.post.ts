@@ -1,4 +1,4 @@
-import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
+import { assertSameOrigin, requireSession, setAccountFortuneName } from '../../../utils/wallet/auth'
 import { drawFortuneWithMc } from '../../../utils/wallet/mcService'
 import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
@@ -21,10 +21,14 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
 export default defineEventHandler(async (event) => {
   assertSameOrigin(event)
   rateLimit(event, 'mc:fortune:draw', 20, 60_000)
-  const account = requireSession(event)
-  const body = (await readBody<Record<string, any>>(event).catch(() => ({}))) || {}
+  const account = await requireSession(event)
+  const body: Record<string, any> = (await readBody<Record<string, any>>(event).catch(() => null)) || {}
 
-  const res = drawFortuneWithMc(
+  if (body.profile && typeof body.profile === 'object' && typeof body.profile.fullName === 'string' && body.profile.fullName.trim()) {
+    await setAccountFortuneName(account.id, body.profile.fullName)
+  }
+
+  const res = await drawFortuneWithMc(
     account.id,
     String(body.category ?? body.mon ?? 'stick'),
     String(body.tier ?? 'auspicious'),

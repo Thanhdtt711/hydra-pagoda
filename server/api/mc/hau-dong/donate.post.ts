@@ -1,8 +1,10 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { sponsorHauDongSession } from '../../../utils/wallet/hauDongService'
+import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async event => {
   assertSameOrigin(event)
+  rateLimit(event, 'mc:hau-dong:donate', 20, 60_000)
   const body = (await readBody(event).catch(() => ({}))) as Record<string, unknown>
 
   // Chặn yêu cầu mở đàn miễn phí tùy tiện (chỉ cho phép mở đàn lúc 11h00 hoặc Mở Đàn Đặc Cách / Góp Bách Gia)
@@ -13,7 +15,7 @@ export default defineEventHandler(async event => {
     })
   }
 
-  const acc = requireSession(event)
+  const acc = await requireSession(event)
   return sponsorHauDongSession(acc.id, {
     requestId: body.requestId,
     mode: body.mode,

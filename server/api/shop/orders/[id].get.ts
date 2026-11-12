@@ -8,9 +8,9 @@ import { rateLimit } from '../../../utils/wallet/rateLimit'
  */
 export default defineEventHandler(async (event) => {
   rateLimit(event, 'shop:orders:get', 60, 60_000)
-  const account = requireSession(event)
+  const account = await requireSession(event)
   const orderId = String(getRouterParam(event, 'id') || '')
-  const row = getAccountOrder(account, orderId)
+  const row = await getAccountOrder(account, orderId)
 
   if (['signing', 'submitted', 'confirming'].includes(row.status)) {
     const hash = row.tx_hash || row.unsigned_tx_hash
@@ -23,8 +23,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const freshAccount = getSessionAccount(event) ?? account
-  const orders = listAccountOrders(freshAccount, 50)
+  const freshAccount = (await getSessionAccount(event)) ?? account
+  const orders = await listAccountOrders(freshAccount, 50)
   const order = orders.find(o => o.orderId === orderId)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return { order, account: freshAccount }

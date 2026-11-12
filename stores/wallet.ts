@@ -908,6 +908,23 @@ export const useWalletStore = defineStore('wallet', {
       } catch { /* lỗi mạng tạm thời: giữ nguyên, thử lại lần sau */ }
     },
 
+    /** Đồng bộ họ tên từ hồ sơ Bói Quẻ lên server để các người chơi khác và bảng công đức đều thấy. */
+    async syncFortuneProfileName(fullName: string | null): Promise<string | null> {
+      if (!this.accountId) return null
+      try {
+        const res = await $fetch<{ ok: boolean; account?: AuthAccount }>('/api/auth/profile-name', {
+          method: 'POST',
+          body: { fullName: fullName && fullName.trim() ? fullName.trim() : null }
+        })
+        if (res.account) {
+          this.displayName = res.account.displayName
+        }
+        return this.displayName
+      } catch {
+        return this.displayName
+      }
+    },
+
     /** Xin vé WS một lần để server gắn kết nối đa người chơi với tài khoản đã xác thực. */
     async fetchWsTicket(): Promise<string | null> {
       if (!this.accountId) return null
