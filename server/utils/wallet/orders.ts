@@ -231,7 +231,7 @@ export function buildOrderTxForAccount(
     apiError(409, 'order_invalid_state', `Không thể dựng lại giao dịch khi đơn đang ở trạng thái ${order.status}`)
   }
 
-  const utxosHex = Array.isArray(body?.utxos) ? body.utxos.map(String) : []
+  const utxos = Array.isArray(body?.utxos) ? body.utxos : []
   const changeAddress = typeof body?.changeAddress === 'string' && body.changeAddress.trim()
     ? body.changeAddress.trim()
     : account.address
@@ -241,7 +241,7 @@ export function buildOrderTxForAccount(
     ownerAddress: account.address,
     treasuryAddress: order.treasury_address,
     changeAddress,
-    utxosHex,
+    utxos,
     lovelace: order.expected_lovelace,
     metadataLabel: cfg.orderMetadataLabel
   })

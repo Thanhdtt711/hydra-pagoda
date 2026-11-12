@@ -15,12 +15,28 @@ import { DEFAULT_PROTOCOL_PARAMETERS } from '@hydra-sdk/core'
 import { CardanoWASM as C } from '@hydra-sdk/cardano-wasm'
 import { apiError } from './auth'
 
+export interface DecodedUtxoAsset {
+  unit: string
+  quantity: string | number
+}
+
+export interface DecodedUtxo {
+  input: {
+    txHash: string
+    outputIndex: number
+  }
+  output: {
+    address: string
+    amount: DecodedUtxoAsset[]
+  }
+}
+
 export interface BuildOrderTxInput {
   orderId: string
   ownerAddress: string
   treasuryAddress: string
   changeAddress: string
-  utxosHex: string[]
+  utxos: Array<string | DecodedUtxo>
   lovelace: number
   metadataLabel: number
 }
@@ -45,6 +61,86 @@ function toWasmAddress(raw: string): C.Address {
   }
 }
 
+/** Chuyển đổi cả UTxO hex CBOR (CIP-30) lẫn object giải mã `{ input, output }` (HydraOne Bridge) sang WASM UTxO. */
+function toWasmUtxo(raw: unknown): C.TransactionUnspentOutput {
+  if (typeof raw === 'string') {
+    const hex = raw.trim()
+    if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
+      apiError(400, 'malformed_utxo', 'UTxO từ ví không đúng định dạng hex CBOR')
+    }
+    try {
+      return C.TransactionUnspentOutput.from_hex(hex)
+    } catch {
+      apiError(400, 'malformed_utxo', 'Không thể giải mã UTxO từ ví')
+    }
+  }
+
+  if (!raw || typeof raw !== 'object') {
+    apiError(400, 'malformed_utxo', 'UTxO từ ví không đúng định dạng hợp lệ')
+  }
+
+  const candidate = raw as Partial<DecodedUtxo>
+  const txHash = typeof candidate.input?.txHash === 'string' ? candidate.input.txHash.trim() : ''
+  const outputIndex = Number(candidate.input?.outputIndex)
+  const rawAddress = typeof candidate.output?.address === 'string' ? candidate.output.address.trim() : ''
+  const amounts = Array.isArray(candidate.output?.amount) ? candidate.output.amount : null
+
+  if (!/^[0-9a-fA-F]{64}$/.test(txHash) || !Number.isSafeInteger(outputIndex) || outputIndex < 0 || !rawAddress || !amounts) {
+    apiError(400, 'malformed_utxo', 'UTxO từ ví thiếu trường input/output hợp lệ')
+  }
+
+  let lovelace = 0n
+  const policyGroups = new Map<string, Array<{ assetNameHex: string; quantity: bigint }>>()
+
+  for (const asset of amounts) {
+    const unit = typeof asset?.unit === 'string' ? asset.unit.trim() : ''
+    const qtyRaw = String(asset?.quantity ?? '').trim()
+    if (!unit || !/^\d+$/.test(qtyRaw)) {
+      apiError(400, 'malformed_utxo', 'Số lượng tài sản trong UTxO không hợp lệ')
+    }
+    const qty = BigInt(qtyRaw)
+    if (qty <= 0n) continue
+
+    if (unit === 'lovelace') {
+      lovelace += qty
+      continue
+    }
+
+    const cleanUnit = unit.replace('.', '')
+    if (cleanUnit.length < 56 || cleanUnit.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(cleanUnit)) {
+      apiError(400, 'malformed_utxo', 'Mã tài sản native token trong UTxO không hợp lệ')
+    }
+    const policyId = cleanUnit.slice(0, 56).toLowerCase()
+    const assetNameHex = cleanUnit.slice(56).toLowerCase()
+    const list = policyGroups.get(policyId) ?? []
+    list.push({ assetNameHex, quantity: qty })
+    policyGroups.set(policyId, list)
+  }
+
+  try {
+    const txInput = C.TransactionInput.new(C.TransactionHash.from_hex(txHash), outputIndex)
+    const addr = toWasmAddress(rawAddress)
+    const val = C.Value.new(C.BigNum.from_str(lovelace.toString()))
+
+    if (policyGroups.size > 0) {
+      const ma = C.MultiAsset.new()
+      for (const [policyId, entries] of policyGroups) {
+        const assets = C.Assets.new()
+        for (const item of entries) {
+          assets.insert(C.AssetName.new(Buffer.from(item.assetNameHex, 'hex')), C.BigNum.from_str(item.quantity.toString()))
+        }
+        ma.insert(C.ScriptHash.from_hex(policyId), assets)
+      }
+      val.set_multiasset(ma)
+    }
+
+    return C.TransactionUnspentOutput.new(txInput, C.TransactionOutput.new(addr, val))
+  } catch (e: any) {
+    if (e?.statusCode) throw e
+    apiError(400, 'malformed_utxo', 'Không thể dựng UTxO từ dữ liệu ví HydraOne')
+  }
+}
+
 /**
  * Dựng giao dịch Cardano L1 chưa ký (unsigned transaction CBOR hex) bằng `@hydra-sdk/cardano-wasm`.
  * Đảm bảo đầu ra trả đúng `lovelace` vào `treasuryAddress` và gắn `orderId` vào metadata.
@@ -53,7 +149,7 @@ export function buildOrderUnsignedTx(input: BuildOrderTxInput): BuiltOrderTx {
   if (!input.treasuryAddress) {
     apiError(500, 'treasury_unconfigured', 'Chưa cấu hình địa chỉ ví nhận (TREASURY_ADDRESS)')
   }
-  if (!Array.isArray(input.utxosHex) || input.utxosHex.length === 0) {
+  if (!Array.isArray(input.utxos) || input.utxos.length === 0) {
     apiError(400, 'empty_utxos', 'Ví của bạn chưa có UTxO (tADA/ADA) nào để thực hiện giao dịch')
   }
   if (!Number.isSafeInteger(input.lovelace) || input.lovelace < 2_000_000) {
@@ -107,17 +203,10 @@ export function buildOrderUnsignedTx(input: BuildOrderTxInput): BuiltOrderTx {
   // 3. Nạp UTxO của ví và chọn đồng (LargestFirst) + tính phí + trả tiền thừa (change)
   const unspent = C.TransactionUnspentOutputs.new()
   let availableLovelace = 0n
-  for (const hex of input.utxosHex) {
-    if (typeof hex !== 'string' || !/^[0-9a-fA-F]+$/.test(hex)) {
-      apiError(400, 'malformed_utxo', 'UTxO từ ví không đúng định dạng hex CBOR')
-    }
-    try {
-      const u = C.TransactionUnspentOutput.from_hex(hex)
-      unspent.add(u)
-      availableLovelace += BigInt(u.output().amount().coin().to_str())
-    } catch {
-      apiError(400, 'malformed_utxo', 'Không thể giải mã UTxO từ ví')
-    }
+  for (const rawUtxo of input.utxos) {
+    const u = toWasmUtxo(rawUtxo)
+    unspent.add(u)
+    availableLovelace += BigInt(u.output().amount().coin().to_str())
   }
 
   const changeAddr = toWasmAddress(input.changeAddress || input.ownerAddress)
