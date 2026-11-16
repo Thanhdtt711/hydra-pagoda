@@ -86,51 +86,48 @@ const ownerships: Array<{ id: OwnershipFilter; label: string }> = [
     <!-- KHUNG BỘ LỌC ĐA CHIỀU (Không tràn lề, chuẩn Binance Dark) -->
     <div class="space-y-2.5 p-3 rounded-xl border border-hairline bg-surface-card w-full">
       <!-- 1. Hàng Lọc Quốc Gia -->
-      <div class="space-y-1">
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <span class="text-secondary text-xs shrink-0 font-medium w-14">Quốc gia:</span>
-          <div class="flex items-center gap-1 shrink-0">
-            <button
-              v-for="c in countries"
-              :key="c.id"
-              type="button"
-              class="px-2.5 py-1 rounded-lg border text-xs cursor-pointer transition-colors whitespace-nowrap"
-              :class="cardsStore.filterCountry === c.id ? 'border-gold bg-gold/15 text-gold font-bold' : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
-              @click="cardsStore.setFilterCountry(c.id)"
-            >
-              {{ c.label }}
-            </button>
-          </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-secondary text-xs shrink-0 font-medium w-14">Quốc gia:</span>
+        <div class="grid grid-cols-5 gap-1 flex-1 min-w-0">
+          <button
+            v-for="c in countries"
+            :key="c.id"
+            type="button"
+            class="py-1 px-0.5 text-center rounded border text-xs cursor-pointer transition-colors font-medium truncate"
+            :class="cardsStore.filterCountry === c.id ? 'border-gold bg-gold/15 text-gold font-bold' : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
+            @click="cardsStore.setFilterCountry(c.id)"
+          >
+            {{ c.label }}
+          </button>
         </div>
       </div>
 
-      <!-- 2. Hàng Lọc Phẩm Cấp (Được tách riêng dòng độc lập, cuộn ngang) -->
-      <div class="space-y-1 pt-1.5 border-t border-hairline/60">
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <span class="text-secondary text-xs shrink-0 font-medium w-14">Phẩm cấp:</span>
-          <div class="flex items-center gap-1 shrink-0">
-            <button
-              v-for="r in rarities"
-              :key="r.id"
-              type="button"
-              class="px-2.5 py-1 rounded-lg border text-xs cursor-pointer transition-colors whitespace-nowrap"
-              :class="cardsStore.filterRarity === r.id ? 'border-gold bg-gold/15 text-gold font-bold' : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
-              @click="cardsStore.setFilterRarity(r.id)"
-            >
-              {{ r.label }}
-            </button>
-          </div>
+      <!-- 2. Hàng Lọc Phẩm Cấp -->
+      <div class="flex items-center gap-2 pt-2 border-t border-hairline/60 text-xs">
+        <span class="text-secondary text-xs shrink-0 font-medium w-14">Phẩm cấp:</span>
+        <div class="grid grid-cols-5 gap-1 flex-1 min-w-0">
+          <button
+            v-for="r in rarities"
+            :key="r.id"
+            type="button"
+            class="py-1 px-0.5 text-center rounded border text-xs cursor-pointer transition-colors font-medium truncate"
+            :class="cardsStore.filterRarity === r.id ? 'border-gold bg-gold/15 text-gold font-bold' : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
+            @click="cardsStore.setFilterRarity(r.id)"
+          >
+            {{ r.label }}
+          </button>
         </div>
       </div>
 
-      <!-- 3. Hàng Trạng Thái Sở Hữu (3 tab cân đối) -->
-      <div class="pt-1.5 border-t border-hairline/60">
-        <div class="grid grid-cols-3 gap-1.5">
+      <!-- 3. Hàng Trạng Thái Sở Hữu -->
+      <div class="flex items-center gap-2 pt-2 border-t border-hairline/60 text-xs">
+        <span class="text-secondary text-xs shrink-0 font-medium w-14">Sở hữu:</span>
+        <div class="grid grid-cols-3 gap-1 flex-1 min-w-0">
           <button
             v-for="o in ownerships"
             :key="o.id"
             type="button"
-            class="py-1 text-center rounded-lg border text-xs cursor-pointer transition-colors font-medium"
+            class="py-1 px-1 text-center rounded border text-xs cursor-pointer transition-colors font-medium truncate"
             :class="cardsStore.filterOwnership === o.id ? 'border-gold bg-gold/15 text-gold font-bold' : 'border-hairline bg-surface-elevated text-secondary hover:text-white'"
             @click="cardsStore.setFilterOwnership(o.id)"
           >

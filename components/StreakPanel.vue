@@ -7,7 +7,7 @@ import { useWalletStore } from '~/stores/wallet'
 import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
-import { t } from '~/lib/ui/copy'
+import { t, tr } from '~/lib/ui/copy'
 
 const emit = defineEmits<{ (e: 'guideToDeed', landmark: string): void }>()
 
@@ -18,12 +18,12 @@ const wallet = useWalletStore()
 
 const status = computed(() => streak.status)
 
-const DEED_LABELS: Array<{ key: 'meditation' | 'incense' | 'fortune' | 'merit'; label: string }> = [
-  { key: 'meditation', label: 'Ngồi thiền trọn một thời' },
-  { key: 'incense', label: 'Thắp hương đầu ngày' },
-  { key: 'fortune', label: 'Gieo một quẻ cầu an' },
-  { key: 'merit', label: 'Cúng dường Hòm Công Đức' }
-]
+const DEED_LABELS = computed<Array<{ key: 'meditation' | 'incense' | 'fortune' | 'merit'; label: string }>>(() => [
+  { key: 'meditation', label: tr('Ngồi thiền trọn một thời', 'Complete one meditation session') },
+  { key: 'incense', label: tr('Thắp hương đầu ngày', 'Offer daily incense') },
+  { key: 'fortune', label: tr('Gieo một quẻ cầu an', 'Draw one fortune stick') },
+  { key: 'merit', label: tr('Cúng dường Hòm Công Đức', 'Donate to the Merit Box') }
+])
 
 const introLine = computed(() => {
   if (!wallet.isConnected) return t('desc.streakNeedWallet')
@@ -34,19 +34,21 @@ const introLine = computed(() => {
 
 const restLine = computed(() => (status.value?.restUsedThisWeek ? t('desc.streakRestUsed') : t('desc.streakRest')))
 
-const OUTCOME_NOTE: Record<StreakOutcome, string> = {
-  first: 'Dấu đầu tiên đã vào sổ.',
-  continued: 'Chuỗi nối tiếp.',
-  rested: 'Ngày nghỉ đã giữ chuỗi cho bạn.',
-  halved: 'Chuỗi về nửa, bạn vẫn đang đi tiếp.',
-  already: 'Hôm nay đã ghi dấu rồi.'
-}
-
-const outcomeNote = computed(() => (streak.lastOutcome ? OUTCOME_NOTE[streak.lastOutcome] : ''))
+const outcomeNote = computed(() => {
+  if (!streak.lastOutcome) return ''
+  const map: Record<StreakOutcome, string> = {
+    first: tr('Dấu đầu tiên đã vào sổ.', 'First mark recorded.'),
+    continued: tr('Chuỗi nối tiếp.', 'Streak continued.'),
+    rested: tr('Ngày nghỉ đã giữ chuỗi cho bạn.', 'Weekly rest day preserved your streak.'),
+    halved: tr('Chuỗi về nửa, bạn vẫn đang đi tiếp.', 'Streak halved, keep going.'),
+    already: tr('Hôm nay đã ghi dấu rồi.', 'Already marked today.')
+  }
+  return map[streak.lastOutcome]
+})
 
 function rewardLine(r: { label: string; cardTitle?: string; alreadyOwned?: boolean }): string {
-  if (r.cardTitle) return `Thẻ di sản: ${r.cardTitle}`
-  if (r.alreadyOwned) return `${r.label} (bạn đã có sẵn)`
+  if (r.cardTitle) return tr(`Thẻ di sản: ${r.cardTitle}`, `Heritage card: ${r.cardTitle}`)
+  if (r.alreadyOwned) return tr(`${r.label} (bạn đã có sẵn)`, `${r.label} (already owned)`)
   return r.label
 }
 
@@ -83,12 +85,12 @@ defineExpose({ refresh: () => streak.refreshStatus() })
 
       <div class="grid grid-cols-2 gap-2 text-left">
         <div class="rounded-lg border border-hairline bg-surface-elevated p-2.5">
-          <div class="text-xs text-secondary font-medium">Chuỗi hiện tại</div>
-          <div class="text-sm font-numbers font-bold text-primary mt-0.5">{{ status?.currentStreak ?? 0 }} ngày</div>
+          <div class="text-xs text-secondary font-medium">{{ tr('Chuỗi hiện tại', 'Current streak') }}</div>
+          <div class="text-sm font-numbers font-bold text-primary mt-0.5">{{ status?.currentStreak ?? 0 }} {{ tr('ngày', 'days') }}</div>
         </div>
         <div class="rounded-lg border border-hairline bg-surface-elevated p-2.5">
-          <div class="text-xs text-secondary font-medium">Dài nhất</div>
-          <div class="text-sm font-numbers font-bold text-white mt-0.5">{{ status?.bestStreak ?? 0 }} ngày</div>
+          <div class="text-xs text-secondary font-medium">{{ tr('Dài nhất', 'Best streak') }}</div>
+          <div class="text-sm font-numbers font-bold text-white mt-0.5">{{ status?.bestStreak ?? 0 }} {{ tr('ngày', 'days') }}</div>
         </div>
       </div>
 
@@ -96,9 +98,9 @@ defineExpose({ refresh: () => streak.refreshStatus() })
         v-if="status?.nextMilestone"
         class="rounded-lg border border-hairline bg-surface-elevated p-3 text-left text-xs text-secondary leading-relaxed"
       >
-        Còn
+        {{ tr('Còn', 'In') }}
         <span class="font-numbers font-bold text-white">{{ status.nextMilestone.milestone - status.currentStreak }}</span>
-        ngày tới cột mốc
+        {{ tr('ngày tới cột mốc', 'days until milestone') }}
         <span class="font-numbers font-bold text-primary">{{ status.nextMilestone.milestone }}</span>:
         {{ status.nextMilestone.label }}
       </div>
@@ -107,6 +109,16 @@ defineExpose({ refresh: () => streak.refreshStatus() })
       <div class="space-y-2 text-left">
         <h4 class="text-sm font-bold text-white">{{ t('title.streakDeeds') }}</h4>
         <ul class="space-y-1.5">
+          <li v-if="status?.festival" class="flex items-center gap-2 text-xs">
+            <ZenIcon
+              :name="status.deeds.incense ? 'circle-check' : 'moon'"
+              :size="16"
+              class="shrink-0"
+              :class="status.deeds.incense ? 'text-primary' : 'text-secondary'"
+            />
+            <span class="min-w-0 flex-1" :class="status.deeds.incense ? 'text-white' : 'text-secondary'">{{ status.festival.deedLabel }}</span>
+            <UiBadge variant="gold">{{ status.festival.badgeLabel }}</UiBadge>
+          </li>
           <li v-for="d in DEED_LABELS" :key="d.key" class="flex items-center gap-2 text-xs">
             <ZenIcon
               :name="status?.deeds[d.key] ? 'circle-check' : 'moon'"
@@ -139,7 +151,7 @@ defineExpose({ refresh: () => streak.refreshStatus() })
         :disabled="!status?.canClaim"
         @click="onClaim"
       >
-        {{ status?.todayDone ? 'Đã ghi dấu' : t('btn.streakMark') }}
+        {{ status?.todayDone ? tr('Đã ghi dấu', 'Marked') : t('btn.streakMark') }}
       </UiButton>
 
       <p v-if="streak.error" class="text-xs text-down text-left">{{ streak.error }}</p>

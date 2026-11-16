@@ -1,39 +1,69 @@
-// controlHints.ts - Nguồn dữ liệu duy nhất cho mọi gợi ý phím/chuột trên HUD.
-// Màn hình tải, bảng gợi ý khi lại gần, pill góc trái và bảng phím tắt đều đọc từ đây
-// để tránh lệch nội dung khi đổi phím.
+// controlHints.ts - Nguồn dữ liệu duy nhất cho mọi gợi ý phím/chuột trên HUD (Song ngữ VI / EN).
+// Màn hình tải, bảng gợi ý khi lại gần, pill góc trái và bảng phím tắt đều đọc từ đây.
+
+import { isEnglish, tr } from './copy'
 
 export type HintSurface = 'loading' | 'pill' | 'cheat'
 
 export interface ControlHint {
   id: string
   /** Các phím/nút tương đương nhau (hiển thị cạnh nhau, nối bằng `sep`). */
-  keys: string[]
-  /** Từ nối giữa các phím, mặc định 'hoặc'. */
-  sep?: string
-  label: string
+  readonly keys: string[]
+  /** Từ nối giữa các phím, mặc định 'hoặc' / 'or'. */
+  readonly sep?: string
+  readonly label: string
   /** Bề mặt UI hiển thị gợi ý này. */
   surfaces: HintSurface[]
   /** Gợi ý dành cho nhà phát triển, mặc định ẩn. */
   dev?: boolean
 }
 
+interface RawHintDef {
+  id: string
+  keysVi: string[]
+  keysEn?: string[]
+  sepVi?: string
+  sepEn?: string
+  labelVi: string
+  labelEn: string
+  surfaces: HintSurface[]
+  dev?: boolean
+}
+
+function makeHint(def: RawHintDef): ControlHint {
+  return {
+    id: def.id,
+    get keys() {
+      return isEnglish() ? (def.keysEn ?? def.keysVi) : def.keysVi
+    },
+    get sep() {
+      return isEnglish() ? (def.sepEn ?? def.sepVi) : def.sepVi
+    },
+    get label() {
+      return tr(def.labelVi, def.labelEn)
+    },
+    surfaces: def.surfaces,
+    dev: def.dev
+  }
+}
+
 export const CONTROL_HINTS: ControlHint[] = [
-  { id: 'alt', keys: ['ALT'], label: 'Hiện con trỏ chuột', surfaces: ['cheat'] },
-  { id: 'menus', keys: ['1, 2, 3'], label: 'Mở 3 cụm menu', surfaces: ['cheat'] },
-  { id: 'move', keys: ['WASD'], label: 'Di chuyển', surfaces: ['loading', 'pill', 'cheat'] },
-  { id: 'look', keys: ['Chuột'], label: 'Xoay góc nhìn', surfaces: ['loading'] },
-  { id: 'interact', keys: ['Chuột phải', 'E'], sep: 'hoặc', label: 'Tương tác', surfaces: ['loading', 'pill', 'cheat'] },
-  { id: 'jump', keys: ['Space'], label: 'Nhảy', surfaces: ['loading', 'cheat'] },
-  { id: 'run', keys: ['Shift'], label: 'Chạy nhanh', surfaces: ['cheat'] },
-  { id: 'walk', keys: ['Z'], label: 'Đi chậm', surfaces: ['cheat'] },
-  { id: 'camera', keys: ['V', 'F5'], sep: 'hoặc', label: 'Đổi góc nhìn', surfaces: ['loading', 'cheat'] },
-  { id: 'bow', keys: ['B'], label: 'Chắp tay chào', surfaces: ['cheat'] },
-  { id: 'map', keys: ['M'], label: 'Bản đồ chùa', surfaces: ['pill', 'cheat'] },
-  { id: 'meditate', keys: ['T'], label: 'Tọa thiền', surfaces: ['cheat'] },
-  { id: 'chat', keys: ['C'], label: 'Pháp đàm', surfaces: ['cheat'] },
-  { id: 'graphics', keys: ['F4'], label: 'Đồ họa', surfaces: ['loading', 'cheat'] },
-  { id: 'dev-perf', keys: ['F2'], label: 'Bảng hiệu năng', surfaces: ['cheat'], dev: true },
-  { id: 'dev-collider', keys: ['F3'], label: 'Khung va chạm', surfaces: ['cheat'], dev: true }
+  makeHint({ id: 'alt', keysVi: ['ALT'], labelVi: 'Hiện con trỏ chuột', labelEn: 'Show mouse cursor', surfaces: ['cheat'] }),
+  makeHint({ id: 'menus', keysVi: ['1, 2, 3'], labelVi: 'Mở 3 cụm menu', labelEn: 'Open 3 menu docks', surfaces: ['cheat'] }),
+  makeHint({ id: 'move', keysVi: ['WASD'], labelVi: 'Di chuyển', labelEn: 'Move', surfaces: ['loading', 'pill', 'cheat'] }),
+  makeHint({ id: 'look', keysVi: ['Chuột'], keysEn: ['Mouse'], labelVi: 'Xoay góc nhìn', labelEn: 'Look around', surfaces: ['loading'] }),
+  makeHint({ id: 'interact', keysVi: ['Chuột phải', 'E'], keysEn: ['Right-click', 'E'], sepVi: 'hoặc', sepEn: 'or', labelVi: 'Tương tác', labelEn: 'Interact', surfaces: ['loading', 'pill', 'cheat'] }),
+  makeHint({ id: 'jump', keysVi: ['Space'], labelVi: 'Nhảy', labelEn: 'Jump', surfaces: ['loading', 'cheat'] }),
+  makeHint({ id: 'run', keysVi: ['Shift'], labelVi: 'Chạy nhanh', labelEn: 'Sprint', surfaces: ['cheat'] }),
+  makeHint({ id: 'walk', keysVi: ['Z'], labelVi: 'Đi chậm', labelEn: 'Slow walk', surfaces: ['cheat'] }),
+  makeHint({ id: 'camera', keysVi: ['V', 'F5'], sepVi: 'hoặc', sepEn: 'or', labelVi: 'Đổi góc nhìn', labelEn: 'Switch camera', surfaces: ['loading', 'cheat'] }),
+  makeHint({ id: 'bow', keysVi: ['B'], labelVi: 'Chắp tay chào', labelEn: 'Bow greeting', surfaces: ['cheat'] }),
+  makeHint({ id: 'map', keysVi: ['M'], labelVi: 'Bản đồ chùa', labelEn: 'Sanctuary map', surfaces: ['pill', 'cheat'] }),
+  makeHint({ id: 'meditate', keysVi: ['T'], labelVi: 'Tọa thiền', labelEn: 'Meditate', surfaces: ['cheat'] }),
+  makeHint({ id: 'chat', keysVi: ['C'], labelVi: 'Pháp đàm', labelEn: 'Dharma chat', surfaces: ['cheat'] }),
+  makeHint({ id: 'graphics', keysVi: ['F4'], labelVi: 'Đồ họa', labelEn: 'Graphics', surfaces: ['loading', 'cheat'] }),
+  makeHint({ id: 'dev-perf', keysVi: ['F2'], labelVi: 'Bảng hiệu năng', labelEn: 'Performance HUD', surfaces: ['cheat'], dev: true }),
+  makeHint({ id: 'dev-collider', keysVi: ['F3'], labelVi: 'Khung va chạm', labelEn: 'Collision wireframes', surfaces: ['cheat'], dev: true })
 ]
 
 /** Gợi ý người chơi thường (không gồm nhóm nhà phát triển) theo bề mặt hiển thị. */

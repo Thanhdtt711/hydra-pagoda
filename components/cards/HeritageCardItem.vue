@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import type { BuddhistCard } from '~/stores/cards'
+import { computed, ref } from 'vue'
+import { useCardsStore, type BuddhistCard } from '~/stores/cards'
 import ZenIcon from '~/components/ZenIcon.vue'
 import HeritageCardArt from '~/components/cards/HeritageCardArt.vue'
+
+const cardsStore = useCardsStore()
 
 const props = withDefaults(
   defineProps<{
@@ -95,6 +98,14 @@ const countryLabel = computed(() => {
     case 'Hàn Quốc': return 'Hàn Quốc'
     default: return props.card.country
   }
+})
+
+// Mã số thẻ chuẩn định dạng (#01, #02...)
+const cardCode = computed(() => {
+  const idx = cardsStore.catalogCards.findIndex((c: BuddhistCard) => c.id === props.card.id)
+  if (idx >= 0) return `#${String(idx + 1).padStart(2, '0')}`
+  const match = props.card.id.match(/\d+$/)
+  return match ? `#${match[0].padStart(2, '0')}` : `#${props.card.id.slice(-2)}`
 })
 </script>
 
@@ -199,18 +210,18 @@ const countryLabel = computed(() => {
       </div>
 
       <!-- 4. FOOTER: RIBBON PHẨM CẤP -->
-      <div class="pt-1.5 border-t border-hairline/60 flex items-center justify-between text-xs z-10">
-        <div class="flex items-center gap-1.5">
-          <span class="px-1.5 py-0.5 rounded text-xs leading-none" :class="rarityConfig.ribbonBg">
-            {{ rarityConfig.label }}
-          </span>
-          <span class="text-xs font-semibold tracking-tight" :class="rarityConfig.glowText">
-            {{ rarityConfig.tier }}
-          </span>
-        </div>
+      <div class="pt-1.5 border-t border-hairline/60 flex items-center justify-between text-xs z-10 gap-1">
+        <span
+          class="px-1.5 py-0.5 rounded text-xs leading-none font-bold inline-flex items-center gap-1 shrink-0 whitespace-nowrap"
+          :class="rarityConfig.ribbonBg"
+        >
+          <span>{{ rarityConfig.label }}</span>
+          <span class="opacity-70">·</span>
+          <span>{{ rarityConfig.tier }}</span>
+        </span>
 
-        <span class="text-xs text-secondary font-numbers">
-          #{{ card.id.slice(-2) }}
+        <span class="text-xs text-secondary font-numbers truncate text-right">
+          {{ cardCode }}
         </span>
       </div>
     </div>

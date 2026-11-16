@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useEconomyStore } from './economy'
+import type { ActiveFestival } from '~/lib/festival/festivalCalendar'
 
 /** Một cột mốc của Sổ Tu Tập, do server trả về. */
 export interface StreakMilestoneDto {
@@ -27,6 +28,7 @@ export interface StreakStatusDto {
   restUsedThisWeek: boolean
   title: string | null
   deeds: StreakDeedsDto
+  festival?: ActiveFestival | null
   nextMilestone: { milestone: number; label: string } | null
   milestones: StreakMilestoneDto[]
 }

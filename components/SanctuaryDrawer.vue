@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { zenAudio } from '~/lib/audio/ZenAudio'
-import { t } from '~/lib/ui/copy'
+import { t, tr } from '~/lib/ui/copy'
 import {
   getPresetQuestions,
   getTopicLabel,
@@ -144,21 +144,21 @@ onMounted(() => {
   void economy.loadCatalog()
 })
 
-const TAB_NAV: Array<{ id: DrawerTab; label: string; name: string; badge: string; subtitle: string }> = [
-  { id: 'fortune', label: 'Bói Quẻ', name: 'Bói Quẻ 6 Môn Cầu An', badge: 'Chiêm bốc tâm linh', subtitle: 'Gieo quẻ 6 môn, luận giải theo chủ đề và hướng dẫn chánh niệm' },
-  { id: 'love_couple', label: 'Tơ Duyên', name: 'Đài Tơ Duyên Nguyệt Lão', badge: 'Nguyệt Lão thắt chỉ hồng', subtitle: 'Bói duyên cặp đôi đồng tu, tính điểm tương hợp Bát Tự và trao tặng Bùa Chỉ Đỏ Uyên Ương' },
-  { id: 'hau_dong', label: 'Hầu Đồng', name: 'Điện Thờ Tứ Phủ & Trần Triều', badge: 'Di sản UNESCO', subtitle: 'Nghi lễ Hầu Đồng 5 Giá (8 phút/buổi), Thỉnh Lộc MC và Mở Đàn Đặc Cách' },
-  { id: 'shop', label: 'Cửa Hàng', name: 'Cửa Hàng Pháp Bảo & Cổ Phục', badge: 'Pháp bảo & Cổ phục', subtitle: 'Trang phục hành hương 9 quốc gia, nhang trầm và lễ phẩm cúng dường' },
-  { id: 'merit', label: 'Công Đức', name: 'Hòm Công Đức Tam Bảo', badge: 'Phước đức tâm an', subtitle: 'Cúng dường tự nguyện bằng MC và lưu danh Bảng vàng công đức' },
-  { id: 'cards', label: 'Thẻ Bài', name: 'Thẻ Bài Di Sản Cổ Tự', badge: 'Triết lý & Kiến trúc', subtitle: 'Bộ sưu tập cổ tự 3D, thuyết minh âm thanh và khai quang bằng MC' },
-  { id: 'streak', label: 'Sổ Tu Tập', name: 'Sổ Tu Tập Chuỗi Ngày An Lạc', badge: 'Mỗi ngày một việc lành', subtitle: 'Ghi dấu mỗi ngày, nối thành chuỗi và nhận quà ở các cột mốc' },
-  { id: 'meditation', label: 'Thiền', name: 'Hội Thiền Định Tâm 432Hz', badge: 'Chánh niệm định tâm', subtitle: 'Chuông xoay 432Hz và vòng điều hòa hơi thở 4-4-6' },
-  { id: 'soundscape', label: 'Âm Cảnh', name: 'Bộ Trộn Âm Cảnh Không Gian', badge: 'Âm cảnh thiền tự', subtitle: 'Tùy chỉnh 6 kênh âm thanh thiên nhiên và pháp khí thời gian thực' },
-  { id: 'sangha', label: 'Đồng Tu', name: 'Pháp Đàm & Đồng Tu Hiện Diện', badge: 'Cộng đồng đồng tu', subtitle: 'Gửi lời nguyện chánh niệm và kết nối cùng hành giả đang trực tuyến' }
-]
+const TAB_NAV = computed<Array<{ id: DrawerTab; label: string; name: string; badge: string; subtitle: string }>>(() => [
+  { id: 'fortune', label: tr('Bói Quẻ', 'Divination'), name: tr('Bói Quẻ 6 Môn Cầu An', '6 Sacred Divination Topics'), badge: tr('Chiêm bốc tâm linh', 'Folk Divination'), subtitle: tr('Gieo quẻ 6 môn, luận giải theo chủ đề và hướng dẫn chánh niệm', 'Draw across 6 traditions with mindful guidance') },
+  { id: 'love_couple', label: tr('Tơ Duyên', 'Matchmaking'), name: tr('Đài Tơ Duyên Nguyệt Lão', 'Red Thread Matchmaking Altar'), badge: tr('Nguyệt Lão thắt chỉ hồng', 'Red Thread Destiny'), subtitle: tr('Bói duyên cặp đôi đồng tu, tính điểm tương hợp Bát Tự và trao tặng Bùa Chỉ Đỏ Uyên Ương', 'Couple BaZi compatibility reading and Red Thread Charm') },
+  { id: 'hau_dong', label: tr('Hầu Đồng', 'Ritual'), name: tr('Điện Thờ Tứ Phủ & Trần Triều', 'Four Palaces & Tran Dynasty Shrine'), badge: tr('Di sản UNESCO', 'UNESCO Heritage'), subtitle: tr('Nghi lễ Hầu Đồng 5 Giá (8 phút/buổi), Thỉnh Lộc MC và Mở Đàn Đặc Cách', '5-Stage Spirit Mediumship Ritual (8 min), MC Blessings & Sponsorship') },
+  { id: 'shop', label: tr('Cửa Hàng', 'Shop'), name: tr('Cửa Hàng Pháp Bảo & Cổ Phục', 'Sanctuary Attire & Offerings Shop'), badge: tr('Pháp bảo & Cổ phục', 'Attire & Offerings'), subtitle: tr('Trang phục hành hương 9 quốc gia, nhang trầm và lễ phẩm cúng dường', 'Pilgrim attire from 9 countries, incense and sacred offerings') },
+  { id: 'merit', label: tr('Công Đức', 'Merit'), name: tr('Hòm Công Đức Tam Bảo', 'Sanctuary Merit Box'), badge: tr('Phước đức tâm an', 'Peaceful Merit'), subtitle: tr('Cúng dường tự nguyện bằng MC và lưu danh Bảng vàng công đức', 'Voluntary MC offerings recorded on the Golden Scroll') },
+  { id: 'cards', label: tr('Thẻ Bài', 'Cards'), name: tr('Thẻ Bài Di Sản Cổ Tự', '3D Heritage Temple Cards'), badge: tr('Triết lý & Kiến trúc', 'Wisdom & Architecture'), subtitle: tr('Bộ sưu tập cổ tự 3D, thuyết minh âm thanh và khai quang bằng MC', '3D heritage card collection with audio lore and CIP-68 NFT') },
+  { id: 'streak', label: tr('Sổ Tu Tập', 'Streak'), name: tr('Sổ Tu Tập Chuỗi Ngày An Lạc', 'Mindful Daily Streak Journal'), badge: tr('Mỗi ngày một việc lành', 'Daily Mindful Deed'), subtitle: tr('Ghi dấu mỗi ngày, nối thành chuỗi và nhận quà ở các cột mốc', 'Mark one good deed daily and claim milestone gifts') },
+  { id: 'meditation', label: tr('Thiền', 'Meditate'), name: tr('Hội Thiền Định Tâm 432Hz', '432Hz Mindful Meditation Hall'), badge: tr('Chánh niệm định tâm', 'Mindful Breathing'), subtitle: tr('Chuông xoay 432Hz và vòng điều hòa hơi thở 4-4-6', '432Hz singing bowls and 4-4-6 breathing pacing') },
+  { id: 'soundscape', label: tr('Âm Cảnh', 'Audio'), name: tr('Bộ Trộn Âm Cảnh Không Gian', '3D Spatial Soundscape Mixer'), badge: tr('Âm cảnh thiền tự', 'Sanctuary Audio'), subtitle: tr('Tùy chỉnh 6 kênh âm thanh thiên nhiên và pháp khí thời gian thực', 'Customize 6 real-time nature and temple bell audio channels') },
+  { id: 'sangha', label: tr('Đồng Tu', 'Sangha'), name: tr('Pháp Đàm & Đồng Tu Hiện Diện', 'Online Sangha & Dharma Talk'), badge: tr('Cộng đồng đồng tu', 'Sangha Community'), subtitle: tr('Gửi lời nguyện chánh niệm và kết nối cùng hành giả đang trực tuyến', 'Share mindful wishes and connect with online pilgrims') }
+])
 
 const currentMeta = computed(() => {
-  return TAB_NAV.find(t => t.id === currentTab.value) || TAB_NAV[0]!
+  return TAB_NAV.value.find(t => t.id === currentTab.value) || TAB_NAV.value[0]!
 })
 
 function closeDrawer() {
@@ -2175,11 +2175,15 @@ function sendMantraMessage(text: string) {
           <!-- Alert notifications -->
           <div
             v-if="shopSuccess"
-            class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] flex items-center gap-2"
+            class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] space-y-2"
           >
-            <ZenIcon name="circle-check" :size="16" class="shrink-0" />
-            <span>{{ shopSuccess }}</span>
-          <HydraBadge v-if="economy.lastShopHydra" :proof="economy.lastShopHydra" class="ml-auto shrink-0" />
+            <div class="flex items-start gap-2.5 leading-relaxed">
+              <ZenIcon name="circle-check" :size="16" class="shrink-0 mt-0.5" />
+              <span class="flex-1 min-w-0">{{ shopSuccess }}</span>
+            </div>
+            <div v-if="economy.lastShopHydra" class="flex justify-end pt-1.5 border-t border-[rgba(14,203,129,0.2)]">
+              <HydraBadge :proof="economy.lastShopHydra" />
+            </div>
           </div>
           <div
             v-if="shopNotice"
@@ -2353,11 +2357,15 @@ function sendMantraMessage(text: string) {
             <!-- Blessing / Error notices -->
             <div
               v-if="meritBlessing"
-              class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] flex items-start gap-2 leading-relaxed"
+              class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] space-y-2"
             >
-              <ZenIcon name="circle-check" :size="16" class="shrink-0 mt-0.5" />
-              <span>{{ meritBlessing }}</span>
-          <HydraBadge v-if="economy.lastMeritHydra" :proof="economy.lastMeritHydra" class="ml-auto shrink-0" />
+              <div class="flex items-start gap-2.5 leading-relaxed">
+                <ZenIcon name="circle-check" :size="16" class="shrink-0 mt-0.5" />
+                <span class="flex-1 min-w-0">{{ meritBlessing }}</span>
+              </div>
+              <div v-if="economy.lastMeritHydra" class="flex justify-end pt-1.5 border-t border-[rgba(14,203,129,0.2)]">
+                <HydraBadge :proof="economy.lastMeritHydra" />
+              </div>
             </div>
             <div
               v-if="meritError"
@@ -2491,11 +2499,15 @@ function sendMantraMessage(text: string) {
           <!-- Thông báo Thành công / Thất bại -->
           <div
             v-if="cardSuccess"
-            class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] flex items-center gap-2"
+            class="p-3 rounded-md bg-[rgba(14,203,129,0.12)] border border-[rgba(14,203,129,0.3)] text-xs text-[var(--trading-up,#0ecb81)] space-y-2"
           >
-            <ZenIcon name="circle-check" :size="16" class="shrink-0" />
-            <span>{{ cardSuccess }}</span>
-            <HydraBadge v-if="cards.lastHydraProof" :proof="cards.lastHydraProof" class="ml-auto shrink-0" />
+            <div class="flex items-start gap-2.5 leading-relaxed">
+              <ZenIcon name="circle-check" :size="16" class="shrink-0 mt-0.5" />
+              <span class="flex-1 min-w-0">{{ cardSuccess }}</span>
+            </div>
+            <div v-if="cards.lastHydraProof" class="flex justify-end pt-1.5 border-t border-[rgba(14,203,129,0.2)]">
+              <HydraBadge :proof="cards.lastHydraProof" />
+            </div>
           </div>
           <div
             v-if="cardNotice"

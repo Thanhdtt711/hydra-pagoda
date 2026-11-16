@@ -137,10 +137,10 @@ const ownershipBadgeText = computed(() => {
 
 const rarityBadge = computed(() => {
   switch (props.card.rarity) {
-    case 'legendary': return { label: 'Chân Như (Legendary)', color: 'text-amber-300', bg: 'bg-amber-400/15 border-amber-400/40' }
-    case 'epic': return { label: 'Giác Ngộ (Epic)', color: 'text-purple-300', bg: 'bg-purple-400/15 border-purple-400/40' }
-    case 'rare': return { label: 'Tinh Tấn (Rare)', color: 'text-sky-300', bg: 'bg-sky-400/15 border-sky-400/40' }
-    default: return { label: 'Thường (Common)', color: 'text-secondary', bg: 'bg-surface-elevated border-hairline' }
+    case 'legendary': return { label: 'Chân Như · Bậc IV', color: 'text-amber-300', bg: 'bg-amber-400/15 border-amber-400/40' }
+    case 'epic': return { label: 'Giác Ngộ · Bậc III', color: 'text-purple-300', bg: 'bg-purple-400/15 border-purple-400/40' }
+    case 'rare': return { label: 'Tinh Tấn · Bậc II', color: 'text-sky-300', bg: 'bg-sky-400/15 border-sky-400/40' }
+    default: return { label: 'Thường · Bậc I', color: 'text-secondary', bg: 'bg-surface-elevated border-hairline' }
   }
 })
 </script>
@@ -176,22 +176,22 @@ const rarityBadge = computed(() => {
         <div
           class="rounded-xl border border-hairline bg-surface-elevated p-4 sm:p-5 space-y-3.5 transition-all relative overflow-hidden">
           <!-- Thanh chuyển đổi Mặt Trước / Mặt Sau & Trạng thái -->
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <UiBadge :variant="isOwned ? 'success' : 'neutral'">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <UiBadge :variant="isOwned ? 'success' : 'neutral'" class="whitespace-nowrap">
                 {{ ownershipBadgeText }}
               </UiBadge>
-              <span class="px-2 py-0.5 rounded border text-xs font-semibold"
+              <span class="px-2 py-0.5 rounded border text-xs font-semibold whitespace-nowrap"
                 :class="[rarityBadge.color, rarityBadge.bg]">
                 {{ rarityBadge.label }}
               </span>
             </div>
 
             <button type="button"
-              class="px-2.5 py-1 rounded-lg bg-surface-card border border-hairline text-xs font-medium text-gold hover:border-gold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+              class="px-2.5 py-1 rounded-lg bg-surface-card border border-hairline text-xs font-medium text-gold hover:border-gold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
               @click="toggleSide">
               <ZenIcon name="cards" :size="12" />
-              <span>{{ currentSide === 'front' ? 'Xem Mặt Sau (Kinh Kệ)' : 'Xem Mặt Trước (Triết Lý)' }}</span>
+              <span>{{ currentSide === 'front' ? 'Mặt Sau (Kinh Kệ)' : 'Mặt Trước (Triết Lý)' }}</span>
             </button>
           </div>
 

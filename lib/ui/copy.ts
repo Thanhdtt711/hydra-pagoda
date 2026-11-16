@@ -1,16 +1,58 @@
-// copy.ts - Nguồn chuỗi hiển thị duy nhất cho giao diện (Giai đoạn 4, bước 4.5).
-// Sửa chữ ở đây, không sửa rải rác trong component. Dễ thêm tiếng Anh sau này bằng cách
-// tách thành COPY_VI / COPY_EN và chọn theo locale.
+// copy.ts - Nguồn chuỗi hiển thị duy nhất cho giao diện (Tiếng Việt chủ đạo + Tiếng Anh).
 //
 // Ngân sách chữ (kiểm bằng scripts/verify-copy-budget.mjs, tiền tố khóa quyết định giới hạn):
 //   btn.*   <= 3 từ     title.* <= 3 từ     toast.* <= 6 từ     tip.* / desc.* <= 12 từ
 // Chỗ giữ chỗ {tên} tính là 1 từ.
-//
-// Thuật ngữ thống nhất (xem docs/ra_soat/06_ke_hoach_giam_chu.md):
-//   MC = điểm công đức trong game | công đức = hành động quyên góp | hòm công đức
-//   quẻ = kết quả bói | gieo quẻ = hành động bói | bồ đoàn = chỗ ngồi thiền
 
-export const COPY = {
+import { ref } from 'vue'
+
+export type Locale = 'vi' | 'en'
+
+const LOCALE_STORAGE_KEY = 'van_canh_locale'
+
+function loadInitialLocale(): Locale {
+  if (typeof window !== 'undefined') {
+    try {
+      const q = new URLSearchParams(window.location.search).get('lang')
+      if (q === 'en' || q === 'vi') return q
+      const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+      if (saved === 'en' || saved === 'vi') return saved
+    } catch {
+      // ignore storage errors
+    }
+  }
+  return 'vi'
+}
+
+export const currentLocale = ref<Locale>(loadInitialLocale())
+
+export function setLocale(loc: Locale) {
+  currentLocale.value = loc
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, loc)
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
+export function toggleLocale(): Locale {
+  const next: Locale = currentLocale.value === 'vi' ? 'en' : 'vi'
+  setLocale(next)
+  return next
+}
+
+export function isEnglish(): boolean {
+  return currentLocale.value === 'en'
+}
+
+/** Chọn nhanh chuỗi theo ngôn ngữ hiện tại (Tiếng Việt chủ đạo). */
+export function tr(vi: string, en: string): string {
+  return currentLocale.value === 'en' ? en : vi
+}
+
+export const COPY_VI = {
   // ---- Nút (<= 3 từ, động từ ngắn) ----
   'btn.walkToAbbot': 'Lại gần thầy',
   'btn.understood': 'Đã hiểu',
@@ -151,11 +193,155 @@ export const COPY = {
   'toast.retry': 'Thử lại sau giây lát'
 } as const
 
-export type CopyKey = keyof typeof COPY
+export type CopyKey = keyof typeof COPY_VI
 
-/** Lấy chuỗi theo khóa, thay {tên} bằng giá trị. Khóa lạ trả về chính khóa để dễ phát hiện. */
+export const COPY_EN: Record<CopyKey, string> = {
+  // ---- Buttons (<= 3 words) ----
+  'btn.walkToAbbot': 'Approach Abbot',
+  'btn.understood': 'Understood',
+  'btn.bow': 'Bow',
+  'btn.bowDone': 'Bowed',
+  'btn.claimLoc': 'Claim Blessing',
+  'btn.claimed': 'Claimed',
+  'btn.details': 'Details',
+  'btn.walkToHauDong': 'Enter Shrine',
+  'btn.hdLive': 'Ritual Live',
+  'btn.hdOpen': 'Open Ritual',
+  'btn.hdPool': 'Join Pool',
+  'btn.confirm': 'Confirm',
+  'btn.cancel': 'Cancel',
+  'btn.back': 'Back',
+  'btn.processing': 'Processing...',
+  'btn.endMeditation': 'End Session',
+  'btn.startMeditation': 'Meditate',
+  'btn.remedyMeditate': 'Sit Meditate',
+  'btn.guideToDesk': 'To Fortune Desk',
+  'btn.guideToMerit': 'To Merit Box',
+  'btn.guideToHall': 'Enter Main Hall',
+  'btn.saveProfile': 'Save Profile',
+  'btn.coupleDesk': 'Love Altar',
+  'btn.saveShare': 'Save Image',
+  'btn.drawAgain': 'Draw Again',
+  'btn.rolling': 'Drawing...',
+  'btn.drawFree': 'Draw Fortune',
+  'btn.drawOffering': 'Use Offering',
+  'btn.drawPaid': 'Draw {mc} MC',
+  'btn.downloadPng': 'Download Image',
+  'btn.tabAttire': 'Attire',
+  'btn.tabOfferings': 'Offerings',
+  'btn.resetDefault': 'Default',
+  'btn.refreshWallet': 'Refresh Wallet',
+  'btn.newTopup': 'Top Up More',
+  'btn.legal': 'Legal',
+  'btn.presetMinimal': 'Minimal',
+  'btn.presetRain': 'Rainy Night',
+  'btn.presetBamboo': 'Bamboo Grove',
+  'btn.presetVajra': 'Vajra',
+  'btn.more': 'Read More',
+  'btn.topupConfirm': 'Top Up {mc}',
+  'btn.donate': 'Donate',
+  'btn.streakMark': 'Mark Today',
+  'btn.streakConnect': 'Connect Wallet',
+  'btn.deedGo': 'Guide Me',
+  'btn.deedClaim': 'Claim Gift',
+
+  // ---- Titles (<= 3 words) ----
+  'title.appName': 'Hydra Pagoda',
+  'title.cardReveal': 'Card Reveal',
+  'title.profileNew': 'New Profile',
+  'title.profileEdit': 'Edit Profile',
+  'title.pickCategory': 'Select Topic',
+  'title.pickMethod': 'Draw Method',
+  'title.interpret': 'Interpretation',
+  'title.advice': 'Guidance',
+  'title.remedy': 'Mindful Remedy',
+  'title.merit': 'Merit Offering',
+  'title.meritTotal': 'Total Merit',
+  'title.leaderboard': 'Honor Roll',
+  'title.meditation': '432Hz Meditation',
+  'title.soundscape': 'Soundscape',
+  'title.chat': 'Dharma Talk',
+  'title.pilgrims': 'Pilgrims',
+  'title.hdRest': 'Shrine Resting',
+  'title.hdSponsor': 'Private Ritual',
+  'title.hdCrowd': 'Community Pool',
+  'title.legal': 'Legal Notice',
+  'title.streak': 'Mindful Streak',
+  'title.streakDeeds': 'Daily Deeds',
+  'title.deeds': 'Three Good Deeds',
+  'title.streakMilestones': 'Milestones',
+
+  // ---- Descriptions (<= 12 words) ----
+  'desc.appTagline': '3D Sanctuary and Folk Divination',
+  'desc.cardReveal': 'Tap the card to reveal',
+  'desc.hdInside': 'Bow and wait for the fifth ritual stage.',
+  'desc.hdOutside': 'Visit the Four Palaces Shrine on the right.',
+  'desc.hdConfirmSingle': 'Supports blessings and upkeep. Your name joins the Golden Scroll.',
+  'desc.hdConfirmPool': 'Adds to Community Pool. Auto-starts at 2,500 MC.',
+  'desc.hdRest': 'Scheduled daily at 11:00, or sponsor a private ritual.',
+  'desc.hdSponsor': 'An 8-minute ritual with your name on the Golden Scroll.',
+  'desc.hdCrowd': 'Contribute together; ritual starts automatically at 2,500 MC.',
+  'desc.profileNeeded': 'Complete your profile to unlock personalized divination.',
+  'desc.birthHourUnknown': 'Unknown birth hour leaves the hour pillar blank.',
+  'desc.genderWhy': 'Used to calculate Destiny Trigram and annual stars.',
+  'desc.privacy': 'Stored locally on your device, never on-chain.',
+  'desc.loveSingle': 'View your romance outlook based on BaZi pillars.',
+  'desc.mcNote': 'MC are in-game points and cannot be redeemed for ADA.',
+  'desc.coupleIntro': 'Tie the red thread and cast a couple compatibility reading.',
+  'desc.coupleAdvice': 'Mutual understanding and kindness nurture lasting harmony.',
+  'desc.meritIntro': 'Recorded on the Golden Scroll for temple upkeep.',
+  'desc.meritLedger': 'Merit offerings are logged on-ledger for upkeep and lanterns.',
+  'desc.leaderboardEmpty': 'The first donor will be recorded on the scroll.',
+  'desc.gachaIntro': 'Open heritage card packs recorded on Hydra L2.',
+  'desc.meditationIntro': 'Tibetan bowls and 4-4-6 breathing bring calm mindfulness.',
+  'desc.meditationOutside': 'Enter the Main Sanctuary Hall to find a mat.',
+  'desc.meditationFull': 'All mats are occupied. Please wait a moment.',
+  'desc.soundscape': 'Balance each ambient channel to find inner peace.',
+  'desc.chat': 'Type a message or pick a mindful greeting.',
+  'desc.chatEmpty': 'No messages yet.',
+  'desc.walletIframe': 'Click Connect in the HydraOne header bar to sign in.',
+  'desc.walletConnect': 'Select a Cardano wallet. Free CIP-8 signature, no on-chain fee.',
+  'desc.walletTopup': 'MC is credited automatically after block confirmation.',
+  'desc.abbotNote': 'Cultural guide NPC for reference only, not fortune-telling.',
+  'desc.prayerHint': 'Enter a peaceful wish for yourself and your family.',
+  'desc.hideBirth': 'Hide birth date on exported image.',
+  'desc.charmReceived': 'Saved to your inventory.',
+  'desc.altHint': 'Hold ALT to show mouse cursor.',
+  'desc.nonCustodial': 'Non-custodial: never holds private keys or auto-transfers funds.',
+  'desc.streakIntro': 'One mindful deed each day builds your streak.',
+  'desc.streakNeedWallet': 'Connect wallet to track your mindful streak.',
+  'desc.streakNoDeed': 'Complete one good deed below to mark today.',
+  'desc.streakReady': 'Good deed completed today, ready to mark your streak.',
+  'desc.streakDone': 'Marked for today. See you tomorrow.',
+  'desc.streakRest': 'One rest day per week protects your streak.',
+  'desc.streakRestUsed': 'Weekly rest day already used.',
+  'desc.streakHalve': 'Long gaps halve your streak instead of resetting to zero.',
+  'desc.streakAllDone': 'You have reached every milestone.',
+  'desc.deedsIntro': 'Complete all three deeds today to claim a gift.',
+  'desc.deedsNeedWallet': 'Connect wallet to receive three daily deeds.',
+  'desc.deedsReady': 'All three deeds done, claim your gift.',
+  'desc.deedsDone': 'Gift claimed today. See you tomorrow.',
+  'desc.deedsRoute': 'Click Guide Me to walk automatically to the spot.',
+
+  // ---- Short tips (<= 12 words) ----
+  'tip.coupleHint': 'Two profiles, BaZi harmony',
+  'tip.mcHeld': 'Your MC balance',
+
+  // ---- Toasts (<= 6 words) ----
+  'toast.mcGain': '+{mc} MC',
+  'toast.dailyCap': 'Daily limit reached today',
+  'toast.needHall': 'Enter the Main Hall first',
+  'toast.needWallet': 'Connect wallet to continue',
+  'toast.noFunds': 'Insufficient MC balance',
+  'toast.retry': 'Please try again shortly'
+}
+
+export const COPY = COPY_VI
+
+/** Lấy chuỗi theo khóa và ngôn ngữ hiện tại (`currentLocale`), thay {tên} bằng giá trị. */
 export function t(key: CopyKey, vars?: Record<string, string | number>): string {
-  let s: string = COPY[key] ?? key
+  const dict = currentLocale.value === 'en' ? COPY_EN : COPY_VI
+  let s: string = dict[key] ?? COPY_VI[key] ?? key
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v))
   return s
 }

@@ -18,6 +18,7 @@ import type { FortuneDrawInput, InputMode, PersonProfile, RecentDrawRef } from '
 import { HallLayout } from '../../../lib/world3d/world/HallLayout'
 import { getStartOfVietnamDayMs, getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from './auth.ts'
+import { getWalletConfig } from './config.ts'
 import { getDb, withTransaction, type DbConn } from './db.ts'
 import { scheduleHydraRecord } from '../hydra/hydraQueue.ts'
 import { getCardPackById, rollCardGacha, type BuddhistCardItem } from '../cards/catalog.ts'
@@ -1375,15 +1376,23 @@ export async function drawFortuneWithMc(
           .prepare(
             `UPDATE account_inventory
                 SET quantity = quantity - 1, updated_at = ?
-              WHERE account_id = ? AND item_id = ? AND quantity >= 1`
+              WHERE account_id = ? AND item_id = ? AND quantity > 1`
           )
           .run(now, accountId, itemId)
         if (Number(decRes.changes || 0) === 0) {
-          apiError(
-            400,
-            'insufficient_offering_item',
-            `Bạn không còn "${catalogItem.name}" trong túi đồ. Hãy thỉnh thêm ở Cửa Hàng hoặc dùng MC Coin!`
-          )
+          const delRes = await conn
+            .prepare(
+              `DELETE FROM account_inventory
+                WHERE account_id = ? AND item_id = ? AND quantity = 1`
+            )
+            .run(accountId, itemId)
+          if (Number(delRes.changes || 0) === 0) {
+            apiError(
+              400,
+              'insufficient_offering_item',
+              `Bạn không còn "${catalogItem.name}" trong túi đồ. Hãy thỉnh thêm ở Cửa Hàng hoặc dùng MC Coin!`
+            )
+          }
         }
         tierLabel = `Dâng Lễ Phẩm (${catalogItem.name})`
         tierCode = `offering_${itemId}`
@@ -1697,7 +1706,8 @@ export async function getMcOverviewAndHistory(accountId: number | null) {
           enabled: true,
           status: r.hydraStatus || 'offchain',
           txHash: r.hydraTxHash || null,
-          snapshotNo: r.hydraSnapshotNo ?? null
+          snapshotNo: r.hydraSnapshotNo ?? null,
+          dbEngine: getWalletConfig().databaseUrl ? 'postgres' : 'sqlite'
         }
         : null,
       fortune: JSON.parse(r.fortuneJson)

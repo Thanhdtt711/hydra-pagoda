@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useWalletStore, KNOWN_WALLETS, type OrderStatus } from '~/stores/wallet'
+import { useHydraStore } from '~/stores/hydra'
 import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
 import UiModal from '~/components/ui/UiModal.vue'
 import UiButton from '~/components/ui/UiButton.vue'
@@ -62,10 +63,12 @@ function onCustomAdaChange() {
   selectedAda.value = n
 }
 
+const hydra = useHydraStore()
 const hydraStatus = ref<{ enabled: boolean; connected: boolean; headStatus: string; latestSnapshotNo: number; confirmedL2Txs: number; mode: string; dbEngine?: 'postgres' | 'sqlite' } | null>(null)
 const hydraLabel = computed(() => {
   const s = hydraStatus.value
-  const dbText = s?.dbEngine === 'postgres' ? 'CSDL: PostgreSQL (Supabase)' : 'CSDL: SQLite (cục bộ)'
+  const isPg = s?.dbEngine ? s.dbEngine === 'postgres' : hydra.isPostgres
+  const dbText = isPg ? 'CSDL: PostgreSQL (Supabase)' : 'CSDL: SQLite (cục bộ)'
   if (!s || !s.enabled) return `${dbText} · Hydra L2 tắt`
   if (s.mode === 'hydra_l2') return `${dbText} · Hydra L2 - Head ${s.headStatus} - Snapshot #${s.latestSnapshotNo} - ${s.confirmedL2Txs} tx xác nhận`
   return `${dbText} · Hydra L2 chưa sẵn sàng (${s.headStatus})`

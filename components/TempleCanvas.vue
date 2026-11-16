@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { TempleStage, type InteractionTarget } from '~/lib/world3d/TempleStage'
 import { zenAudio } from '~/lib/audio/ZenAudio'
-import { t } from '~/lib/ui/copy'
+import { t, tr, currentLocale, toggleLocale } from '~/lib/ui/copy'
 import { useUserStore, type CountryId } from '~/stores/user'
 import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
@@ -26,6 +26,19 @@ import UiStatCell from '~/components/ui/UiStatCell.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import { DEV_HINTS, INTERACT_HINT, hintsFor } from '~/lib/ui/controlHints'
 import { loadSavedProfile } from '~/lib/boi/ProfileService'
+import { getActiveFestival, getFestivalPreview } from '~/lib/festival/festivalCalendar'
+
+const route = useRoute()
+const activeFestival = computed(() => {
+  const q = route.query.festival
+  if (q === 'ram' || q === 'mung_1') return getFestivalPreview(q)
+  return getActiveFestival()
+})
+let hasPlayedFestivalBell = false
+
+watch(activeFestival, (val) => {
+  stage?.setFestivalMode(Boolean(val))
+})
 
 const user = useUserStore()
 const economy = useEconomyStore()
@@ -294,6 +307,9 @@ onMounted(() => {
   user.name = resolveDisplayNameFromProfileAndWallet()
   if (canvasContainer.value) {
     stage = new TempleStage(canvasContainer.value)
+    stage.festivalFireworksSystem.onLaunch = () => zenAudio.playFireworkLaunch()
+    stage.festivalFireworksSystem.onBurst = () => zenAudio.playFireworkBurst()
+    stage.setFestivalMode(Boolean(activeFestival.value))
     stage.setCountry(user.currentCountry as any)
     stage.setGender(user.gender)
     zenAudio.updatePlayerPosition(stage.playerPos.x, stage.playerPos.z)
@@ -942,14 +958,14 @@ const showResumeChip = computed(
 )
 const selectedFortuneCategory = ref<any>('stick')
 
-const FORTUNE_MENU_ITEMS = [
-  { id: 'stick', index: '01', name: 'Xin Xăm Bát Quái', short: 'Bổn mạng & Sự nghiệp' },
-  { id: 'love', index: '02', name: 'Tơ Duyên Tương Ngộ', short: 'Nguyệt Lão chỉ hồng' },
-  { id: 'family', index: '03', name: 'Cầu Tự Con Cái', short: 'Quan Âm Tống Tử' },
-  { id: 'wealth', index: '04', name: 'Chiêu Tài Tấn Bảo', short: 'Kinh doanh phát đạt' },
-  { id: 'health', index: '05', name: 'Dược Sư An Khang', short: 'Tiêu tai trừ bệnh' },
-  { id: 'star', index: '06', name: 'Dâng Sao Giải Hạn', short: 'Bắc Đẩu Thất Tinh' }
-]
+const FORTUNE_MENU_ITEMS = computed(() => [
+  { id: 'stick', index: '01', name: tr('Xin Xăm Bát Quái', 'Eight-Trigram Fortune Sticks'), short: tr('Bổn mạng & Sự nghiệp', 'Destiny & Career') },
+  { id: 'love', index: '02', name: tr('Tơ Duyên Tương Ngộ', 'Red Thread Matchmaking'), short: tr('Nguyệt Lão chỉ hồng', 'Matchmaker Red Thread') },
+  { id: 'family', index: '03', name: tr('Cầu Tự Con Cái', 'Family & Offspring Blessing'), short: tr('Quan Âm Tống Tử', 'Guanyin Family Blessing') },
+  { id: 'wealth', index: '04', name: tr('Chiêu Tài Tấn Bảo', 'Wealth & Prosperity'), short: tr('Kinh doanh phát đạt', 'Business & Fortune') },
+  { id: 'health', index: '05', name: tr('Dược Sư An Khang', 'Medicine Buddha Peace'), short: tr('Tiêu tai trừ bệnh', 'Health & Well-being') },
+  { id: 'star', index: '06', name: tr('Dâng Sao Giải Hạn', 'Nine-Star Harmony'), short: tr('Bắc Đẩu Thất Tinh', 'Annual Star Alignment') }
+])
 
 function closeAllDropups() {
   showDivinationMenu.value = false
@@ -1139,6 +1155,30 @@ async function handleParkourSummit() {
   }
 }
 
+let isReleasingLantern = false
+async function handleLanternAction() {
+  const qty = economy.getItemQuantity('lotus_lantern')
+  if (qty < 1) {
+    openDrawer('shop')
+    return
+  }
+  if (drawerOpen.value) {
+    closeDrawer()
+  }
+  if (isReleasingLantern) return
+  isReleasingLantern = true
+  try {
+    const res = await economy.releaseLantern()
+    if (!res) return
+    stage?.releaseFloatingLantern()
+    zenAudio.playTempleBell()
+    showToast('Thả hoa đăng', `Còn ${res.remaining} trong túi`, 'sunset')
+    multiplayer?.triggerEmote('pray', user.name)
+  } finally {
+    isReleasingLantern = false
+  }
+}
+
 function handleRightClickAction(target: InteractionTarget) {
   if (target === 'incense') {
     void handleIncenseOffering()
@@ -1155,7 +1195,7 @@ function handleRightClickAction(target: InteractionTarget) {
   } else if (target === 'love_tree') {
     openDrawer('love_couple')
   } else if (target === 'lantern') {
-    openDrawer('shop')
+    void handleLanternAction()
   } else if (target === 'parkour_start') {
     void handleParkourStart()
   } else if (target === 'parkour_summit') {
@@ -1185,28 +1225,37 @@ function handleAction() {
 function getInteractionPrompt(target: InteractionTarget): string {
   if (target === 'incense') {
     return stage?.currentIncenseLocation === 'hall'
-      ? 'Dâng Hương Tam Bảo (Chánh Điện)'
-      : 'Dâng Hương Đại Đỉnh (Sân Chùa)'
+      ? tr('Dâng Hương Tam Bảo (Chánh Điện)', 'Offer Incense at Main Altar')
+      : tr('Dâng Hương Đại Đỉnh (Sân Chùa)', 'Offer Incense at Courtyard Burner')
   }
-  if (target === 'merit_box') return 'Mở Hòm Công Đức (ADA / Cúng Dường)'
-  if (target === 'fortune') return 'Rút Quẻ Xăm Linh Tự'
-  if (target === 'love_tree') return 'Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)'
-  if (target === 'meditation') return 'Tọa Thiền Tĩnh Tâm'
-  if (target === 'abbot') return 'Thưa chuyện với Thầy Trụ Trì'
-  if (target === 'hau_dong') return 'Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)'
-  if (target === 'lantern') return 'Thả Hoa Đăng Cầu An'
-  if (target === 'door') return 'Mở / Đóng Cửa Bức Bàn'
+  if (target === 'merit_box') return tr('Mở Hòm Công Đức (ADA / Cúng Dường)', 'Open Merit Box (ADA / Donate)')
+  if (target === 'fortune') return tr('Rút Quẻ Xăm Linh Tự', 'Draw Sacred Fortune Stick')
+  if (target === 'love_tree') return tr('Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)', 'Consult Red Thread Love Altar')
+  if (target === 'meditation') return tr('Tọa Thiền Tĩnh Tâm', 'Sit in Mindful Meditation')
+  if (target === 'abbot') return tr('Thưa chuyện với Thầy Trụ Trì', 'Speak with the Abbot')
+  if (target === 'hau_dong') return tr('Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)', 'Enter Four Palaces Ritual Shrine')
+  if (target === 'lantern') {
+    const qty = economy.getItemQuantity('lotus_lantern')
+    return qty > 0
+      ? tr(`Thả Hoa Đăng Cầu An (Có ${qty})`, `Release Peace Lantern (${qty} owned)`)
+      : tr('Thỉnh Hoa Đăng Cầu An (Cửa Hàng)', 'Get Peace Lantern (Shop)')
+  }
+  if (target === 'door') return tr('Mở / Đóng Cửa Bức Bàn', 'Open / Close Sanctuary Doors')
   if (target === 'parkour_start') {
     return parkour.canClaimFreeToday
-      ? 'Đăng Ký Leo Núi (Lượt Miễn Phí)'
-      : 'Thử Thách Leo Núi (5 MC / Lượt)'
+      ? tr('Đăng Ký Leo Núi (Lượt Miễn Phí)', 'Start Mountain Climb (Free Daily)')
+      : tr('Thử Thách Leo Núi (5 MC / Lượt)', 'Mountain Climb Challenge (5 MC)')
   }
-  if (target === 'parkour_summit') return 'Rung Đại Hồng Chung & Mở Rương Báu (+100 MC)'
-  return 'Tương Tác'
+  if (target === 'parkour_summit') return tr('Rung Đại Hồng Chung & Mở Rương Báu (+100 MC)', 'Ring Great Bell & Claim Chest (+100 MC)')
+  return tr('Tương Tác', 'Interact')
 }
 
 function toggleAudio() {
   isAudioMuted.value = zenAudio.toggleMute()
+  if (!isAudioMuted.value && activeFestival.value && !hasPlayedFestivalBell) {
+    hasPlayedFestivalBell = true
+    zenAudio.playFestivalBell(activeFestival.value.id)
+  }
 }
 
 function cycleTimeOfDay() {
@@ -1305,7 +1354,7 @@ function simulateLoading() {
           ></div>
         </div>
         <div class="text-[13px] text-[var(--text-secondary)] mb-8">
-          Đang tải cảnh giới thiền môn... <span class="ui-font-mono font-semibold text-[var(--text-primary)]">{{ loadingProgress }}%</span>
+          {{ tr('Đang tải cảnh giới thiền môn...', 'Loading 3D Zen Sanctuary...') }} <span class="ui-font-mono font-semibold text-[var(--text-primary)]">{{ loadingProgress }}%</span>
         </div>
 
         <!-- Zen Quote -->
@@ -1329,7 +1378,7 @@ function simulateLoading() {
       <div class="hud-top-bar__left hud-hide-sm">
         <div class="hud-brand">
           <div class="hud-brand__title-row">
-            <span class="hud-brand__title">VẠN CẢNH THIỀN TỰ</span>
+            <span class="hud-brand__title">{{ tr('VẠN CẢNH THIỀN TỰ', 'HYDRA PAGODA') }}</span>
             <UiBadge variant="neutral">v0.3.0 // CIP-30</UiBadge>
           </div>
           <div class="hud-brand__user-row">
@@ -1340,7 +1389,7 @@ function simulateLoading() {
         </div>
 
         <!-- Country Indicator (Non-clickable label per Binance Spec) -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated border border-hairline text-secondary select-none" title="Quốc gia hiện tại (Nhấn phím 1-9 để chuyển)">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated border border-hairline text-secondary select-none" :title="tr('Quốc gia hiện tại (Nhấn phím 1-9 để chuyển)', 'Current country (Press 1-9 to switch)')">
           <span class="hud-status-dot hud-status-dot--success" aria-hidden="true" />
           <span class="font-numbers font-bold text-xs text-secondary">{{ currentCountryObj.code }}</span>
           <span class="hidden sm:inline font-semibold text-xs text-primary">{{ currentCountryObj.name }}</span>
@@ -1351,10 +1400,10 @@ function simulateLoading() {
           type="button"
           @click="toggleGender"
           class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated hover:bg-[#332d26] border border-hairline hover:border-gold text-xs font-semibold text-white transition cursor-pointer ui-focus-ring"
-          title="Đổi giới tính nhân vật Nam / Nữ (Phím tắt: G)"
+          :title="tr('Đổi giới tính nhân vật Nam / Nữ (Phím tắt: G)', 'Switch Male / Female character (Hotkey: G)')"
         >
-          <span class="text-primary font-bold">{{ user.gender === 'male' ? 'Nam' : 'Nữ' }}</span>
-          <span class="hidden md:inline text-secondary">Hành Giả</span>
+          <span class="text-primary font-bold">{{ user.gender === 'male' ? tr('Nam', 'Male') : tr('Nữ', 'Female') }}</span>
+          <span class="hidden md:inline text-secondary">{{ tr('Hành Giả', 'Pilgrim') }}</span>
         </button>
       </div>
 
@@ -1362,7 +1411,7 @@ function simulateLoading() {
       <div class="hud-top-bar__right">
         <!-- Daily Streak Stat -->
         <UiStatCell
-          label="Ngày Tu"
+          :label="tr('Ngày Tu', 'Streak')"
           :value="streak.status?.currentStreak ?? 0"
           size="sm"
           class="hud-stat-cell hud-hide-sm"
@@ -1372,7 +1421,7 @@ function simulateLoading() {
 
         <!-- Merit Coins Stat + Top-up -->
         <UiStatCell
-          label="Hành Trang"
+          :label="tr('Hành Trang', 'Balance')"
           :value="economy.meritCoins.toLocaleString()"
           unit="MC"
           highlight
@@ -1381,7 +1430,7 @@ function simulateLoading() {
         >
           <template #action>
             <UiButton variant="primary" size="sm" class="ml-2 hud-topup" @click="openWalletModal()">
-              + Nạp
+              {{ tr('+ Nạp', '+ Top Up') }}
             </UiButton>
           </template>
         </UiStatCell>
@@ -1393,37 +1442,29 @@ function simulateLoading() {
           type="button"
           @click="openWalletModal()"
           class="hud-wallet-btn ui-focus-ring"
-          :title="wallet.isIframeMode ? 'Đồng bộ ví từ HydraOne Header' : 'Kết nối ví Cardano (Eternl)'"
+          :title="wallet.isIframeMode ? tr('Đồng bộ ví từ HydraOne Header', 'Sync wallet from HydraOne Header') : tr('Kết nối ví Cardano (Eternl)', 'Connect Cardano Wallet (Eternl)')"
         >
           <span
             class="hud-status-dot"
             :class="wallet.isConnected ? 'hud-status-dot--success' : 'hud-status-dot--warning'"
             aria-hidden="true"
           />
-          <ZenIcon name="wallet" :size="20" class="hud-show-sm" label="Ví Cardano" />
+          <ZenIcon name="wallet" :size="20" class="hud-show-sm" :label="tr('Ví Cardano', 'Cardano Wallet')" />
           <span class="text-sm font-semibold hud-hide-sm" :class="wallet.isConnected && !wallet.isIframeMode ? 'font-numbers' : ''">
-            {{ wallet.isConnected ? (wallet.isIframeMode ? 'HydraOne' : wallet.shortAddress) : (wallet.isIframeMode ? 'Kết nối trên HydraOne' : 'Ví Cardano') }}
+            {{ wallet.isConnected ? (wallet.isIframeMode ? 'HydraOne' : wallet.shortAddress) : (wallet.isIframeMode ? tr('Kết nối trên HydraOne', 'Connect on HydraOne') : tr('Ví Cardano', 'Cardano Wallet')) }}
           </span>
           <UiBadge v-if="wallet.isTestnet && !wallet.isIframeMode" variant="warning" class="hud-hide-sm">TESTNET</UiBadge>
         </button>
-          
-          <!-- Chỉ báo chế độ sổ cái duy nhất: Hydra L2 (nếu đang chạy) hoặc PostgreSQL / SQLite -->
-          <span class="hud-ledger-wrap hud-hide-sm" :title="hydra.modeDescription">
-            <span
-              class="hud-ledger-mode ui-focus-ring"
-              tabindex="0"
-              role="status"
-              :aria-label="`Chế độ sổ cái: ${hydra.modeLabel}. ${hydra.modeDescription}`"
-              data-testid="hud-ledger-mode"
-            >
-              <UiBadge
-                :variant="!hydra.loaded ? 'neutral' : hydra.isL2Active ? 'success' : hydra.isPostgres ? 'info' : 'neutral'"
-                dot
-              >
-                {{ hydra.modeLabel }}
-              </UiBadge>
-            </span>
-          </span>
+
+          <UiBadge
+            v-if="activeFestival"
+            variant="gold"
+            dot
+            class="hud-hide-sm"
+            :title="activeFestival.name"
+          >
+            {{ activeFestival.badgeLabel }}
+          </UiBadge>
 
         <div class="hud-v-divider" />
 
@@ -1434,10 +1475,10 @@ function simulateLoading() {
             @click="showDisplayMenu = !showDisplayMenu"
             class="hud-icon-btn hud-display-btn ui-focus-ring"
             :class="{ 'is-active': showDisplayMenu }"
-            title="Tùy chỉnh Thời gian, Đồ họa (F4) và Góc nhìn (V / F5)"
+            :title="tr('Thời gian, Đồ họa, Góc nhìn & Ngôn ngữ', 'Time, Graphics, Camera & Language')"
           >
-            <ZenIcon name="sun" :size="20" class="hud-show-sm" label="Hiển thị" />
-            <span class="text-xs font-semibold hud-hide-sm">Hiển thị</span>
+            <ZenIcon name="sun" :size="20" class="hud-show-sm" :label="tr('Hiển thị', 'Display')" />
+            <span class="text-xs font-semibold hud-hide-sm">{{ tr('Hiển thị', 'Display') }}</span>
             <ZenIcon name="chevron-down" :size="14" class="transition-transform hud-hide-sm" :class="showDisplayMenu ? 'rotate-180' : ''" />
           </button>
 
@@ -1446,7 +1487,7 @@ function simulateLoading() {
             class="hud-popover hud-popover--display"
           >
             <div class="hud-popover__header">
-              <span class="text-xs font-semibold text-secondary">Cài đặt hiển thị &amp; Góc nhìn</span>
+              <span class="text-xs font-semibold text-secondary">{{ tr('Cài đặt hiển thị & Góc nhìn', 'Display, Camera & Language') }}</span>
             </div>
             <div class="hud-popover__list">
               <button
@@ -1455,9 +1496,9 @@ function simulateLoading() {
                 class="hud-popover__item hud-popover__item--row ui-focus-ring"
               >
                 <div>
-                  <div class="text-sm font-semibold">Thời gian</div>
+                  <div class="text-sm font-semibold">{{ tr('Thời gian', 'Time of Day') }}</div>
                   <div class="text-xs text-secondary">
-                    {{ currentTimeOfDay === 'day' ? 'Ban ngày' : currentTimeOfDay === 'sunset' ? 'Hoàng hôn' : 'Ban đêm' }}
+                    {{ currentTimeOfDay === 'day' ? tr('Ban ngày', 'Daylight') : currentTimeOfDay === 'sunset' ? tr('Hoàng hôn', 'Sunset') : tr('Ban đêm', 'Night') }}
                   </div>
                 </div>
                 <UiKeycap>{{ currentTimeOfDay.toUpperCase() }}</UiKeycap>
@@ -1469,7 +1510,7 @@ function simulateLoading() {
                 class="hud-popover__item hud-popover__item--row ui-focus-ring"
               >
                 <div>
-                  <div class="text-sm font-semibold">Đồ họa</div>
+                  <div class="text-sm font-semibold">{{ tr('Đồ họa', 'Graphics') }}</div>
                   <div class="text-xs text-secondary font-numbers">
                     {{ graphicsQuality }}
                   </div>
@@ -1483,9 +1524,9 @@ function simulateLoading() {
                 class="hud-popover__item hud-popover__item--row ui-focus-ring"
               >
                 <div>
-                  <div class="text-sm font-semibold">Góc nhìn</div>
+                  <div class="text-sm font-semibold">{{ tr('Góc nhìn', 'Camera View') }}</div>
                   <div class="text-xs text-secondary">
-                    {{ user.cameraMode === 'fpp' ? 'Góc nhìn thứ nhất (FPP)' : 'Góc nhìn thứ ba (TPP)' }}
+                    {{ user.cameraMode === 'fpp' ? tr('Góc nhìn thứ nhất (FPP)', 'First-Person (FPP)') : tr('Góc nhìn thứ ba (TPP)', 'Third-Person (TPP)') }}
                   </div>
                 </div>
                 <UiKeycap>V / F5</UiKeycap>
@@ -1497,12 +1538,26 @@ function simulateLoading() {
                 class="hud-popover__item hud-popover__item--row ui-focus-ring"
               >
                 <div>
-                  <div class="text-sm font-semibold">Nhân vật</div>
+                  <div class="text-sm font-semibold">{{ tr('Nhân vật', 'Character') }}</div>
                   <div class="text-xs text-secondary">
-                    {{ user.gender === 'male' ? 'Nam Hành Giả (Tóc ngắn)' : 'Nữ Hành Giả (Tóc dài)' }}
+                    {{ user.gender === 'male' ? tr('Nam Hành Giả (Tóc ngắn)', 'Male Pilgrim (Short hair)') : tr('Nữ Hành Giả (Tóc dài)', 'Female Pilgrim (Long hair)') }}
                   </div>
                 </div>
                 <UiKeycap>G</UiKeycap>
+              </button>
+
+              <button
+                type="button"
+                @click="toggleLocale()"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">{{ tr('Ngôn ngữ', 'Language') }}</div>
+                  <div class="text-xs text-secondary">
+                    {{ currentLocale === 'vi' ? 'Tiếng Việt (Chủ đạo)' : 'English' }}
+                  </div>
+                </div>
+                <UiKeycap>{{ currentLocale.toUpperCase() }}</UiKeycap>
               </button>
             </div>
           </div>
@@ -1512,8 +1567,8 @@ function simulateLoading() {
         <button
           type="button"
           @click="toggleAudio"
-          aria-label="Bật hoặc tắt âm thanh thiền tự"
-          title="Bật hoặc tắt âm thanh thiền tự"
+          :aria-label="tr('Bật hoặc tắt âm thanh thiền tự', 'Mute or unmute sanctuary audio')"
+          :title="tr('Bật hoặc tắt âm thanh thiền tự', 'Mute or unmute sanctuary audio')"
           class="hud-icon-btn ui-focus-ring"
         >
           <ZenIcon :name="isAudioMuted ? 'volume-x' : 'volume-2'" :size="18" />
@@ -1524,11 +1579,11 @@ function simulateLoading() {
           type="button"
           @click="openDrawer('sangha')"
           class="hud-sangha-btn ui-focus-ring"
-          title="Danh sách đồng tu đang trực tuyến &amp; Pháp đàm"
+          :title="tr('Danh sách đồng tu đang trực tuyến & Pháp đàm', 'Online pilgrims & Dharma talk')"
         >
           <span class="hud-status-dot hud-status-dot--success" aria-hidden="true" />
           <span class="font-numbers text-sm font-bold">{{ onlinePilgrimCount }}</span>
-          <span class="text-xs text-secondary hud-hide-sm">Đồng Tu</span>
+          <span class="text-xs text-secondary hud-hide-sm">{{ tr('Đồng Tu', 'Pilgrims') }}</span>
         </button>
       </div>
     </header>
@@ -1564,18 +1619,18 @@ function simulateLoading() {
       >
         <div class="flex items-center justify-center gap-2 text-xs font-bold text-primary">
           <ZenIcon name="sparkles" class="w-3.5 h-3.5" />
-          <span>Lời Vàng Pháp Cú</span>
+          <span>{{ tr('Lời Vàng Pháp Cú', 'Golden Dharma Verse') }}</span>
           <ZenIcon name="sparkles" class="w-3.5 h-3.5" />
         </div>
         <p class="text-white text-sm font-medium italic leading-relaxed">
           "{{ currentScriptureVerse }}"
         </p>
         <div class="text-xs text-secondary">
-          Lòng thành dâng Phật • Nguyện thân tâm an lạc
+          {{ tr('Lòng thành dâng Phật • Nguyện thân tâm an lạc', 'Sincere offering to the Buddha • May body and mind be at peace') }}
         </div>
         <div v-if="incenseRewardMc > 0 || incenseHydraProof" class="pt-1.5 flex flex-wrap items-center justify-center gap-2 border-t border-hairline/60">
           <UiBadge v-if="incenseRewardMc > 0" variant="warning" class="font-numbers font-bold">
-            +{{ incenseRewardMc }} MC Lộc Phật
+            +{{ incenseRewardMc }} {{ tr('MC Lộc Phật', 'MC Blessing') }}
           </UiBadge>
           <HydraBadge v-if="incenseHydraProof" :proof="incenseHydraProof" />
         </div>
@@ -1588,7 +1643,7 @@ function simulateLoading() {
       role="status"
       class="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-20 px-3.5 py-2 rounded-md bg-surface-card border border-hairline shadow-2xl text-xs text-secondary"
     >
-      {{ hasEverLocked ? 'Nhấp vào cảnh để tiếp tục điều khiển' : 'Nhấp vào cảnh để bắt đầu điều khiển' }}
+      {{ hasEverLocked ? tr('Nhấp vào cảnh để tiếp tục điều khiển', 'Click on the scene to resume control') : tr('Nhấp vào cảnh để bắt đầu điều khiển', 'Click on the scene to start moving') }}
     </div>
 
     <!-- ========================================================================= -->
@@ -1602,11 +1657,11 @@ function simulateLoading() {
         <div class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-[var(--trading-up,#0ecb81)] animate-pulse" />
           <span class="text-xs font-bold text-primary font-numbers">
-            ĐIỆN TỨ PHỦ · GIÁ {{ hauDong.activeSession.giaIndex }}/5
+            {{ tr('ĐIỆN TỨ PHỦ · GIÁ', 'FOUR PALACES · STAGE') }} {{ hauDong.activeSession.giaIndex }}/5
           </span>
         </div>
         <span class="text-xs font-numbers text-secondary">
-          Còn {{ hauDong.activeSession.stepRemainingSec }}s
+          {{ tr('Còn', 'Left') }} {{ hauDong.activeSession.stepRemainingSec }}s
         </span>
       </div>
 
@@ -1615,7 +1670,7 @@ function simulateLoading() {
           {{ hauDong.activeSession.deityName }}
         </div>
         <div class="text-xs text-secondary mt-0.5">
-          Bước <span class="font-numbers">{{ hauDong.activeSession.stepId }}/6</span>:
+          {{ tr('Bước', 'Step') }} <span class="font-numbers">{{ hauDong.activeSession.stepId }}/6</span>:
           <strong class="text-white">{{ hauDong.activeSession.stepName }}</strong>
         </div>
       </div>
@@ -1663,23 +1718,23 @@ function simulateLoading() {
         <div class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-[var(--primary,#c9a24b)] animate-ping" />
           <span class="text-xs font-bold text-primary font-numbers">
-            ĐƯỜNG LÊN ĐỈNH PHÙ VÂN
+            {{ tr('ĐƯỜNG LÊN ĐỈNH PHÙ VÂN', 'SACRED PEAK CLIMB') }}
           </span>
         </div>
         <span class="text-xs font-numbers text-secondary">
-          Lượt {{ parkour.attemptsToday }}
+          {{ tr('Lượt', 'Run') }} {{ parkour.attemptsToday }}
         </span>
       </div>
 
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div class="bg-surface-elevated/70 p-2 rounded border border-hairline">
-          <div class="text-secondary text-xs">Thời gian leo</div>
+          <div class="text-secondary text-xs">{{ tr('Thời gian leo', 'Climb time') }}</div>
           <div class="text-sm font-bold text-white font-numbers">
             {{ parkour.elapsedSec.toFixed(1) }}s
           </div>
         </div>
         <div class="bg-surface-elevated/70 p-2 rounded border border-hairline">
-          <div class="text-secondary text-xs">Độ cao</div>
+          <div class="text-secondary text-xs">{{ tr('Độ cao', 'Altitude') }}</div>
           <div class="text-sm font-bold text-primary font-numbers">
             {{ playerAltitude.toFixed(1) }}m / 70.0m
           </div>
@@ -1687,9 +1742,9 @@ function simulateLoading() {
       </div>
 
       <div class="flex items-center justify-between text-xs text-secondary px-0.5">
-        <span>Kỷ lục tốt nhất:</span>
+        <span>{{ tr('Kỷ lục tốt nhất:', 'Best record:') }}</span>
         <span class="font-numbers text-white font-medium">
-          {{ parkour.bestTimeSec ? `${parkour.bestTimeSec.toFixed(1)}s` : 'Chưa có' }}
+          {{ parkour.bestTimeSec ? `${parkour.bestTimeSec.toFixed(1)}s` : tr('Chưa có', 'None') }}
         </span>
       </div>
 
@@ -1700,7 +1755,7 @@ function simulateLoading() {
           class="w-full justify-center text-xs"
           @click="parkour.stopTimer(); showToast('Đã dừng thử thách', '', 'pagoda')"
         >
-          Hủy / Xuống Núi
+          {{ tr('Hủy / Xuống Núi', 'Cancel / Descend') }}
         </UiButton>
       </div>
     </div>
@@ -1713,10 +1768,10 @@ function simulateLoading() {
           type="button"
           @click="showHotkeysMenu = !showHotkeysMenu"
           class="hud-hide-sm min-h-[40px] px-3.5 py-2 rounded-md bg-surface-card text-xs text-secondary hover:text-white border border-hairline hover:border-hairline flex items-center gap-2 transition cursor-pointer shadow-lg"
-          title="Nhấp để xem bảng phím tắt điều khiển"
+          :title="tr('Nhấp để xem bảng phím tắt điều khiển', 'Click to view control hotkeys')"
         >
           <UiKeycap v-for="h in pillHints" :key="h.id">{{ h.keys[0] }}</UiKeycap>
-          <span class="text-xs font-medium hidden sm:inline">Phím tắt</span>
+          <span class="text-xs font-medium hidden sm:inline">{{ tr('Phím tắt', 'Hotkeys') }}</span>
         </button>
 
         <!-- Live ALT Mouse Cursor Indicator -->
@@ -1727,7 +1782,7 @@ function simulateLoading() {
         >
           <UiKeycap>ALT</UiKeycap>
           <span class="text-xs font-medium hidden sm:inline">
-            {{ isAltHeld ? 'Đang hiện con trỏ chuột' : 'Giữ ALT để hiện chuột' }}
+            {{ isAltHeld ? tr('Đang hiện con trỏ chuột', 'Cursor visible') : tr('Giữ ALT để hiện chuột', 'Hold ALT for cursor') }}
           </span>
         </div>
 
@@ -1737,7 +1792,7 @@ function simulateLoading() {
           @click="showMiniMap = !showMiniMap; if (showMiniMap) showHotkeysMenu = false"
           class="min-h-[40px] px-2.5 py-1.5 rounded-md bg-surface-card text-xs border flex items-center gap-2 transition cursor-pointer select-none shadow-md group"
           :class="showMiniMap ? 'border-primary text-white bg-surface-elevated ring-1 ring-primary/40' : 'text-secondary border-hairline hover:text-white hover:border-primary/60'"
-          title="Nhấp hoặc bấm phím M để mở Sơ đồ Chùa"
+          :title="tr('Nhấp hoặc bấm phím M để mở Sơ đồ Chùa', 'Click or press M to open Sanctuary Map')"
         >
           <!-- Radar tròn thu nhỏ trực tiếp trên cục HUD -->
           <div class="relative w-6 h-6 rounded-full bg-canvas-dark border border-primary/60 overflow-hidden flex items-center justify-center">
@@ -1753,7 +1808,7 @@ function simulateLoading() {
               </g>
             </svg>
           </div>
-          <span class="text-xs font-medium hidden sm:inline">Bản đồ</span>
+          <span class="text-xs font-medium hidden sm:inline">{{ tr('Bản đồ', 'Map') }}</span>
           <UiKeycap>M</UiKeycap>
         </button>
 
@@ -1766,15 +1821,15 @@ function simulateLoading() {
           <div class="flex items-center justify-between border-b border-hairline pb-2">
             <div class="flex items-center gap-2">
               <ZenIcon name="pagoda" :size="16" class="text-primary" />
-              <span class="text-xs font-bold text-white whitespace-nowrap">Sơ Đồ Thiền Tự</span>
+              <span class="text-xs font-bold text-white whitespace-nowrap">{{ tr('Sơ Đồ Thiền Tự', 'Sanctuary Map') }}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="hidden sm:inline text-xs font-numbers text-secondary whitespace-nowrap">
-                X: {{ livePlayerPos.x.toFixed(1) }} · Z: {{ livePlayerPos.z.toFixed(1) }} · Cao: {{ livePlayerPos.y.toFixed(1) }}m
+                X: {{ livePlayerPos.x.toFixed(1) }} · Z: {{ livePlayerPos.z.toFixed(1) }} · {{ tr('Cao:', 'Alt:') }} {{ livePlayerPos.y.toFixed(1) }}m
               </span>
               <button
                 type="button"
-                aria-label="Đóng bản đồ"
+                :aria-label="tr('Đóng bản đồ', 'Close map')"
                 @click="showMiniMap = false"
                 class="w-[40px] h-[40px] shrink-0 -my-1.5 rounded flex items-center justify-center text-secondary hover:text-white hover:bg-surface-elevated cursor-pointer"
               >
@@ -1787,16 +1842,16 @@ function simulateLoading() {
           <div v-if="isAutoWalking" class="flex items-center justify-between p-2 rounded bg-surface-elevated border border-primary/40 text-xs">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-primary animate-ping" />
-              <span class="text-white">Đang tự bước tới: <strong>{{ activeNavTargetName }}</strong></span>
+              <span class="text-white">{{ tr('Đang tự bước tới:', 'Auto-walking to:') }} <strong>{{ activeNavTargetName }}</strong></span>
             </div>
             <UiButton variant="secondary" size="sm" class="text-xs h-[40px]! px-2" @click="cancelNavigation">
-              Dừng bước
+              {{ tr('Dừng bước', 'Stop') }}
             </UiButton>
           </div>
 
           <!-- Bản đồ SVG 2D, tỉ lệ đều 6 px/m, Bắc ở trên (tọa độ lấy từ MapLayout.LANDMARKS) -->
           <div class="relative w-full rounded-md bg-canvas-dark border border-hairline overflow-hidden select-none">
-            <svg viewBox="0 0 438 424" class="block w-full h-auto font-sans" role="img" aria-label="Sơ đồ Thiền Tự, hướng Bắc ở trên">
+            <svg viewBox="0 0 438 424" class="block w-full h-auto font-sans" role="img" :aria-label="tr('Sơ đồ Thiền Tự, hướng Bắc ở trên', 'Sanctuary Map, North up')">
               <!-- Mặt bằng: sân gạch, ngự đạo, đường sang Nhà Hầu Đồng, đường vòng lên núi -->
               <rect x="36" y="261" width="240" height="126" fill="#1a1714" stroke="#332d26" />
               <rect x="144" y="261" width="24" height="126" fill="#26221d" />
@@ -1806,58 +1861,58 @@ function simulateLoading() {
 
               <!-- Hồ Sen -->
               <circle cx="51" cy="321" r="39" fill="#17242a" stroke="#5f7f86" />
-              <text x="51" y="327" font-size="17" fill="#a89c88" text-anchor="middle">Hồ Sen</text>
+              <text x="51" y="327" font-size="17" fill="#a89c88" text-anchor="middle">{{ tr('Hồ Sen', 'Lotus Pond') }}</text>
 
               <!-- Lầu Chuông -->
               <rect x="240" y="300" width="43" height="43" fill="#26221d" stroke="#6b6252" />
-              <text x="276" y="362" font-size="17" fill="#a89c88" text-anchor="middle">Lầu Chuông</text>
+              <text x="276" y="362" font-size="17" fill="#a89c88" text-anchor="middle">{{ tr('Lầu Chuông', 'Bell Tower') }}</text>
 
               <!-- Đại Hùng Bảo Điện -->
               <g class="cursor-pointer" @click="handleGuideToSanctuary(); showMiniMap = false">
                 <rect x="60" y="105" width="192" height="156" fill="#1a1714" stroke="#332d26" />
                 <rect x="72" y="117" width="168" height="132" fill="#26221d" stroke="#c9a24b" stroke-width="1.4" />
                 <circle cx="156" cy="132" r="6" fill="#c9a24b" />
-                <text x="156" y="196" font-size="17" font-weight="700" fill="#c9a24b" text-anchor="middle">Chánh Điện</text>
+                <text x="156" y="196" font-size="17" font-weight="700" fill="#c9a24b" text-anchor="middle">{{ tr('Chánh Điện', 'Main Hall') }}</text>
               </g>
 
               <!-- Nhà Hầu Đồng (Đông) -->
               <g class="cursor-pointer" @click="handleGuideToHauDong(); showMiniMap = false">
                 <rect x="300" y="123" width="132" height="120" fill="#26221d" stroke="#a89c88" />
-                <text x="366" y="189" font-size="17" font-weight="700" fill="#f6ecd8" text-anchor="middle">Hầu Đồng</text>
+                <text x="366" y="189" font-size="17" font-weight="700" fill="#f6ecd8" text-anchor="middle">{{ tr('Hầu Đồng', 'Four Palaces') }}</text>
               </g>
 
               <!-- Bàn Xin Xăm và Hòm Công Đức -->
               <g class="cursor-pointer" @click="handleGuideToFortune(); showMiniMap = false">
                 <rect x="120" y="294" width="12" height="10" fill="#c9a24b" />
-                <text x="132" y="288" font-size="17" fill="#f6ecd8" text-anchor="end">Xin Xăm</text>
+                <text x="132" y="288" font-size="17" fill="#f6ecd8" text-anchor="end">{{ tr('Xin Xăm', 'Fortune') }}</text>
               </g>
               <g class="cursor-pointer" @click="handleGuideToMerit(); showMiniMap = false">
                 <rect x="180" y="294" width="12" height="10" fill="#c9a24b" />
-                <text x="180" y="288" font-size="17" fill="#f6ecd8" text-anchor="start">Công Đức</text>
+                <text x="180" y="288" font-size="17" fill="#f6ecd8" text-anchor="start">{{ tr('Công Đức', 'Merit Box') }}</text>
               </g>
 
               <!-- Cây Nguyệt Lão -->
               <g class="cursor-pointer" @click="handleGuideToLoveTree(); showMiniMap = false">
                 <circle cx="93" cy="345" r="8" fill="#26221d" stroke="#b8372b" stroke-width="2" />
-                <text x="108" y="366" font-size="17" fill="#f6ecd8">Nguyệt Lão</text>
+                <text x="108" y="366" font-size="17" fill="#f6ecd8">{{ tr('Nguyệt Lão', 'Love Tree') }}</text>
               </g>
 
               <!-- Cổng Tam Quan (Nam) -->
               <g class="cursor-pointer" @click="handleGuideToTamQuan(); showMiniMap = false">
                 <rect x="114" y="376" width="84" height="21" fill="#26221d" stroke="#a89c88" />
-                <text x="156" y="418" font-size="17" fill="#f6ecd8" text-anchor="middle">Cổng Tam Quan</text>
+                <text x="156" y="418" font-size="17" fill="#f6ecd8" text-anchor="middle">{{ tr('Cổng Tam Quan', 'Tam Quan Gate') }}</text>
               </g>
 
               <!-- Đường lên núi Parkour (Bắc, sau chùa) -->
               <g class="cursor-pointer" @click="handleGuideToParkour(); showMiniMap = false">
                 <rect x="148" y="34" width="16" height="10" fill="#26221d" stroke="#c9a24b" />
-                <text x="156" y="26" font-size="17" font-weight="700" fill="#c9a24b" text-anchor="middle">Leo núi Parkour</text>
+                <text x="156" y="26" font-size="17" font-weight="700" fill="#c9a24b" text-anchor="middle">{{ tr('Leo núi Parkour', 'Mountain Climb') }}</text>
               </g>
 
               <!-- La bàn: hướng Bắc -->
               <g transform="translate(404,34)">
                 <path d="M 0 -14 L 7 6 L 0 2 L -7 6 Z" fill="#c9a24b" />
-                <text y="26" font-size="17" fill="#a89c88" text-anchor="middle">Bắc</text>
+                <text y="26" font-size="17" fill="#a89c88" text-anchor="middle">{{ tr('Bắc', 'N') }}</text>
               </g>
 
               <!-- Đồng tu online khác -->
@@ -1874,31 +1929,31 @@ function simulateLoading() {
               </g>
             </svg>
             <div class="absolute bottom-1 right-2 text-xs font-numbers text-secondary pointer-events-none">
-              Đồng tu: {{ onlinePilgrimCount }}
+              {{ tr('Đồng tu:', 'Pilgrims:') }} {{ onlinePilgrimCount }}
             </div>
           </div>
 
           <!-- Nút Dẫn đường nhanh đến các địa danh -->
           <div class="space-y-1.5">
-            <span class="text-xs text-secondary font-medium">Bấm để tự động bước tới:</span>
+            <span class="text-xs text-secondary font-medium">{{ tr('Bấm để tự động bước tới:', 'Click to walk automatically to:') }}</span>
             <div class="grid grid-cols-3 gap-1.5 text-xs font-numbers">
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToSanctuary(); showMiniMap = false">
-                Chánh Điện
+                {{ tr('Chánh Điện', 'Main Hall') }}
               </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToFortune(); showMiniMap = false">
-                Bàn Xin Xăm
+                {{ tr('Bàn Xin Xăm', 'Fortune Desk') }}
               </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToMerit(); showMiniMap = false">
-                Hòm Công Đức
+                {{ tr('Hòm Công Đức', 'Merit Box') }}
               </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToLoveTree(); showMiniMap = false">
-                Cây Nguyệt Lão
+                {{ tr('Cây Nguyệt Lão', 'Love Tree') }}
               </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToHauDong(); showMiniMap = false">
-                Nhà Hầu Đồng
+                {{ tr('Nhà Hầu Đồng', 'Four Palaces') }}
               </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToParkour(); showMiniMap = false">
-                Leo Núi Parkour
+                {{ tr('Leo Núi Parkour', 'Mountain Climb') }}
               </UiButton>
             </div>
           </div>
@@ -1910,10 +1965,10 @@ function simulateLoading() {
           class="absolute bottom-14 left-0 w-96 p-4 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-3"
         >
           <div class="flex items-center justify-between border-b border-hairline pb-2.5">
-            <span class="text-sm font-bold text-white">Phím tắt điều khiển & Chuột</span>
+            <span class="text-sm font-bold text-white">{{ tr('Phím tắt điều khiển & Chuột', 'Keyboard & Mouse Controls') }}</span>
             <button
               type="button"
-              aria-label="Đóng bảng phím tắt"
+              :aria-label="tr('Đóng bảng phím tắt', 'Close hotkeys')"
               @click="showHotkeysMenu = false"
               class="w-[40px] h-[40px] shrink-0 -my-1 rounded flex items-center justify-center text-secondary hover:text-white hover:bg-surface-elevated cursor-pointer"
             >
@@ -1934,7 +1989,7 @@ function simulateLoading() {
               :aria-expanded="showDevHints"
               class="flex items-center justify-between min-h-[40px] text-xs text-secondary hover:text-white cursor-pointer ui-focus-ring"
             >
-              <span class="font-semibold">Nhà phát triển</span>
+              <span class="font-semibold">{{ tr('Nhà phát triển', 'Developer') }}</span>
               <ZenIcon name="chevron-down" :size="14" class="transition-transform" :class="showDevHints ? 'rotate-180' : ''" />
             </button>
             <div v-if="showDevHints" class="grid grid-cols-2 gap-2.5 text-xs font-numbers">
@@ -1956,8 +2011,8 @@ function simulateLoading() {
             class="hud-popover hud-popover--bottom w-80 p-2"
           >
             <div class="px-3 py-2 border-b border-hairline mb-1 flex items-center justify-between">
-              <span class="text-xs font-semibold text-secondary">Bói Quẻ 6 Môn Cầu An</span>
-              <UiKeycap>Phím 1</UiKeycap>
+              <span class="text-xs font-semibold text-secondary">{{ tr('Bói Quẻ 6 Môn Cầu An', '6 Sacred Divination Topics') }}</span>
+              <UiKeycap>{{ tr('Phím 1', 'Key 1') }}</UiKeycap>
             </div>
             <div class="flex flex-col">
               <button
@@ -1987,10 +2042,10 @@ function simulateLoading() {
             variant="primary"
             class="hud-trigger-gold"
             :class="{ 'ring-2 ring-primary/50': showDivinationMenu }"
-            title="Bấm phím [1] hoặc nhấp chuột để mở Bói Quẻ 6 Môn"
+            :title="tr('Bấm phím [1] hoặc nhấp chuột để mở Bói Quẻ 6 Môn', 'Press [1] or click to open Divination')"
             @click="toggleDivinationMenu"
           >
-            <span class="hud-dock__label">Bói Quẻ &amp; Cầu An</span>
+            <span class="hud-dock__label">{{ tr('Bói Quẻ & Cầu An', 'Divination') }}</span>
             <UiKeycap class="hud-keycap-gold hud-hide-sm">1</UiKeycap>
             <ZenIcon name="chevron-up" :size="16" class="transition-transform hud-hide-sm" :class="showDivinationMenu ? 'rotate-180' : ''" />
           </UiButton>
@@ -2003,8 +2058,8 @@ function simulateLoading() {
             class="absolute bottom-14 right-0 w-[320px] p-3 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-1"
           >
             <div class="px-3 pb-2.5 mb-1 border-b border-hairline flex items-center justify-between">
-              <span class="text-sm font-bold text-white">Hành Trì & Phước Đức</span>
-              <UiKeycap>Phím 2</UiKeycap>
+              <span class="text-sm font-bold text-white">{{ tr('Hành Trì & Phước Đức', 'Mindfulness & Merit') }}</span>
+              <UiKeycap>{{ tr('Phím 2', 'Key 2') }}</UiKeycap>
             </div>
             <button
               type="button"
@@ -2013,8 +2068,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">01</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Hòm Công Đức Tam Bảo</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Tâm Duyên, Sen Vàng, Cardano ADA</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Hòm Công Đức Tam Bảo', 'Sanctuary Merit Box') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Tâm Duyên, Sen Vàng, Cardano ADA', 'Micro-donations & Cardano ADA') }}</div>
               </div>
             </button>
             <button
@@ -2024,8 +2079,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">02</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Hội Thiền 432Hz</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Chuông xoay & Điều tức chánh niệm</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Hội Thiền 432Hz', '432Hz Meditation Hall') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Chuông xoay & Điều tức chánh niệm', 'Singing bowls & 4-4-6 breathing') }}</div>
               </div>
             </button>
             <button
@@ -2035,8 +2090,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">03</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Pháp Đàm & Đồng Tu</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Lời nguyện chánh niệm (<span class="font-numbers">{{ onlinePilgrimCount }}</span> đang online)</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Pháp Đàm & Đồng Tu', 'Dharma Talk & Sangha') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Lời nguyện chánh niệm', 'Mindful wishes') }} (<span class="font-numbers">{{ onlinePilgrimCount }}</span> {{ tr('đang online', 'online') }})</div>
               </div>
             </button>
             <button
@@ -2046,8 +2101,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">04</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Sổ Tu Tập</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Mỗi ngày một việc lành, nối thành chuỗi</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ t('title.streak') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ t('desc.streakIntro') }}</div>
               </div>
             </button>
             <button
@@ -2057,8 +2112,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">05</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-primary leading-snug whitespace-nowrap">Nhà Hầu Đồng (Điện Tứ Phủ)</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Hầu đồng 5 Giá (8p), Thỉnh Lộc MC &amp; Mở Đàn</div>
+                <div class="text-sm font-semibold text-primary leading-snug whitespace-nowrap">{{ tr('Nhà Hầu Đồng (Điện Tứ Phủ)', 'Four Palaces Ritual Shrine') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Hầu đồng 5 Giá (8p), Thỉnh Lộc MC & Mở Đàn', '5-Stage Ritual (8m), Blessings & Sponsorship') }}</div>
               </div>
             </button>
             <button
@@ -2068,8 +2123,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">06</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Thầy Trụ Trì (Hiên Tiền Điện)</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Hỏi đáp Phật pháp, Nghi lễ &amp; Văn hóa chùa</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Thầy Trụ Trì (Hiên Tiền Điện)', 'Temple Abbot (Front Veranda)') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Hỏi đáp Phật pháp, Nghi lễ & Văn hóa chùa', 'Buddhist wisdom, etiquette & temple lore') }}</div>
               </div>
             </button>
           </div>
@@ -2079,9 +2134,9 @@ function simulateLoading() {
             @click="toggleMeditationMenu"
             class="min-h-[40px] px-3.5 rounded-md bg-surface-card border text-sm font-medium flex items-center gap-2 transition cursor-pointer"
             :class="showMeditationMenu ? 'border-gold bg-surface-elevated text-white' : 'border-hairline text-white hover:border-hairline hover:bg-surface-elevated'"
-            title="Bấm phím [2] hoặc nhấp chuột để mở Thiền & Công Đức"
+            :title="tr('Bấm phím [2] hoặc nhấp chuột để mở Thiền & Công Đức', 'Press [2] or click to open Meditation & Merit')"
           >
-            <span class="hud-dock__label">Thiền & Công Đức</span>
+            <span class="hud-dock__label">{{ tr('Thiền & Công Đức', 'Meditation & Merit') }}</span>
             <UiKeycap class="hud-hide-sm">2</UiKeycap>
             <ZenIcon name="chevron-up" :size="16" class="text-secondary transition-transform hud-hide-sm" :class="showMeditationMenu ? 'rotate-180' : ''" />
           </button>
@@ -2094,8 +2149,8 @@ function simulateLoading() {
             class="absolute bottom-14 right-0 w-[320px] p-3 rounded-md bg-surface-card border border-hairline shadow-2xl z-50 flex flex-col gap-1"
           >
             <div class="px-3 pb-2.5 mb-1 border-b border-hairline flex items-center justify-between">
-              <span class="text-sm font-bold text-white">Di Sản & Bảo Vật</span>
-              <UiKeycap>Phím 3</UiKeycap>
+              <span class="text-sm font-bold text-white">{{ tr('Di Sản & Bảo Vật', 'Heritage & Treasures') }}</span>
+              <UiKeycap>{{ tr('Phím 3', 'Key 3') }}</UiKeycap>
             </div>
             <button
               type="button"
@@ -2104,8 +2159,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">01</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Cửa Hàng Pháp Bảo</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">Cổ phục 9 nước, nhang trầm, lễ vật</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Cửa Hàng Pháp Bảo', 'Sanctuary Shop') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Cổ phục 9 nước, nhang trầm, lễ vật', '9-country attire, incense & offerings') }}</div>
               </div>
             </button>
             <button
@@ -2115,8 +2170,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">02</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Thẻ Bài Di Sản 3D</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">10 cổ tự mini, âm cảnh, NFT CIP-68</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Thẻ Bài Di Sản 3D', '3D Heritage Cards') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('10 cổ tự mini, âm cảnh, NFT CIP-68', 'Sacred temples, audio lore & CIP-68 NFT') }}</div>
               </div>
             </button>
             <button
@@ -2126,8 +2181,8 @@ function simulateLoading() {
             >
               <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">03</span>
               <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">Bộ Trộn Âm Thanh 3D</div>
-                <div class="text-xs text-secondary leading-snug mt-0.5">6 kênh âm cảnh không gian thời gian thực</div>
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Bộ Trộn Âm Thanh 3D', '3D Soundscape Mixer') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('6 kênh âm cảnh không gian thời gian thực', '6 real-time spatial audio channels') }}</div>
               </div>
             </button>
             <button
@@ -2144,9 +2199,9 @@ function simulateLoading() {
             @click="toggleHeritageMenu"
             class="min-h-[40px] px-3.5 rounded-md bg-surface-card border text-sm font-medium flex items-center gap-2 transition cursor-pointer"
             :class="showHeritageMenu ? 'border-gold bg-surface-elevated text-white' : 'border-hairline text-white hover:border-hairline hover:bg-surface-elevated'"
-            title="Bấm phím [3] hoặc nhấp chuột để mở Di Sản & Cửa Hàng"
+            :title="tr('Bấm phím [3] hoặc nhấp chuột để mở Di Sản & Cửa Hàng', 'Press [3] or click to open Heritage & Shop')"
           >
-            <span class="hud-dock__label">Di Sản & Cửa Hàng</span>
+            <span class="hud-dock__label">{{ tr('Di Sản & Cửa Hàng', 'Heritage & Shop') }}</span>
             <UiKeycap class="hud-hide-sm">3</UiKeycap>
             <ZenIcon name="chevron-up" :size="16" class="text-secondary transition-transform hud-hide-sm" :class="showHeritageMenu ? 'rotate-180' : ''" />
           </button>

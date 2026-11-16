@@ -18,6 +18,7 @@ import {
   type StreakState
 } from '../../../lib/streak/streakRules'
 import { getStartOfVietnamDayMs, getVietnamDayKey, getVietnamWeekKey } from '../../../lib/time/vietnamDay'
+import { getActiveFestival } from '../../../lib/festival/festivalCalendar'
 import { apiError } from './auth.ts'
 import { getDb, withTransaction, type DbConn } from './db.ts'
 import { pickRandomCardByRarity } from '../cards/catalog.ts'
@@ -122,10 +123,12 @@ function publicMilestones(granted: Set<number>, streak: number) {
 /** Trạng thái Sổ Tu Tập. Khách chưa đăng nhập vẫn xem được danh sách cột mốc. */
 export async function getStreakStatus(accountId: number | null, now = Date.now()) {
   const todayKey = getVietnamDayKey(now)
+  const festival = getActiveFestival(todayKey)
   if (!accountId) {
     return {
       authenticated: false,
       todayKey,
+      festival,
       currentStreak: 0,
       bestStreak: 0,
       todayDone: false,
@@ -148,6 +151,7 @@ export async function getStreakStatus(accountId: number | null, now = Date.now()
   return {
     authenticated: true,
     todayKey,
+    festival,
     currentStreak: state.currentStreak,
     bestStreak: state.bestStreak,
     todayDone,

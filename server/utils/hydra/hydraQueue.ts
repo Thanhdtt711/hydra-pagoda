@@ -8,6 +8,7 @@
  *  - Mọi lỗi chỉ để `hydra_status = 'offchain'`; KHÔNG BAO GIỜ ném lỗi ra ngoài luồng gameplay.
  */
 import { getDb } from '../wallet/db'
+import { getWalletConfig } from '../wallet/config'
 import { getHydraConfig, type HydraConfig } from './config'
 import { getHydraClient, type HydraClient, type HydraUtxoMap } from './hydraClient'
 import { buildCip20Lines, buildFuelSplitTx, buildL2LedgerTx, type L2Key, type L2Utxo } from './l2TxBuilder'
@@ -20,6 +21,7 @@ export interface HydraProof {
     status: HydraLedgerStatus
     txHash: string | null
     snapshotNo: number | null
+    dbEngine?: 'postgres' | 'sqlite'
 }
 
 interface QueueState {
@@ -55,7 +57,19 @@ function S(): QueueState {
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
-const OFFCHAIN: HydraProof = { enabled: false, status: 'offchain', txHash: null, snapshotNo: null }
+function currentDbEngine(): 'postgres' | 'sqlite' {
+    return getWalletConfig().databaseUrl ? 'postgres' : 'sqlite'
+}
+
+const OFFCHAIN: HydraProof = {
+    enabled: false,
+    status: 'offchain',
+    txHash: null,
+    snapshotNo: null,
+    get dbEngine() {
+        return currentDbEngine()
+    }
+}
 
 interface LedgerRow {
     id: number
@@ -299,14 +313,16 @@ export async function scheduleHydraRecordByRef(reason: string, refId: string): P
 
 async function readProof(ledgerId: number): Promise<HydraProof> {
     const row = await readLedger(ledgerId)
-    if (!row) return { ...OFFCHAIN, enabled: true }
+    const dbEngine = currentDbEngine()
+    if (!row) return { ...OFFCHAIN, enabled: true, dbEngine }
     const db = await getDb()
     const snap = await db.prepare('SELECT hydra_snapshot_no AS n FROM mc_ledger WHERE id = ?').get(ledgerId) as { n: number | null }
     return {
         enabled: true,
         status: ((row.hydra_status as HydraLedgerStatus) || 'offchain'),
         txHash: row.hydra_tx_hash,
-        snapshotNo: snap?.n ?? null
+        snapshotNo: snap?.n ?? null,
+        dbEngine
     }
 }
 
@@ -316,7 +332,7 @@ async function readProof(ledgerId: number): Promise<HydraProof> {
  */
 export async function getHydraProof(ledgerId: number, waitMs = 1500): Promise<HydraProof> {
     try {
-        if (!getHydraConfig().enabled) return { ...OFFCHAIN }
+        if (!getHydraConfig().enabled) return { ...OFFCHAIN, dbEngine: currentDbEngine() }
         const deadline = Date.now() + waitMs
         const inflight = S().inflight.get(ledgerId)
         if (inflight) await Promise.race([inflight, sleep(waitMs)])
@@ -327,7 +343,7 @@ export async function getHydraProof(ledgerId: number, waitMs = 1500): Promise<Hy
         }
         return proof
     } catch {
-        return { ...OFFCHAIN, enabled: true }
+        return { ...OFFCHAIN, enabled: true, dbEngine: currentDbEngine() }
     }
 }
 

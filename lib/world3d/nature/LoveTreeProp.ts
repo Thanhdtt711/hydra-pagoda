@@ -120,104 +120,255 @@ export class LoveTreeProp {
       scale: [1.0, 0.8, 1.0]
     })
 
-    // 3. ÁN THƯ GỖ HƯƠNG KẾT DUYÊN
+    // 3. ÁN THƯ GỖ HƯƠNG KẾT DUYÊN (Chi tiết cổ truyền, mọi lễ vật nằm gọn trên mặt bàn)
     const woodTableColor = 0x5a2d18
+    const woodDarkTrim = 0x3e1e0f
     const tableTopColor = 0x6e381f
-    const bronzeColor = 0xf1c40f
+    const bronzeColor = 0xd4a017
+    const bronzeBright = 0xf2c14e
+    const brocadeRed = 0x9e1b1b
     const cushionColor = 0xb33939
     const cushionTrim = 0xf39c12
+    const bambooColor = 0xc89d54
 
-    // Mặt bàn gỗ hương
+    // Mặt bàn gỗ hương (1.64m x 0.82m, mặt trên tại y = 0.88)
     parts.push({
-      geometry: LowPolyBuilder.box(1.5, 0.1, 0.75),
+      geometry: LowPolyBuilder.box(1.64, 0.08, 0.82),
       color: tableTopColor,
-      position: [-10.5, 0.82, 16.6]
+      position: [-10.5, 0.84, 16.6]
     })
-    // Chân bàn chạm hoa sen (4 chân)
-    const legW = 0.12
-    const legH = 0.78
+    // Khung gờ dưới mặt bàn
     parts.push({
-      geometry: LowPolyBuilder.box(legW, legH, legW),
-      color: woodTableColor,
-      position: [-11.15, 0.4, 16.32]
+      geometry: LowPolyBuilder.box(1.56, 0.05, 0.74),
+      color: woodDarkTrim,
+      position: [-10.5, 0.78, 16.6]
+    })
+    // Hai đầu cuốn thư uốn cong nhẹ ở hai mép trái/phải mặt bàn
+    for (const sx of [-1, 1]) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.045, 0.045, 0.82, 8),
+        color: woodDarkTrim,
+        position: [-10.5 + sx * 0.82, 0.895, 16.6],
+        rotation: [Math.PI * 0.5, 0, 0]
+      })
+    }
+
+    // Khăn trải bàn gấm đỏ viền vàng kim ở trung tâm mặt bàn
+    parts.push({
+      geometry: LowPolyBuilder.box(1.06, 0.012, 0.56),
+      color: cushionTrim,
+      position: [-10.5, 0.884, 16.6]
     })
     parts.push({
-      geometry: LowPolyBuilder.box(legW, legH, legW),
-      color: woodTableColor,
-      position: [-9.85, 0.4, 16.32]
+      geometry: LowPolyBuilder.box(1.0, 0.016, 0.5),
+      color: brocadeRed,
+      position: [-10.5, 0.887, 16.6]
+    })
+    // Dải khăn gấm rủ trước bàn
+    parts.push({
+      geometry: LowPolyBuilder.box(0.56, 0.24, 0.02),
+      color: brocadeRed,
+      position: [-10.5, 0.76, 16.19]
     })
     parts.push({
-      geometry: LowPolyBuilder.box(legW, legH, legW),
-      color: woodTableColor,
-      position: [-11.15, 0.4, 16.88]
-    })
-    parts.push({
-      geometry: LowPolyBuilder.box(legW, legH, legW),
-      color: woodTableColor,
-      position: [-9.85, 0.4, 16.88]
-    })
-    // Diềm bàn uốn lượn cổ truyền
-    parts.push({
-      geometry: LowPolyBuilder.box(1.4, 0.12, 0.05),
-      color: woodTableColor,
-      position: [-10.5, 0.74, 16.3]
+      geometry: LowPolyBuilder.box(0.58, 0.03, 0.022),
+      color: cushionTrim,
+      position: [-10.5, 0.64, 16.19]
     })
 
-    // Lư hương đồng trên bàn
+    // 4 Chân bàn + đá kê chân + thanh giằng ngang
+    const legW = 0.11
+    const legH = 0.76
+    for (const lx of [-11.2, -9.8]) {
+      for (const lz of [16.28, 16.92]) {
+        parts.push({
+          geometry: LowPolyBuilder.box(legW, legH, legW),
+          color: woodTableColor,
+          position: [lx, 0.41, lz]
+        })
+        parts.push({
+          geometry: LowPolyBuilder.cylinder(0.085, 0.095, 0.05, 8),
+          color: 0x7f8c8d,
+          position: [lx, 0.025, lz]
+        })
+      }
+      // Thanh giằng bên hông
+      parts.push({
+        geometry: LowPolyBuilder.box(0.05, 0.05, 0.64),
+        color: woodDarkTrim,
+        position: [lx, 0.22, 16.6]
+      })
+    }
+    // Diềm bàn trước & sau
+    for (const dz of [16.25, 16.95]) {
+      parts.push({
+        geometry: LowPolyBuilder.box(1.44, 0.11, 0.04),
+        color: woodTableColor,
+        position: [-10.5, 0.72, dz]
+      })
+    }
+
+    // --- LỄ VẬT TRÊN BÀN (Tất cả nằm trong [-11.2, -9.8], mặt bàn y = 0.89) ---
+
+    // A. Lư hương đồng tam cấp ở chính giữa (-10.5, z = 16.64)
     parts.push({
-      geometry: LowPolyBuilder.cylinder(0.14, 0.09, 0.18, 6),
+      geometry: LowPolyBuilder.cylinder(0.14, 0.16, 0.04, 10),
+      color: woodDarkTrim,
+      position: [-10.5, 0.91, 16.64]
+    })
+    parts.push({
+      geometry: LowPolyBuilder.cylinder(0.11, 0.13, 0.04, 10),
       color: bronzeColor,
-      position: [-10.5, 0.96, 16.6]
+      position: [-10.5, 0.95, 16.64]
     })
-    // 3 nén nhang trầm đỏ thắm
     parts.push({
-      geometry: LowPolyBuilder.cylinder(0.015, 0.015, 0.28, 4),
-      color: 0xe84118,
-      position: [-10.5, 1.14, 16.6]
+      geometry: LowPolyBuilder.sphere(0.135, 1),
+      color: bronzeBright,
+      position: [-10.5, 1.04, 16.64],
+      scale: [1.0, 0.78, 1.0]
     })
+    parts.push({
+      geometry: LowPolyBuilder.cylinder(0.125, 0.11, 0.045, 10),
+      color: bronzeColor,
+      position: [-10.5, 1.12, 16.64]
+    })
+    // Tro trầm trong lư
+    parts.push({
+      geometry: LowPolyBuilder.cylinder(0.105, 0.105, 0.02, 10),
+      color: 0xc8c2b8,
+      position: [-10.5, 1.135, 16.64]
+    })
+    // 2 tai lư đồng hai bên
+    for (const sx of [-1, 1]) {
+      parts.push({
+        geometry: LowPolyBuilder.box(0.035, 0.11, 0.03),
+        color: bronzeColor,
+        position: [-10.5 + sx * 0.145, 1.07, 16.64],
+        rotation: [0, 0, sx * -0.25]
+      })
+    }
+    // 3 nén nhang trầm đỏ thắm + đốm lửa đỏ ở đầu nhang
+    for (const [ix, tilt] of [[-0.035, 0.06], [0, 0], [0.035, -0.06]] as const) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.009, 0.009, 0.24, 5),
+        color: 0xc0392b,
+        position: [-10.5 + ix, 1.24, 16.64],
+        rotation: [0, 0, tilt]
+      })
+      parts.push({
+        geometry: LowPolyBuilder.sphere(0.014, 0),
+        color: 0xff5722,
+        position: [-10.5 + ix - Math.sin(tilt) * 0.12, 1.36, 16.64]
+      })
+    }
 
-    // Tráp gỗ đựng Cuộn Chỉ Hồng Nguyệt Lão
+    // B. Bên phải người chơi (x = -10.08): Tráp sơn son thếp vàng đựng Cuộn Chỉ Hồng
     parts.push({
-      geometry: LowPolyBuilder.box(0.26, 0.14, 0.2),
-      color: 0x8b0000,
-      position: [-10.05, 0.94, 16.6]
+      geometry: LowPolyBuilder.box(0.28, 0.08, 0.22),
+      color: 0x7a1212,
+      position: [-10.08, 0.93, 16.58]
     })
     parts.push({
-      geometry: LowPolyBuilder.cylinder(0.05, 0.05, 0.18, 6),
-      color: 0xff1744, // Cuộn chỉ hồng đỏ tươi
-      position: [-10.05, 1.02, 16.6],
-      rotation: [0, 0, Math.PI * 0.5]
+      geometry: LowPolyBuilder.box(0.29, 0.02, 0.23),
+      color: bronzeBright,
+      position: [-10.08, 0.975, 16.58]
     })
+    // 2 cuộn chỉ hồng Nguyệt Lão nằm trên tráp
+    for (const oz of [-0.045, 0.045]) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.038, 0.038, 0.16, 8),
+        color: 0xe81e4a,
+        position: [-10.08, 1.02, 16.58 + oz],
+        rotation: [0, 0, Math.PI * 0.5]
+      })
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.041, 0.041, 0.035, 8),
+        color: bronzeBright,
+        position: [-10.08, 1.02, 16.58 + oz],
+        rotation: [0, 0, Math.PI * 0.5]
+      })
+    }
 
-    // 2 Đệm quỳ tròn bằng cói gấm đỏ
+    // C. Bên trái người chơi (x = -10.92): Ống xăm tre + thẻ xăm + cặp keo xin âm dương (NẰM GỌN TRÊN BÀN)
     parts.push({
-      geometry: LowPolyBuilder.cylinder(0.36, 0.38, 0.1, 8),
-      color: cushionColor,
-      position: [-10.95, 0.05, 15.6]
+      geometry: LowPolyBuilder.cylinder(0.105, 0.12, 0.035, 10),
+      color: woodDarkTrim,
+      position: [-10.92, 0.908, 16.58]
     })
     parts.push({
-      geometry: LowPolyBuilder.cylinder(0.39, 0.39, 0.03, 8),
-      color: cushionTrim,
-      position: [-10.95, 0.09, 15.6]
+      geometry: LowPolyBuilder.cylinder(0.095, 0.09, 0.24, 10),
+      color: bambooColor,
+      position: [-10.92, 1.045, 16.58]
     })
+    // Đai đồng quanh ống xăm
+    for (const by of [0.96, 1.14]) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.099, 0.099, 0.022, 10),
+        color: bronzeBright,
+        position: [-10.92, by, 16.58]
+      })
+    }
+    // 6 thẻ xăm đầu sơn đỏ nhô lên khỏi ống xăm
+    const stickOffsets: Array<[number, number, number, number]> = [
+      [0, 0, 0, 0],
+      [-0.03, 0.015, 0.08, -0.05],
+      [0.03, -0.015, -0.08, 0.05],
+      [-0.015, -0.03, 0.04, 0.09],
+      [0.02, 0.028, -0.05, -0.08],
+      [0.035, 0.01, -0.1, 0.02]
+    ]
+    for (const [sx, sz, rx, rz] of stickOffsets) {
+      parts.push({
+        geometry: LowPolyBuilder.box(0.016, 0.22, 0.008),
+        color: 0xf1e4c6,
+        position: [-10.92 + sx, 1.19, 16.58 + sz],
+        rotation: [rx, 0, rz]
+      })
+      parts.push({
+        geometry: LowPolyBuilder.box(0.018, 0.045, 0.01),
+        color: 0xd63031,
+        position: [-10.92 + sx * 1.25, 1.29, 16.58 + sz * 1.25],
+        rotation: [rx, 0, rz]
+      })
+    }
+    // Cặp keo xin âm dương (2 mảnh gỗ đỏ son hình bán nguyệt đặt cạnh ống xăm)
+    for (const [kx, kz, ry] of [[-10.74, 16.46, 0.35], [-10.67, 16.5, -0.45]] as const) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.042, 0.048, 0.022, 7),
+        color: 0xb8372b,
+        position: [kx, 0.905, kz],
+        rotation: [0, ry, 0],
+        scale: [1.25, 1.0, 0.65]
+      })
+    }
 
-    parts.push({
-      geometry: LowPolyBuilder.cylinder(0.36, 0.38, 0.1, 8),
-      color: cushionColor,
-      position: [-10.05, 0.05, 15.6]
-    })
-    parts.push({
-      geometry: LowPolyBuilder.cylinder(0.39, 0.39, 0.03, 8),
-      color: cushionTrim,
-      position: [-10.05, 0.09, 15.6]
-    })
+    // D. Hai chân nến đồng cổ đặt trên mặt bàn (khớp đúng vị trí nến [-11.14, 16.74] và [-9.86, 16.74])
+    for (const cx of [-11.14, -9.86]) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.065, 0.08, 0.03, 8),
+        color: bronzeColor,
+        position: [cx, 0.905, 16.74]
+      })
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.055, 0.04, 0.025, 8),
+        color: bronzeBright,
+        position: [cx, 0.93, 16.74]
+      })
+    }
 
-    // Đèn lồng hoa đăng nhỏ 2 bên án thư
-    parts.push({
-      geometry: LowPolyBuilder.cylinder(0.08, 0.06, 0.24, 6),
-      color: 0xf39c12,
-      position: [-11.35, 0.98, 16.6]
-    })
+    // 2 Đệm quỳ tròn bằng cói gấm đỏ phía trước bàn
+    for (const px of [-10.92, -10.08]) {
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.36, 0.38, 0.09, 10),
+        color: cushionColor,
+        position: [px, 0.045, 15.62]
+      })
+      parts.push({
+        geometry: LowPolyBuilder.cylinder(0.38, 0.38, 0.025, 10),
+        color: cushionTrim,
+        position: [px, 0.085, 15.62]
+      })
+    }
 
     // Bake toàn bộ static geometry
     const staticGeo = LowPolyBuilder.mergeColored(parts)
@@ -235,12 +386,12 @@ export class LoveTreeProp {
     this.buildIncenseSmoke()
     this.root.add(this.incenseSmokeGroup)
 
-    // 5. Ngọn nến lung linh Pixel Art trên Án Thư Nguyệt Lão
+    // 5. Ngọn nến lung linh Pixel Art trên Án Thư Nguyệt Lão (đặt đúng trên 2 chân nến đồng)
     const candleSys = PixelCandleSystem.getInstance()
     candleSys.addCandle({
       parent: this.root,
-      position: [-10.98, 0.87, 16.6],
-      height: 0.45,
+      position: [-11.14, 0.94, 16.74],
+      height: 0.42,
       withLight: true,
       lightIntensity: 0.65,
       lightDistance: 3.5,
@@ -249,8 +400,8 @@ export class LoveTreeProp {
     })
     candleSys.addCandle({
       parent: this.root,
-      position: [-10.02, 0.87, 16.6],
-      height: 0.45,
+      position: [-9.86, 0.94, 16.74],
+      height: 0.42,
       withLight: true,
       lightIntensity: 0.65,
       lightDistance: 3.5,

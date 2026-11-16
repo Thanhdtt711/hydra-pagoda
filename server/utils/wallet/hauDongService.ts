@@ -19,7 +19,7 @@
  *   + Cộng dồn Bách Gia (crowdfund >= 50 MC): tích lũy đủ 2,500 MC tự động kích hoạt buổi hầu Bách Gia.
  */
 import { randomBytes } from 'node:crypto'
-import { convertSolarToLunar } from '../../../lib/boi/MetaphysicsService'
+import { getActiveFestival, getLunarDateFromDayKey } from '../../../lib/festival/festivalCalendar'
 import { getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from './auth'
 import { getDb, withTransaction, type DbConn } from './db'
@@ -169,11 +169,10 @@ interface SessionRow {
 }
 
 function getLunarDayInfo(now = Date.now()) {
-  const vnDate = new Date(now + 7 * 3600 * 1000)
-  const dateStr = vnDate.toISOString().slice(0, 10)
-  const [yy, mm, dd] = dateStr.split('-').map(Number)
-  const lunar = convertSolarToLunar(dd || 1, mm || 1, yy || 2026)
-  const isFestivalDay = lunar.day === 1 || lunar.day === 14 || lunar.day === 15 || lunar.day === 29 || lunar.day === 30
+  const dateStr = getVietnamDayKey(now)
+  const lunar = getLunarDateFromDayKey(dateStr) ?? { day: 1, month: 1, year: 2026, isLeap: false, leapMonth: 0 }
+  const festival = getActiveFestival(dateStr)
+  const isFestivalDay = Boolean(festival) || lunar.day === 14 || lunar.day === 29 || lunar.day === 30
   return {
     solarDate: dateStr,
     lunarDay: lunar.day,
@@ -181,9 +180,9 @@ function getLunarDayInfo(now = Date.now()) {
     lunarYear: lunar.year,
     isFestivalDay,
     festivalLabel:
-      lunar.day === 1
+      festival?.id === 'mung_1'
         ? `Đại Lễ Sóc Vọng Mồng 1 Tháng ${lunar.month} Âm Lịch`
-        : lunar.day === 15 || lunar.day === 14
+        : festival?.id === 'ram' || lunar.day === 14
           ? `Đại Lễ Vọng Nguyệt Rằm Tháng ${lunar.month} Âm Lịch`
           : `Ngày ${lunar.day}/${lunar.month} Âm Lịch`
   }

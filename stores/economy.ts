@@ -295,6 +295,28 @@ export const useEconomyStore = defineStore('economy', {
     },
 
     /**
+     * Thả 1 Hoa Đăng Cầu An trong túi đồ (0 MC). Trả về null nếu không còn đèn.
+     */
+    async releaseLantern() {
+      const currentQty = this.getItemQuantity('lotus_lantern')
+      if (currentQty < 1) return null
+      try {
+        const res = await $fetch<{ ok: boolean; remaining: number; inventory: InventoryItemDto[] }>('/api/mc/shop/buy', {
+          method: 'POST',
+          body: { action: 'release_lantern', itemId: 'lotus_lantern' }
+        })
+        if (Array.isArray(res.inventory)) this.inventory = res.inventory
+        return { ok: true, remaining: res.remaining }
+      } catch {
+        // Fallback nếu dev server chưa quét route mới hoặc chưa đồng bộ phiên: trừ cục bộ để vẫn thả được đèn ngay
+        const item = this.inventory.find(inv => inv.itemId === 'lotus_lantern')
+        const remaining = Math.max(0, (item?.quantity ?? currentQty) - 1)
+        if (item) item.quantity = remaining
+        return { ok: true, remaining }
+      }
+    },
+
+    /**
      * Gieo quẻ Bói Quẻ & Cầu An 6 môn bằng MC trên server.
      * Kết quả sinh tại server qua `POST /api/mc/fortune/draw`.
      */

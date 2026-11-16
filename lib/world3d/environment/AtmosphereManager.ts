@@ -21,6 +21,7 @@ export class AtmosphereManager {
   public rimLight: THREE.DirectionalLight
 
   public currentMode: TimeOfDayMode = 'day'
+  private isFestivalWarm = false
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     this.scene = scene
@@ -96,6 +97,21 @@ export class AtmosphereManager {
     fog.near = pal.fog.near
     fog.far = pal.fog.far
       ; (this.scene.background as THREE.Color).setHex(pal.fog.color)
+
+    if (this.isFestivalWarm) {
+      this.keyLight.color.lerp(new THREE.Color(0xffd996), 0.25)
+      this.keyLight.intensity = pal.sun.intensity * 1.08
+      this.hemiLight.color.lerp(new THREE.Color(0xffe5b8), 0.18)
+      this.rimLight.color.lerp(new THREE.Color(0xffcf78), 0.25)
+      this.rimLight.intensity = pal.rim.intensity * 1.15
+    }
+  }
+
+  /** Bật/tắt sắc ánh sáng ấm nhẹ cho ngày lễ âm lịch (Mùng 1, Rằm). */
+  public setFestivalMode(enabled: boolean) {
+    if (this.isFestivalWarm === enabled) return
+    this.isFestivalWarm = enabled
+    this.setTimeOfDay(this.currentMode)
   }
 
   /** Giữ API cũ (không còn IBL). */

@@ -26,6 +26,7 @@
     "hydra:logs": "docker compose -f docker-compose.hydra.yml logs -f --tail=50",
     "boi:test": "node --experimental-strip-types scripts/boi/test-fortune-engine.mjs",
     "boi:test:golden": "node --experimental-strip-types scripts/boi/test-golden-suite.mjs",
+    "festival:test": "node --experimental-strip-types scripts/festival/test-festival-calendar.mjs",
     "typecheck": "vue-tsc --noEmit",
     "verify:copy": "node scripts/verify-copy-budget.mjs",
     "copy:inventory": "node scripts/copy-inventory.mjs"

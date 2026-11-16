@@ -63,6 +63,9 @@ export class ZenAudioEngine {
   }
   private isAmbientRunning = false
   private timerIds: any[] = []
+  private fireworkBurstBuffer: AudioBuffer | null = null
+  private lastFireworkLaunchAt = 0
+  private lastFireworkBurstAt = 0
 
   private initContext() {
     if (!this.ctx && typeof window !== 'undefined') {
@@ -439,6 +442,108 @@ export class ZenAudioEngine {
 
   public playMindfulnessBell() {
     this.playSingingBowl()
+  }
+
+  /**
+   * Chuông lễ âm lịch (Mùng 1 / Rằm): Đại Hồng Chung vang, riêng ngày Rằm kèm thêm tiếng chuông tỉnh giác.
+   */
+  public playFestivalBell(festivalId: 'mung_1' | 'ram' = 'ram') {
+    if (this.isMuted) return
+    this.playTempleBell()
+    if (festivalId === 'ram') {
+      setTimeout(() => {
+        if (!this.isMuted) this.playSingingBowl()
+      }, 700)
+    }
+  }
+
+  /**
+   * Tiếng phóng pháo hoa chào mừng ngày lễ (âm thanh tổng hợp Web Audio).
+   */
+  public playFireworkLaunch() {
+    if (this.isMuted || !this.ctx || !this.masterGain || this.ctx.state !== 'running') return
+    const nowMs = performance.now()
+    if (nowMs - this.lastFireworkLaunchAt < 220) return
+    this.lastFireworkLaunchAt = nowMs
+
+    const t = this.ctx.currentTime
+
+    const osc = this.ctx.createOscillator()
+    const g = this.ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(280, t)
+    osc.frequency.exponentialRampToValueAtTime(920, t + 0.42)
+
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.08, t + 0.05)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45)
+
+    osc.connect(g)
+    g.connect(this.masterGain)
+    osc.start(t)
+    osc.stop(t + 0.48)
+  }
+
+  private getFireworkBurstBuffer(): AudioBuffer | null {
+    if (!this.ctx) return null
+    if (!this.fireworkBurstBuffer) {
+      const bufferSize = 2048
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1
+      }
+      this.fireworkBurstBuffer = buffer
+    }
+    return this.fireworkBurstBuffer
+  }
+
+  /**
+   * Tiếng nổ pháo hoa giòn tan + độ vang trầm ngoài cổng chùa (dùng buffer dựng sẵn, 0 GC).
+   */
+  public playFireworkBurst() {
+    if (this.isMuted || !this.ctx || !this.masterGain || this.ctx.state !== 'running') return
+    const nowMs = performance.now()
+    if (nowMs - this.lastFireworkBurstAt < 220) return
+    this.lastFireworkBurstAt = nowMs
+
+    const t = this.ctx.currentTime
+
+    // 1. Tiếng trầm "bùm"
+    const bass = this.ctx.createOscillator()
+    const bassGain = this.ctx.createGain()
+    bass.type = 'sine'
+    bass.frequency.setValueAtTime(105, t)
+    bass.frequency.exponentialRampToValueAtTime(34, t + 0.34)
+    bassGain.gain.setValueAtTime(0.001, t)
+    bassGain.gain.exponentialRampToValueAtTime(0.28, t + 0.02)
+    bassGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.38)
+    bass.connect(bassGain)
+    bassGain.connect(this.masterGain)
+    bass.start(t)
+    bass.stop(t + 0.4)
+
+    // 2. Tiếng nổ lách tách (dùng buffer dựng sẵn)
+    const buffer = this.getFireworkBurstBuffer()
+    if (!buffer) return
+    const noise = this.ctx.createBufferSource()
+    noise.buffer = buffer
+    noise.loop = true
+
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(1400, t)
+    filter.Q.setValueAtTime(0.9, t)
+
+    const noiseGain = this.ctx.createGain()
+    noiseGain.gain.setValueAtTime(0.22, t)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55)
+
+    noise.connect(filter)
+    filter.connect(noiseGain)
+    noiseGain.connect(this.masterGain)
+    noise.start(t)
+    noise.stop(t + 0.56)
   }
 
   private playProceduralSingingBowl() {

@@ -23,6 +23,7 @@ import { TreeSystem } from './nature/TreeSystem'
 import { DistantMountains } from './nature/DistantMountains'
 import { MountainParkourSystem } from './nature/MountainParkourSystem'
 import { PetalParticleSystem } from './nature/PetalParticleSystem'
+import { FestivalFireworksSystem } from './nature/FestivalFireworksSystem'
 import { LoveTreeProp } from './nature/LoveTreeProp'
 import { MapLayout } from './world/MapLayout'
 import { HallLayout, type MeditationSlot } from './world/HallLayout'
@@ -251,6 +252,7 @@ export class TempleStage {
   public distantMountains!: DistantMountains
   public mountainParkourInstance!: MountainParkourSystem
   public petalParticleSystem!: PetalParticleSystem
+  public festivalFireworksSystem!: FestivalFireworksSystem
   public loveTreeInstance!: LoveTreeProp
   private mandalaHalo!: THREE.Mesh
 
@@ -821,6 +823,10 @@ export class TempleStage {
     // 2. Hệ Thống Hạt Tự Nhiên GPU (Cánh hoa Bồ Đề, Đom đóm thiền, Khói trầm)
     this.petalParticleSystem = new PetalParticleSystem(this.windSystem)
     this.scene.add(this.petalParticleSystem.root)
+
+    // 3. Pháo hoa chào mừng ngoài Cổng Tam Quan (chỉ bật vào ngày lễ)
+    this.festivalFireworksSystem = new FestivalFireworksSystem()
+    this.scene.add(this.festivalFireworksSystem.root)
   }
 
   private buildMountainParkour() {
@@ -1004,6 +1010,18 @@ export class TempleStage {
 
   }
 
+  /** Bật/tắt ánh sáng ấm và pháo hoa chào mừng ngày lễ âm lịch (Mùng 1, Rằm). */
+  public setFestivalMode(enabled: boolean) {
+    this.atmosphere?.setFestivalMode(enabled)
+    this.festivalFireworksSystem?.setEnabled(enabled)
+  }
+
+  /** Thả một hoa đăng cầu an xuống Hồ Sen từ hướng người chơi đang đứng. */
+  public releaseFloatingLantern() {
+    this.lotusPondInstance?.releaseLantern(this.playerPos)
+    this.triggerLocalEmote('bowing')
+  }
+
   public setOutfitColor(hexColor: number) {
     if (this.avatar) {
       this.avatar.setRobeColor(hexColor)
@@ -1170,7 +1188,6 @@ export class TempleStage {
     let nearest: InteractionTarget = null
     const distIncenseCourtyard = this.playerPos.distanceTo(TempleStage.PROX_INCENSE)
     const distIncenseHall = this.playerPos.distanceTo(TempleStage.PROX_HALL_INCENSE)
-    const distIncense = Math.min(distIncenseCourtyard, distIncenseHall)
     const distMerit = this.playerPos.distanceTo(TempleStage.PROX_MERIT)
     const distFortune = this.playerPos.distanceTo(TempleStage.PROX_FORTUNE)
     // Ban thờ Tam Bảo & Phật Thích Ca bên trong Chánh điện tại (0, 1.35, -13.5)
@@ -1194,7 +1211,7 @@ export class TempleStage {
       ? this.playerPos.distanceTo(this.loveTreeInstance.interactPos)
       : Infinity
 
-    if (distIncense < 2.6) nearest = 'incense'
+    if (distIncenseCourtyard < 2.6 || distIncenseHall < 3.2) nearest = 'incense'
     else if (distMerit < 2.4) nearest = 'merit_box'
     else if (distFortune < 2.4) nearest = 'fortune'
     else if (distLoveTree < 2.8) nearest = 'love_tree'
@@ -1203,7 +1220,7 @@ export class TempleStage {
     else if (distHauDong < 5.2) nearest = 'hau_dong'
     else if (distAbbot < HallLayout.ABBOT_SPOT.interactionRadius) nearest = 'abbot'
     else if (distDoor < 3.2 && (this.sanctuaryHall ? this.sanctuaryHall.doorAngle < 0.4 : false)) nearest = 'door'
-    else if (distBuddha < 4.8) nearest = 'meditation'
+    else if (distBuddha < 4.8 || this.isInsideSanctuary()) nearest = 'meditation'
     else if (distPond < 8.8) nearest = 'lantern'
 
     if (nearest !== this.currentNearTarget) {
@@ -1940,6 +1957,9 @@ export class TempleStage {
     if (this.petalParticleSystem) {
       this.petalParticleSystem.update(delta)
     }
+    if (this.festivalFireworksSystem) {
+      this.festivalFireworksSystem.update(delta)
+    }
     if (this.loveTreeInstance) {
       this.loveTreeInstance.update(elapsed)
     }
@@ -2424,6 +2444,9 @@ export class TempleStage {
     }
     if (this.petalParticleSystem) {
       this.petalParticleSystem.dispose()
+    }
+    if (this.festivalFireworksSystem) {
+      this.festivalFireworksSystem.dispose()
     }
     if (this.mountainParkourInstance) {
       this.scene.remove(this.mountainParkourInstance.root)
