@@ -160,6 +160,7 @@ interface KoiFish {
   rz: number
   speed: number
   phase: number
+  scale: number
 }
 
 export class LotusPond {
@@ -184,6 +185,9 @@ export class LotusPond {
   private lanternGlow!: THREE.Material
   private lanternFlameMat!: THREE.Material
   private released: ReleasedLantern[] = []
+  private feedTimer = 0
+  private feedTargetX = -3.2
+  private feedTargetZ = 0.0
 
   constructor(collision: CollisionWorld) {
     this.root.name = 'LotusPond'
@@ -523,7 +527,8 @@ export class LotusPond {
         rx: 0.8 + (i % 3) * 0.12,
         rz: 1.5 + (i % 3) * 0.2,
         speed: (0.28 + i * 0.045) * (i % 3 === 1 ? -1 : 1),
-        phase: i * 1.9
+        phase: i * 1.9,
+        scale: 1.0
       })
     }
   }
@@ -763,18 +768,47 @@ export class LotusPond {
     ;(this.waterMat.uniforms.uSunDir!.value as THREE.Vector3).copy(dir).normalize()
   }
 
-  private updateKoi(elapsed: number) {
+  /** Cập nhật kích thước đàn cá Koi theo cấp độ (level 1..5). */
+  public setKoiLevels(levels: number[]) {
+    this.koi.forEach((k, i) => {
+      const lvl = Math.max(1, Math.min(5, Number(levels[i] ?? 1)))
+      k.scale = 1.0 + (lvl - 1) * 0.16
+      k.group.scale.setScalar(k.scale)
+    })
+  }
+
+  /** Kích hoạt hiệu ứng đàn cá Koi quẫy đuôi tụ lại gần bờ khi người chơi cho ăn (6 giây). */
+  public triggerKoiFeed(fromWorld?: THREE.Vector3) {
+    this.feedTimer = 6.0
+    if (fromWorld) {
+      const relX = fromWorld.x - this.pondCenter.x
+      const relZ = fromWorld.z - this.pondCenter.z
+      const sideSign = relX >= 0 ? 1 : -1
+      this.feedTargetX = sideSign * Math.max(LANTERN_BRIDGE_CLEARANCE + 0.7, Math.min(this.pondRadius - 1.4, Math.abs(relX) * 0.65))
+      this.feedTargetZ = THREE.MathUtils.clamp(relZ * 0.65, -2.5, 2.5)
+    }
+  }
+
+  private updateKoi(delta: number, elapsed: number) {
+    if (this.feedTimer > 0) {
+      this.feedTimer = Math.max(0, this.feedTimer - delta)
+    }
+    const feedBlend = this.feedTimer > 0 ? Math.min(1, this.feedTimer * 0.5) * 0.55 : 0
     const gaps = this.waterMat.uniforms.uKoi!.value as THREE.Vector2[]
     this.koi.forEach((k, i) => {
-      const th = k.phase + elapsed * k.speed
-      const x = k.cx + k.rx * Math.cos(th)
-      const z = k.cz + k.rz * Math.sin(th)
+      const speedMul = this.feedTimer > 0 ? 1.85 : 1.0
+      const th = k.phase + elapsed * k.speed * speedMul
+      const baseX = k.cx + k.rx * Math.cos(th)
+      const baseZ = k.cz + k.rz * Math.sin(th)
+      const targetSideX = (k.cx >= 0 ? 1 : -1) * Math.abs(this.feedTargetX)
+      const x = THREE.MathUtils.lerp(baseX, targetSideX + Math.cos(th * 1.5 + i) * 0.45, feedBlend)
+      const z = THREE.MathUtils.lerp(baseZ, this.feedTargetZ + Math.sin(th * 1.5 + i) * 0.45, feedBlend)
       const dir = k.speed >= 0 ? 1 : -1
       const tx = -k.rx * Math.sin(th) * dir
       const tz = k.rz * Math.cos(th) * dir
       k.group.position.set(x, WATER_Y - 0.045, z)
       k.group.rotation.y = Math.atan2(tx, tz)
-      k.tail.rotation.y = Math.sin(elapsed * 6 + k.phase * 3) * 0.45
+      k.tail.rotation.y = Math.sin(elapsed * (this.feedTimer > 0 ? 11 : 6) + k.phase * 3) * 0.45
       gaps[i]!.set(this.pondCenter.x + x, this.pondCenter.z + z)
     })
   }
@@ -784,7 +818,7 @@ export class LotusPond {
     if (mode !== this.appliedMode) this.applyPalette(mode)
 
     this.waterMat.uniforms.uTime!.value = elapsed
-    this.updateKoi(elapsed)
+    this.updateKoi(delta, elapsed)
     this.updateReleasedLanterns(delta)
 
     // Hoa đăng bập bềnh theo nhịp nước

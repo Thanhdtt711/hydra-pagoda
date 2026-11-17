@@ -107,7 +107,7 @@ export const MC_SERVICES_CONFIG: McServiceDefinition[] = [
     name: 'Thỉnh Lễ Vật & Nhang Trầm',
     reason: 'shop_buy_offering',
     description: 'Thỉnh nhang trầm, hoa đăng, bánh oản và mâm ngũ quả dâng cúng Tam Bảo',
-    minMc: 50,
+    minMc: 20,
     maxMc: 120,
     fixedPriceMc: null,
     enabled: true
@@ -311,6 +311,50 @@ export const SHOP_CATALOG: ShopCatalogItem[] = [
     consumable: true,
     defaultUnlocked: false,
     icon: 'lotus'
+  },
+  {
+    id: 'koi_food',
+    name: 'Thức Ăn Cá Koi',
+    subname: 'Hạt ngũ cốc dưỡng đàn cá chép Hồ Sen',
+    category: 'offering',
+    countryCode: 'VN',
+    priceMc: 20,
+    consumable: true,
+    defaultUnlocked: false,
+    icon: 'lotus'
+  },
+  {
+    id: 'seed_lotus',
+    name: 'Hạt Giống Sen Hồng',
+    subname: 'Gieo tại Vườn Thiền, nở hoa sen thanh tịnh',
+    category: 'offering',
+    countryCode: 'VN',
+    priceMc: 30,
+    consumable: true,
+    defaultUnlocked: false,
+    icon: 'lotus'
+  },
+  {
+    id: 'seed_bamboo',
+    name: 'Mầm Trúc Quân Tử',
+    subname: 'Gieo tại Vườn Thiền, vươn thẳng giữa gió sương',
+    category: 'offering',
+    countryCode: 'VN',
+    priceMc: 40,
+    consumable: true,
+    defaultUnlocked: false,
+    icon: 'sparkles'
+  },
+  {
+    id: 'seed_bodhi',
+    name: 'Hạt Bồ Đề Tâm',
+    subname: 'Gieo tại Vườn Thiền, tỏa bóng mát giác ngộ',
+    category: 'offering',
+    countryCode: 'IN',
+    priceMc: 50,
+    consumable: true,
+    defaultUnlocked: false,
+    icon: 'sparkles'
   },
   {
     id: 'love_knot_charm',
@@ -902,6 +946,8 @@ export const MEDITATION_PLANS: readonly MeditationPlan[] = [
 
 /** Trần MC nhận từ tọa thiền mỗi ngày (giờ Việt Nam UTC+7) cho mỗi tài khoản. */
 export const DAILY_MEDITATION_CAP_MC = 200
+export const GROUP_MEDITATION_BONUS_MC = 15
+export const GROUP_MEDITATION_MIN_PILGRIMS = 2
 /** Dung sai trễ mạng khi kiểm tra đủ thời gian (giây). */
 const MEDITATION_EARLY_TOLERANCE_SEC = 3
 /** Sau khi hết giờ, chỗ ngồi vẫn được giữ thêm một khoảng ngắn để client kịp gọi hoàn thành. */
@@ -910,12 +956,19 @@ const MEDITATION_SLOT_GRACE_MS = 60_000
 async function getMeditationEarnedToday(conn: DbConn, accountId: number, dayKey: string): Promise<number> {
   const row = await conn
     .prepare(
+      `SELECT COALESCE(SUM(delta_mc), 0) AS total
+         FROM mc_ledger
+        WHERE account_id = ? AND reason = 'meditation_reward' AND created_at >= ?`
+    )
+    .get(accountId, getStartOfVietnamDayMs()) as { total: number }
+  const sessionRow = await conn
+    .prepare(
       `SELECT COALESCE(SUM(credited_mc), 0) AS total
          FROM meditation_sessions
         WHERE account_id = ? AND day_key = ? AND status = 'completed'`
     )
     .get(accountId, dayKey) as { total: number }
-  return Number(row.total || 0)
+  return Math.max(Number(row?.total || 0), Number(sessionRow?.total || 0))
 }
 
 /** Các mã bồ đoàn đang có phiên thiền còn hiệu lực (của bất kỳ tài khoản nào), tùy chọn loại trừ một tài khoản. */
@@ -940,13 +993,118 @@ export async function getMeditationStatus(accountId: number | null) {
   const now = Date.now()
   const dayKey = getVietnamDayKey(now)
   const dailyEarnedMc = accountId ? await getMeditationEarnedToday(conn, accountId, dayKey) : 0
+  const occupiedSlotIds = await getMeditationOccupiedSlotIds(conn, now)
+  const activeRows = await conn
+    .prepare(
+      `SELECT DISTINCT account_id, started_at, duration_sec
+         FROM meditation_sessions
+        WHERE status = 'active'`
+    )
+    .all() as Array<{ account_id: number; started_at: number; duration_sec: number }>
+  const activeAccountIds = new Set<number>()
+  for (const r of activeRows) {
+    if (now <= r.started_at + r.duration_sec * 1000 + MEDITATION_SLOT_GRACE_MS) {
+      activeAccountIds.add(Number(r.account_id))
+    }
+  }
+  const activePilgrimCount = activeAccountIds.size
+  let groupBonusClaimedToday = false
+  if (accountId) {
+    const groupRefId = `med_group_${accountId}_${dayKey}`
+    const existing = await conn
+      .prepare("SELECT 1 AS ok FROM mc_ledger WHERE reason = 'meditation_reward' AND ref_id = ?")
+      .get(groupRefId)
+    groupBonusClaimedToday = Boolean(existing)
+  }
+
   return {
     plans: MEDITATION_PLANS,
     dailyCapMc: DAILY_MEDITATION_CAP_MC,
     dailyEarnedMc,
     remainingDailyMc: Math.max(0, DAILY_MEDITATION_CAP_MC - dailyEarnedMc),
-    occupiedSlotIds: await getMeditationOccupiedSlotIds(conn, now),
-    totalSlots: HallLayout.getTotalSlotCount()
+    occupiedSlotIds,
+    totalSlots: HallLayout.getTotalSlotCount(),
+    activePilgrimCount,
+    groupResonanceActive: activePilgrimCount >= GROUP_MEDITATION_MIN_PILGRIMS,
+    groupBonusMc: GROUP_MEDITATION_BONUS_MC,
+    groupBonusClaimedToday
+  }
+}
+
+/**
+ * Hội Thiền Nhóm Đồng Bộ (Mục 4):
+ * Khi có từ 2 hành giả trở lên cùng đang tọa thiền trong Chánh Điện (bao gồm chính người gọi),
+ * mỗi tài khoản được nhận thêm Lộc Cộng Hưởng Đồng Tu (+15 MC, tối đa 1 lần/ngày, nằm trong trần 200 MC/ngày).
+ */
+export async function claimGroupMeditationBonus(accountId: number) {
+  if (!Number.isSafeInteger(accountId) || accountId <= 0) {
+    apiError(401, 'unauthorized', 'Tài khoản không hợp lệ')
+  }
+  const conn = await getDb()
+  const now = Date.now()
+  const dayKey = getVietnamDayKey(now)
+  const groupRefId = `med_group_${accountId}_${dayKey}`
+
+  const existing = await conn
+    .prepare("SELECT id, delta_mc FROM mc_ledger WHERE reason = 'meditation_reward' AND ref_id = ?")
+    .get(groupRefId) as { id: number; delta_mc: number } | undefined
+
+  const balanceOf = async () =>
+    Number(((await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId)) as { mc_balance: number })?.mc_balance ?? 0)
+
+  if (existing) {
+    return {
+      ok: true,
+      idempotentReplay: true,
+      creditedMc: Number(existing.delta_mc),
+      mcBalance: await balanceOf(),
+      dailyEarnedMc: await getMeditationEarnedToday(conn, accountId, dayKey),
+      dailyCapMc: DAILY_MEDITATION_CAP_MC
+    }
+  }
+
+  const activeRows = await conn
+    .prepare(
+      `SELECT account_id, started_at, duration_sec
+         FROM meditation_sessions
+        WHERE status = 'active'`
+    )
+    .all() as Array<{ account_id: number; started_at: number; duration_sec: number }>
+
+  const activeAccountIds = new Set<number>()
+  for (const r of activeRows) {
+    if (now <= r.started_at + r.duration_sec * 1000 + MEDITATION_SLOT_GRACE_MS) {
+      activeAccountIds.add(Number(r.account_id))
+    }
+  }
+
+  if (!activeAccountIds.has(accountId)) {
+    apiError(400, 'not_meditating', 'Bạn cần đang ngồi tọa thiền trong Chánh Điện để nhận Lộc Cộng Hưởng.')
+  }
+  if (activeAccountIds.size < GROUP_MEDITATION_MIN_PILGRIMS) {
+    apiError(400, 'need_more_pilgrims', 'Cần ít nhất 2 đồng tu cùng tọa thiền để kích hoạt Hội Thiền Nhóm.')
+  }
+
+  const earned = await getMeditationEarnedToday(conn, accountId, dayKey)
+  const creditedMc = Math.min(GROUP_MEDITATION_BONUS_MC, Math.max(0, DAILY_MEDITATION_CAP_MC - earned))
+  let ledgerId: number | null = null
+  if (creditedMc > 0) {
+    const res = await credit(accountId, creditedMc, 'meditation_reward', {
+      refType: 'meditation_group',
+      refId: groupRefId,
+      metadata: { activePilgrimCount: activeAccountIds.size, dayKey }
+    })
+    ledgerId = res.ledgerId
+  }
+
+  return {
+    ok: true,
+    idempotentReplay: false,
+    creditedMc,
+    ledgerId,
+    mcBalance: await balanceOf(),
+    dailyEarnedMc: await getMeditationEarnedToday(conn, accountId, dayKey),
+    dailyCapMc: DAILY_MEDITATION_CAP_MC
   }
 }
 

@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { CollisionWorld, BoxCollider, CylinderCollider } from '../collision'
 import { SlotBatch } from '../style/SlotBatch'
+import { LowPolyBuilder } from '../style/LowPolyBuilder'
+import { createPlaqueTexture } from '../utils/PlaqueTexture'
 
 export interface ParkourPlatformDef {
   id: string
@@ -141,19 +143,56 @@ export class MountainParkourSystem {
     // -------------------------------------------------------------------------
     // 1. CỔNG XUẤT PHÁT & HÒM ĐĂNG KÝ CHÂN NÚI (z = -33.5m, y = 0.45m)
     // -------------------------------------------------------------------------
-    b.cylinder('woodDark', 0.18, 0.20, 3.4, 8, -2.0, 1.7, -33.5)
-    b.cylinder('woodDark', 0.18, 0.20, 3.4, 8, 2.0, 1.7, -33.5)
-    b.box('woodDark', 4.6, 0.32, 0.40, 0, 3.3, -33.5)
-    b.box('roofDark', 5.0, 0.18, 0.9, 0, 3.5, -33.5)
-    // Hòm Đăng Ký Parkour
-    b.box('woodDark', 1.2, 0.9, 0.85, 0, 0.45, -33.5)
-    b.box('gold', 1.28, 0.08, 0.92, 0, 0.92, -33.5)
-    b.box('gold', 0.38, 0.05, 0.04, 0, 0.74, -33.05)
-    // Bia đá chỉ dẫn
-    b.box('stone', 1.4, 1.5, 0.4, -2.8, 0.75, -33.5)
+    // Bệ đá chân cột
+    b.cylinder('stone', 0.30, 0.36, 0.28, 8, -2.0, 0.14, -33.5)
+    b.cylinder('stone', 0.30, 0.36, 0.28, 8, 2.0, 0.14, -33.5)
+    // Cột gỗ lim & xà ngang
+    b.cylinder('woodDark', 0.18, 0.20, 3.3, 8, -2.0, 1.9, -33.5)
+    b.cylinder('woodDark', 0.18, 0.20, 3.3, 8, 2.0, 1.9, -33.5)
+    b.box('woodDark', 4.8, 0.30, 0.42, 0, 3.45, -33.5)
+    b.box('wood', 4.4, 0.14, 0.34, 0, 3.15, -33.5)
+    // Mái ngói 2 tầng + đầu đao cong + búp sen vàng
+    b.box('roofDark', 5.4, 0.18, 1.15, 0, 3.70, -33.5)
+    b.box('roofDark', 3.6, 0.20, 0.85, 0, 3.90, -33.5)
+    b.box('roofDark', 0.45, 0.10, 0.90, -2.85, 3.78, -33.5, 0, 0, 0.25)
+    b.box('roofDark', 0.45, 0.10, 0.90, 2.85, 3.78, -33.5, 0, 0, -0.25)
+    b.sphere('gold', 0.16, 0, 0, 4.12, -33.5)
+    // 2 Đèn lồng treo cổng xuất phát
+    for (const lx of [-1.55, 1.55]) {
+      b.cylinder('woodDark', 0.02, 0.02, 0.28, 6, lx, 3.18, -33.5)
+      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.14, 0.14, 0.28, 6), { position: [lx, 2.92, -33.5] })
+    }
+
+    // Hòm Đăng Ký Parkour chi tiết
+    b.box('stone', 1.38, 0.08, 1.00, 0, 0.04, -33.5)
+    b.box('woodDark', 1.24, 0.84, 0.86, 0, 0.48, -33.5)
+    b.box('wood', 1.10, 0.66, 0.90, 0, 0.50, -33.5)
+    b.box('gold', 1.32, 0.08, 0.94, 0, 0.94, -33.5)
+    b.box('gold', 0.38, 0.06, 0.05, 0, 0.74, -33.04)
+
+    // Bia đá chỉ dẫn chân núi có mái che nhỏ
+    b.box('stone', 1.55, 0.18, 0.65, -2.95, 0.09, -33.5)
+    b.box('stone', 1.25, 1.45, 0.36, -2.95, 0.90, -33.5)
+    b.box('roofDark', 1.50, 0.16, 0.56, -2.95, 1.70, -33.5)
+
+    // Bảng tên "ĐƯỜNG LÊN ĐỈNH PHÙ VÂN" gắn trên xà cổng xuất phát
+    const gateTex = createPlaqueTexture({
+      text: 'ĐƯỜNG LÊN ĐỈNH PHÙ VÂN',
+      background: '#1a0f0a',
+      border: '#d9a441',
+      textColor: '#f6cf74',
+      width: 1280,
+      height: 256
+    })
+    const gatePlaque = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 0.52),
+      new THREE.MeshBasicMaterial({ map: gateTex })
+    )
+    gatePlaque.position.set(0, 3.45, -33.27)
+    this.root.add(gatePlaque)
 
     // -------------------------------------------------------------------------
-    // 2. DỰNG TỪNG BẬC NHẢY TRONG 66 PLATFORMS
+    // 2. DỰNG TỪNG BẬC NHẢY TRONG 66 PLATFORMS (Không còn cọc lơ lửng!)
     // -------------------------------------------------------------------------
     for (const p of MountainParkourSystem.PLATFORMS) {
       if (p.id === 'cp1_pavilion' || p.id === 'summit_sanctuary') continue // dựng riêng bên dưới
@@ -162,23 +201,28 @@ export class MountainParkourSystem {
       const [w, h, d] = p.size
 
       if (p.type === 'stone') {
+        // Bậc đá tảng cổ: mặt đá phẳng, thân đá chính, phần chân thuôn hẹp phía dưới cho cảm giác khối đá chắc chắn
         b.box('stone', w, h, d, x, y, z)
-        b.box('ground', w * 0.92, 0.04, d * 0.92, x, y + h * 0.5 + 0.02, z)
+        b.box('roofDark', w * 0.82, h * 0.55, d * 0.82, x, y - h * 0.72, z)
+        b.box('ground', w * 0.90, 0.04, d * 0.90, x, y + h * 0.5 + 0.02, z)
       } else if (p.type === 'wood') {
-        // Tấm ván gỗ lim to dày dặn dễ nhảy
+        // Đài gỗ lim chắc chắn: mặt ván sáng, viền gỗ sẫm, khung đỡ chữ nhật giật cấp bên dưới (không dùng cọc thòng lơ lửng)
         b.box('wood', w, h, d, x, y, z)
-        // Nẹp viền gỗ sẫm màu chống trượt
-        b.box('woodDark', w * 1.04, 0.04, d * 1.04, x, y + h * 0.5 - 0.02, z)
-        // Mặt phẳng sáng ở giữa giúp căn điểm rơi từ xa
-        b.box('ground', w * 0.88, 0.02, d * 0.88, x, y + h * 0.5 + 0.01, z)
-        // Cọc trụ sắt đỡ bên dưới
-        b.cylinder('roofDark', 0.06, 0.06, 2.6, 6, x, y - 1.2, z)
+        b.box('woodDark', w * 1.04, 0.05, d * 1.04, x, y + h * 0.5 - 0.025, z)
+        b.box('ground', w * 0.86, 0.025, d * 0.86, x, y + h * 0.5 + 0.012, z)
+        // Đế kèo gỗ giật cấp phía dưới thay cho cọc sắt lơ lửng
+        b.box('woodDark', w * 0.76, 0.14, d * 0.76, x, y - h * 0.5 - 0.07, z)
+        b.box('roofDark', w * 0.52, 0.12, d * 0.52, x, y - h * 0.5 - 0.18, z)
+        // 4 đinh đồng góc mặt bệ giúp dễ căn mép khi nhảy
+        for (const sx of [-1, 1]) {
+          for (const sz of [-1, 1]) {
+            b.box('gold', 0.08, 0.03, 0.08, x + sx * (w * 0.44), y + h * 0.5 + 0.015, z + sz * (d * 0.44))
+          }
+        }
       } else if (p.type === 'lotus') {
-        // Fallback nếu có
         b.cylinder('gold', w * 0.5, w * 0.32, h, 8, x, y, z)
         b.sphere('roofDark', w * 0.38, 0, x, y + h * 0.45, z)
       } else if (p.type === 'pillar') {
-        // Fallback nếu có
         const topY = y + 0.20
         const pillarH = Math.max(h, 1.6)
         const pillarCenterY = topY - pillarH * 0.5
@@ -192,59 +236,112 @@ export class MountainParkourSystem {
     // 3. CHECKPOINT 1: ĐÌNH VỌNG MÂY (y = 29.5m, x = -6.5m, z = -42.0m)
     // -------------------------------------------------------------------------
     const [c1x, c1y, c1z] = [-6.5, 29.5, -42.0]
-    // Sàn gỗ bát giác
+    // Bệ sàn giật cấp + kèo đỡ bên dưới
     b.box('woodDark', 5.6, 0.5, 5.6, c1x, c1y, c1z)
-    b.box('wood', 5.2, 0.05, 5.2, c1x, c1y + 0.28, c1z)
-    // 4 Cột đình
-    b.cylinder('woodDark', 0.16, 0.16, 3.6, 8, c1x - 2.2, c1y + 1.8, c1z - 2.2)
-    b.cylinder('woodDark', 0.16, 0.16, 3.6, 8, c1x + 2.2, c1y + 1.8, c1z - 2.2)
-    b.cylinder('woodDark', 0.16, 0.16, 3.6, 8, c1x - 2.2, c1y + 1.8, c1z + 2.2)
-    b.cylinder('woodDark', 0.16, 0.16, 3.6, 8, c1x + 2.2, c1y + 1.8, c1z + 2.2)
-    // Mái ngói cong cổ tự
-    b.box('roofDark', 6.4, 0.3, 6.4, c1x, c1y + 3.6, c1z)
-    b.box('roofDark', 4.4, 0.4, 4.4, c1x, c1y + 4.0, c1z)
-    b.sphere('gold', 0.4, 0, c1x, c1y + 4.5, c1z)
+    b.box('roofDark', 4.6, 0.28, 4.6, c1x, c1y - 0.38, c1z)
+    b.box('wood', 5.2, 0.06, 5.2, c1x, c1y + 0.27, c1z)
+    // 4 Cột đình có chân tảng đá & lan can gỗ 2 bên
+    for (const cx of [-2.2, 2.2]) {
+      for (const cz of [-2.2, 2.2]) {
+        b.cylinder('stone', 0.24, 0.28, 0.22, 8, c1x + cx, c1y + 0.38, c1z + cz)
+        b.cylinder('woodDark', 0.16, 0.18, 3.3, 8, c1x + cx, c1y + 2.05, c1z + cz)
+      }
+    }
+    // Lan can gỗ hai bên Đông/Tây (chừa trống Bắc/Nam để nhảy lên/xuống mượt)
+    b.box('woodDark', 0.12, 0.10, 4.2, c1x - 2.2, c1y + 0.95, c1z)
+    b.box('woodDark', 0.12, 0.10, 4.2, c1x + 2.2, c1y + 0.95, c1z)
+    // Xà ngang & Mái ngói cong 2 tầng + 4 đầu đao + búp sen vàng
+    b.box('woodDark', 5.0, 0.24, 5.0, c1x, c1y + 3.62, c1z)
+    b.box('roofDark', 6.4, 0.26, 6.4, c1x, c1y + 3.85, c1z)
+    b.box('roofDark', 4.4, 0.34, 4.4, c1x, c1y + 4.15, c1z)
+    b.box('roofDark', 2.4, 0.32, 2.4, c1x, c1y + 4.45, c1z)
+    for (const ex of [-3.25, 3.25]) {
+      for (const ez of [-3.25, 3.25]) {
+        b.box('roofDark', 0.55, 0.14, 0.55, c1x + ex, c1y + 3.96, c1z + ez, ex > 0 ? 0.2 : -0.2, 0, ez > 0 ? -0.2 : 0.2)
+      }
+    }
+    b.sphere('gold', 0.34, 0, c1x, c1y + 4.78, c1z)
+    // 2 Đèn lồng đình
+    for (const lx of [-1.8, 1.8]) {
+      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.14, 0.14, 0.28, 6), { position: [c1x + lx, c1y + 3.35, c1z + 2.2] })
+    }
     // Băng ghế nghỉ chân
-    b.box('wood', 3.6, 0.4, 0.5, c1x, c1y + 0.5, c1z - 2.2)
+    b.box('wood', 3.2, 0.36, 0.48, c1x, c1y + 0.48, c1z - 1.9)
 
     // -------------------------------------------------------------------------
-    // 4. CHECKPOINT 2: CẦU TREO VÁCH NÚI (y = 48.0m)
+    // 4. CHECKPOINT 2: CẦU TREO VÁCH NÚI (y = 48.0m -> 48.4m)
+    // Đặt trụ gỗ và tay vịn bám đúng theo từng nhịp cầu cp2_bridge_a -> b -> c
     // -------------------------------------------------------------------------
-    // Dây cáp treo hai bên mạn cầu
-    b.cylinder('roofDark', 0.04, 0.04, 8.5, 6, 0, 49.2, -41.5, 0, 0, 1.57)
-    b.cylinder('roofDark', 0.04, 0.04, 8.5, 6, 0, 50.0, -41.5, 0, 0, 1.57)
+    const bridgeSegments: Array<{ p1: [number, number, number]; p2: [number, number, number] }> = [
+      { p1: [4.6, 48.15, -40.2], p2: [1.7, 48.28, -40.9] },
+      { p1: [1.7, 48.28, -40.9], p2: [-1.7, 48.42, -42.1] },
+      { p1: [-1.7, 48.42, -42.1], p2: [-4.6, 48.55, -43.7] }
+    ]
+    for (const seg of bridgeSegments) {
+      const dx = seg.p2[0] - seg.p1[0]
+      const dy = seg.p2[1] - seg.p1[1]
+      const dz = seg.p2[2] - seg.p1[2]
+      const len = Math.hypot(dx, dy, dz)
+      const yaw = Math.atan2(dx, dz)
+      const mx = (seg.p1[0] + seg.p2[0]) * 0.5
+      const my = (seg.p1[1] + seg.p2[1]) * 0.5
+      const mz = (seg.p1[2] + seg.p2[2]) * 0.5
+      const nx = Math.cos(yaw) * 0.98
+      const nz = -Math.sin(yaw) * 0.98
+
+      // Trụ gỗ hai bên đầu nhịp cầu
+      b.cylinder('woodDark', 0.08, 0.09, 1.1, 6, seg.p1[0] + nx, seg.p1[1] + 0.55, seg.p1[2] + nz)
+      b.cylinder('woodDark', 0.08, 0.09, 1.1, 6, seg.p1[0] - nx, seg.p1[1] + 0.55, seg.p1[2] - nz)
+      // Thanh tay vịn dọc theo đúng góc nghiêng của nhịp cầu
+      b.box('woodDark', 0.07, 0.07, len, mx + nx, my + 0.95, mz + nz, 0, yaw, 0)
+      b.box('woodDark', 0.07, 0.07, len, mx - nx, my + 0.95, mz - nz, 0, yaw, 0)
+    }
 
     // -------------------------------------------------------------------------
     // 5. THIÊN ĐỈNH PHÙ VÂN (y = 70.0m, x = 0.0m, z = -78.0m)
     // -------------------------------------------------------------------------
     const [sx, sy, sz] = [0.0, 70.0, -78.0]
 
-    // Nền đá hoa cương đài thưởng ngoạn 10m x 10m
+    // Nền đá hoa cương 2 tầng giật cấp (không bị trông như tấm ván mỏng khi nhìn từ dưới)
     b.box('stone', 10.0, 0.8, 10.0, sx, sy, sz)
-    b.box('ground', 9.4, 0.04, 9.4, sx, sy + 0.42, sz)
+    b.box('roofDark', 8.4, 0.45, 8.4, sx, sy - 0.62, sz)
+    b.box('stone', 6.8, 0.38, 6.8, sx, sy - 1.02, sz)
+    b.box('ground', 9.4, 0.05, 9.4, sx, sy + 0.425, sz)
 
-    // Lan can đá bảo vệ 4 cạnh
+    // Lan can đá bảo vệ phía Bắc, Tây, Đông & chừa cổng vào phía Nam (z + 4.7)
     b.box('stone', 9.6, 0.85, 0.3, sx, sy + 0.85, sz - 4.7)
-    b.box('stone', 9.6, 0.85, 0.3, sx, sy + 0.85, sz + 4.7)
     b.box('stone', 0.3, 0.85, 9.0, sx - 4.7, sy + 0.85, sz)
     b.box('stone', 0.3, 0.85, 9.0, sx + 4.7, sy + 0.85, sz)
+    // Lan can Nam chia làm 2 cánh để chừa lối vào rộng 3.4m
+    b.box('stone', 3.0, 0.85, 0.3, sx - 3.2, sy + 0.85, sz + 4.7)
+    b.box('stone', 3.0, 0.85, 0.3, sx + 3.2, sy + 0.85, sz + 4.7)
+    // 2 Trụ cổng đá có đèn lồng đón người chơi lên đỉnh
+    for (const gx of [-1.7, 1.7]) {
+      b.cylinder('stone', 0.26, 0.30, 1.45, 8, sx + gx, sy + 1.12, sz + 4.7)
+      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.16, 0.16, 0.28, 6), { position: [sx + gx, sy + 1.98, sz + 4.7] })
+      b.cone('roofDark', 0.34, 0.20, 6, sx + gx, sy + 2.22, sz + 4.7)
+    }
 
     // Trụ hoa sen 4 góc lan can
-    b.cylinder('gold', 0.25, 0.25, 1.2, 8, sx - 4.7, sy + 0.9, sz - 4.7)
-    b.cylinder('gold', 0.25, 0.25, 1.2, 8, sx + 4.7, sy + 0.9, sz - 4.7)
-    b.cylinder('gold', 0.25, 0.25, 1.2, 8, sx - 4.7, sy + 0.9, sz + 4.7)
-    b.cylinder('gold', 0.25, 0.25, 1.2, 8, sx + 4.7, sy + 0.9, sz + 4.7)
+    b.cylinder('gold', 0.25, 0.25, 1.25, 8, sx - 4.7, sy + 0.92, sz - 4.7)
+    b.cylinder('gold', 0.25, 0.25, 1.25, 8, sx + 4.7, sy + 0.92, sz - 4.7)
+    b.cylinder('gold', 0.25, 0.25, 1.25, 8, sx - 4.7, sy + 0.92, sz + 4.7)
+    b.cylinder('gold', 0.25, 0.25, 1.25, 8, sx + 4.7, sy + 0.92, sz + 4.7)
 
-    // Khung Lầu Chuông Thiên Đỉnh
-    b.cylinder('woodDark', 0.22, 0.24, 4.6, 8, sx - 1.8, sy + 2.7, sz)
-    b.cylinder('woodDark', 0.22, 0.24, 4.6, 8, sx + 1.8, sy + 2.7, sz)
-    b.box('woodDark', 4.4, 0.4, 0.45, sx, sy + 4.8, sz)
-    b.box('roofDark', 5.0, 0.3, 1.8, sx, sy + 5.1, sz)
-    b.sphere('gold', 0.45, 0, sx, sy + 5.5, sz)
+    // Khung Lầu Chuông Thiên Đỉnh 2 tầng mái
+    b.cylinder('stone', 0.32, 0.36, 0.24, 8, sx - 1.8, sy + 0.52, sz)
+    b.cylinder('stone', 0.32, 0.36, 0.24, 8, sx + 1.8, sy + 0.52, sz)
+    b.cylinder('woodDark', 0.22, 0.24, 4.4, 8, sx - 1.8, sy + 2.8, sz)
+    b.cylinder('woodDark', 0.22, 0.24, 4.4, 8, sx + 1.8, sy + 2.8, sz)
+    b.box('woodDark', 4.6, 0.36, 0.48, sx, sy + 4.85, sz)
+    b.box('roofDark', 5.2, 0.26, 2.2, sx, sy + 5.15, sz)
+    b.box('roofDark', 3.6, 0.24, 1.5, sx, sy + 5.40, sz)
+    b.sphere('gold', 0.38, 0, sx, sy + 5.72, sz)
 
-    // ĐẠI HỒNG CHUNG KHỔNG LỒ MẠ VÀNG
-    b.cylinder('gold', 0.55, 0.85, 1.6, 12, sx, sy + 3.6, sz)
-    b.sphere('gold', 0.45, 0, sx, sy + 4.4, sz)
+    // ĐẠI HỒNG CHUNG KHỔNG LỒ MẠ VÀNG (đai chuông + quai chuông)
+    b.cylinder('gold', 0.52, 0.88, 1.55, 16, sx, sy + 3.55, sz)
+    b.cylinder('roofDark', 0.90, 0.90, 0.08, 16, sx, sy + 2.84, sz)
+    b.sphere('gold', 0.42, 0, sx, sy + 4.35, sz)
 
     // RƯƠNG BÁU THIÊN ĐỈNH (Phần thưởng +100 MC)
     b.box('woodDark', 1.4, 0.9, 0.9, sx, sy + 0.85, sz + 2.2)

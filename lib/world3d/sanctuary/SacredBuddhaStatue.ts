@@ -15,6 +15,7 @@ import { SlotBatch } from '../style/SlotBatch'
 export class SacredBuddhaStatue {
   public root: THREE.Group = new THREE.Group()
   public haloMesh: THREE.Mesh
+  public haloRingGroup: THREE.Group
   public isLoaded = false
 
   private modelGroup: THREE.Object3D | null = null
@@ -41,6 +42,23 @@ export class SacredBuddhaStatue {
     this.haloMesh.position.set(0, 3.6, -1.25)
     this.haloMesh.renderOrder = 2
     this.root.add(this.haloMesh)
+
+    // Vòng hào quang chạm khắc xoay chậm phía sau đầu Phật Tổ
+    this.haloRingGroup = new THREE.Group()
+    this.haloRingGroup.position.set(0, 3.6, -1.24)
+    const ringMat = FlatMaterialFactory.getInstance().emissive('gold')
+    const outerRing = new THREE.Mesh(new THREE.RingGeometry(1.42, 1.54, 24), ringMat)
+    const innerRing = new THREE.Mesh(new THREE.RingGeometry(1.06, 1.12, 24), ringMat)
+    this.haloRingGroup.add(outerRing, innerRing)
+    const spokeGeo = new THREE.BoxGeometry(0.05, 0.36, 0.02)
+    for (let i = 0; i < 12; i++) {
+      const ang = (i * Math.PI * 2) / 12
+      const spoke = new THREE.Mesh(spokeGeo, ringMat)
+      spoke.position.set(Math.cos(ang) * 1.28, Math.sin(ang) * 1.28, 0)
+      spoke.rotation.z = ang + Math.PI * 0.5
+      this.haloRingGroup.add(spoke)
+    }
+    this.root.add(this.haloRingGroup)
 
     this.loadBuddhaGLB()
   }
@@ -92,6 +110,7 @@ export class SacredBuddhaStatue {
         this.root.add(model)
         this.isLoaded = true
         this.haloMesh.position.set(0, 3.6, -1.25)
+        this.haloRingGroup.position.set(0, 3.6, -1.24)
       },
       undefined,
       (error) => {
@@ -123,12 +142,14 @@ export class SacredBuddhaStatue {
     this.root.add(this.fallbackGroup)
     this.isLoaded = true
     this.haloMesh.position.set(0, 3.3, -0.9)
+    this.haloRingGroup.position.set(0, 3.3, -0.89)
   }
 
   public update(delta: number) {
     this.time += delta
     const pulse = 1 + Math.sin(this.time * 1.5) * 0.035
     this.haloMesh.scale.setScalar(pulse)
+    this.haloRingGroup.rotation.z += delta * 0.14
   }
 
   public dispose() {
@@ -149,5 +170,10 @@ export class SacredBuddhaStatue {
     this.haloMesh.geometry.dispose()
     this.haloMaterial.dispose()
     this.root.remove(this.haloMesh)
+    this.haloRingGroup.traverse((child) => {
+      const m = child as THREE.Mesh
+      if (m.isMesh && m.geometry) m.geometry.dispose()
+    })
+    this.root.remove(this.haloRingGroup)
   }
 }

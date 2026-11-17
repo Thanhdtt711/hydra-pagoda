@@ -7,7 +7,7 @@ import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
 import { LowPolyBuilder } from '../style/LowPolyBuilder'
 import { SlotBatch } from '../style/SlotBatch'
 import { createCurvedHipRoof } from '../style/RoofBuilder'
-import { createPlaqueTexture } from '../utils/PlaqueTexture'
+import { createPlaqueTexture, createVerticalCoupletTexture } from '../utils/PlaqueTexture'
 import { PixelCandleSystem } from '../fx/PixelCandleSystem'
 
 /**
@@ -209,9 +209,29 @@ export class PagodaSanctuaryHall {
       const localZ = ST.startZ + (ST.stepsCount - 1 - i + 0.5) * ST.stepTread - ZC
       b.box('stone', ST.width, floorY, ST.stepTread, 0, floorY * 0.5, localZ)
     }
-    // Lan can đá hai bên bậc thang
+    // Lan can đá hai bên bậc thang kèm trụ đầu cầu thang chạm búp sen vàng
     for (const sx of [-1, 1]) {
-      b.box('stone', 0.4, 0.7, ST.totalDepth + 0.4, sx * (ST.width * 0.5 + 0.2), 0.45, ST.startZ + ST.totalDepth * 0.5 - ZC)
+      const rx = sx * (ST.width * 0.5 + 0.22)
+      const zMid = ST.startZ + ST.totalDepth * 0.5 - ZC
+      const zBot = ST.startZ + ST.totalDepth - ZC + 0.15
+      const zTop = ST.startZ - ZC - 0.15
+      b.box('stone', 0.42, 0.72, ST.totalDepth + 0.5, rx, 0.46, zMid)
+      // Trụ đầu bậc dưới & trên có búp sen vàng
+      b.box('stone', 0.54, 1.05, 0.54, rx, 0.525, zBot)
+      b.sphere('gold', 0.16, 1, rx, 1.14, zBot)
+      b.box('stone', 0.54, 1.65, 0.54, rx, 0.825, zTop)
+      b.sphere('gold', 0.16, 1, rx, 1.74, zTop)
+    }
+
+    // Đôi chậu cây tùng / bonsai cổ thụ đặt hai bên thềm cửa chính trên hiên
+    for (const sx of [-1, 1]) {
+      const bx = sx * 4.8
+      const bz = PORCH_Z - 1.15
+      b.cylinder('stone', 0.48, 0.38, 0.46, 8, bx, FLOOR_Y + 0.23, bz)
+      b.cylinder('gold', 0.50, 0.50, 0.06, 8, bx, FLOOR_Y + 0.47, bz)
+      b.cylinder('woodDark', 0.10, 0.14, 0.65, 6, bx, FLOOR_Y + 0.82, bz, 0, 0, sx * 0.15)
+      b.sphere('leaf', 0.44, 1, bx - sx * 0.08, FLOOR_Y + 1.25, bz)
+      b.sphere('leaf', 0.32, 1, bx + sx * 0.22, FLOOR_Y + 1.08, bz + 0.1)
     }
 
     // --- Sàn gỗ trong lòng điện + thảm ngự đạo ---
@@ -443,6 +463,40 @@ export class PagodaSanctuaryHall {
     b.cylinder('gold', 0.12, 0.10, 0.03, 12, bellX, FLOOR_Y + 0.865, bellZ) // Miệng chuông loe viền
     b.cylinder('wood', 0.012, 0.012, 0.16, 6, bellX - 0.09, FLOOR_Y + 0.89, bellZ + 0.05, -0.3, 0, 0.4) // Dùi thỉnh chuông
 
+    // --- Đôi Lục Bình Đồng cắm hoa sen trên bàn lễ (hai bên ngoài) ---
+    for (const sx of [-1, 1]) {
+      const vx = sx * 1.38
+      const vz = tableZ - 0.18
+      b.cylinder('gold', 0.08, 0.11, 0.06, 10, vx, FLOOR_Y + 0.85, vz)
+      b.cylinder('gold', 0.12, 0.08, 0.24, 10, vx, FLOOR_Y + 1.00, vz)
+      b.cylinder('gold', 0.06, 0.12, 0.12, 10, vx, FLOOR_Y + 1.18, vz)
+      b.cylinder('gold', 0.10, 0.06, 0.06, 10, vx, FLOOR_Y + 1.27, vz)
+      // Cành sen & búp sen
+      b.cylinder('leaf', 0.014, 0.014, 0.28, 5, vx, FLOOR_Y + 1.40, vz)
+      b.sphere('lotus', 0.065, 1, vx, FLOOR_Y + 1.56, vz)
+      b.cylinder('leaf', 0.012, 0.012, 0.22, 5, vx - sx * 0.05, FLOOR_Y + 1.36, vz + 0.03, 0.2, 0, sx * 0.25)
+      b.sphere('lotus', 0.05, 1, vx - sx * 0.09, FLOOR_Y + 1.47, vz + 0.05)
+    }
+
+    // --- Đôi Hạc Chầu Quy Bằng Đồng (đứng trên lưng rùa hai bên bàn thờ Tam Bảo) ---
+    for (const sx of [-1, 1]) {
+      const hx = sx * 2.25
+      const hz = tableZ + 0.10
+      // Rùa đồng (mai rùa & đầu rùa)
+      b.cylinder('gold', 0.24, 0.28, 0.12, 10, hx, FLOOR_Y + 0.06, hz)
+      b.sphere('gold', 0.22, 1, hx, FLOOR_Y + 0.14, hz)
+      b.box('gold', 0.10, 0.09, 0.16, hx, FLOOR_Y + 0.14, hz + 0.26)
+      // Chân hạc thanh mảnh
+      b.cylinder('gold', 0.025, 0.025, 0.72, 6, hx - 0.05, FLOOR_Y + 0.56, hz)
+      b.cylinder('gold', 0.025, 0.025, 0.72, 6, hx + 0.05, FLOOR_Y + 0.56, hz)
+      // Thân & cánh hạc
+      b.sphere('gold', 0.16, 1, hx, FLOOR_Y + 0.98, hz)
+      // Cổ hạc vươn cao & đầu ngậm cành sen
+      b.cylinder('gold', 0.03, 0.045, 0.54, 6, hx, FLOOR_Y + 1.28, hz + 0.08, 0.2, 0, 0)
+      b.sphere('gold', 0.06, 1, hx, FLOOR_Y + 1.55, hz + 0.14)
+      b.cone('gold', 0.03, 0.16, 5, hx, FLOOR_Y + 1.55, hz + 0.24, Math.PI * 0.5, 0, 0)
+    }
+
     this.colliderBoxes.push({
       id: 'hall_altar_collider',
       x: 0,
@@ -616,6 +670,26 @@ export class PagodaSanctuaryHall {
     this.group.add(plaque)
     this.ownedMaterials.push(mat)
     this.ownedTextures.push(tex)
+
+    // Cặp Câu Đối sơn son thếp vàng trên 2 cột hiên trung tâm (PORCH_XS = ±2.75)
+    const couplets: Array<{ x: number; words: string[] }> = [
+      { x: -2.75, words: ['PHẬT', 'PHÁP', 'VÔ', 'BIÊN'] },
+      { x: 2.75, words: ['THIỀN', 'MÔN', 'THANH', 'TỊNH'] }
+    ]
+    const allWords = couplets.flatMap((c) => c.words)
+    for (const c of couplets) {
+      const cTex = createVerticalCoupletTexture(c.words, {
+        width: 192,
+        height: 640,
+        referenceWords: allWords
+      })
+      const cMat = new THREE.MeshBasicMaterial({ map: cTex })
+      const cMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 2.15), cMat)
+      cMesh.position.set(c.x, 3.85, PORCH_Z + 0.34)
+      this.group.add(cMesh)
+      this.ownedMaterials.push(cMat)
+      this.ownedTextures.push(cTex)
+    }
   }
 
   // ---------------------------------------------------------------------------

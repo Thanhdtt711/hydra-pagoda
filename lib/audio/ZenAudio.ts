@@ -367,24 +367,65 @@ export class ZenAudioEngine {
   }
 
   /**
-   * Phát file SFX thực tế trong /audio/sfx/, nếu trình duyệt chặn hoặc lỗi thì tự động fallback sang Web Audio Synth
+   * Phát file SFX thực tế trong /audio/sfx/, nếu trình duyệt chặn hoặc lỗi thì tự động fallback sang Web Audio Synth.
+   * Trả về Promise resolve khi âm thanh phát xong (hoặc sau fallbackDurationMs nếu fallback/muted).
    */
-  private playSfxFile(url: string, volume: number, fallback: () => void) {
-    if (this.isMuted) return
+  private playSfxFile(url: string, volume: number, fallback: () => void, fallbackDurationMs = 550): Promise<void> {
+    if (this.isMuted) {
+      return new Promise((resolve) => setTimeout(resolve, fallbackDurationMs))
+    }
     this.initContext()
     if (typeof window === 'undefined') {
       fallback()
-      return
+      return Promise.resolve()
     }
-    try {
-      const sfx = new Audio(url)
-      sfx.volume = Math.max(0, Math.min(1, volume * (this.masterVolValue / 0.7)))
-      sfx.play().catch(() => {
+    return new Promise((resolve) => {
+      let settled = false
+      let safetyTimer: ReturnType<typeof setTimeout> | null = null
+      let sfx: HTMLAudioElement | null = null
+
+      const cleanup = () => {
+        if (safetyTimer) {
+          clearTimeout(safetyTimer)
+          safetyTimer = null
+        }
+        if (sfx) {
+          sfx.removeEventListener('ended', onEnded)
+          sfx.removeEventListener('error', onError)
+        }
+      }
+
+      const finish = () => {
+        if (settled) return
+        settled = true
+        cleanup()
+        resolve()
+      }
+
+      const triggerFallback = () => {
+        if (settled) return
+        settled = true
+        cleanup()
         fallback()
-      })
-    } catch {
-      fallback()
-    }
+        setTimeout(resolve, fallbackDurationMs)
+      }
+
+      const onEnded = () => finish()
+      const onError = () => triggerFallback()
+
+      try {
+        sfx = new Audio(url)
+        sfx.volume = Math.max(0, Math.min(1, volume * (this.masterVolValue / 0.7)))
+        sfx.addEventListener('ended', onEnded, { once: true })
+        sfx.addEventListener('error', onError, { once: true })
+        safetyTimer = setTimeout(finish, 12000)
+        sfx.play().catch(() => {
+          triggerFallback()
+        })
+      } catch {
+        triggerFallback()
+      }
+    })
   }
 
   /**
@@ -643,10 +684,10 @@ export class ZenAudioEngine {
   /**
    * Tiếng Lắc Ống Xăm Gỗ (Ưu tiên phát file thực tế fortune-shake.mp3)
    */
-  public playFortuneShaking() {
-    this.playSfxFile(AUDIO_PATHS.fortuneShakeSfx, 0.9, () => {
+  public playFortuneShaking(): Promise<void> {
+    return this.playSfxFile(AUDIO_PATHS.fortuneShakeSfx, 0.9, () => {
       this.playProceduralFortuneShaking()
-    })
+    }, 550)
   }
 
   private playProceduralFortuneShaking() {
@@ -677,8 +718,8 @@ export class ZenAudioEngine {
   /**
    * Alias cho tiếng lắc ống xăm tre (tương thích với SanctuaryDrawer)
    */
-  public playBambooShake() {
-    this.playFortuneShaking()
+  public playBambooShake(): Promise<void> {
+    return this.playFortuneShaking()
   }
 
   // ============================================================================

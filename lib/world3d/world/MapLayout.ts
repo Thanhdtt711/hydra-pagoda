@@ -253,15 +253,28 @@ export class MapLayout {
       clearance: 1.0,
       isWalkable: false,
       isExclusion: true
+    },
+
+    // 13. VƯỜN THIỀN CÁ NHÂN 6 Ô ĐẤT (Đối xứng phía Đông Nam sân chùa, tách biệt hoàn toàn khỏi Hồ Sen)
+    ZEN_GARDEN: {
+      id: 'zen_garden',
+      name: 'Vườn Thiền Bát Nhã',
+      category: 'prop',
+      center: { x: 10.2, y: 0.14, z: 18.8 },
+      footprint: { type: 'box', width: 6.8, depth: 4.8 },
+      elevation: 0.14,
+      rotationY: 0,
+      clearance: 1.2,
+      isWalkable: true,
+      isExclusion: true,
+      size: { width: 6.8, height: 2.2, depth: 4.8 }
     }
   }
 
-  // 8 ĐÈN ĐÁ TŌRŌ DỌC NGỰ ĐẠO (Bố trí song song 2 bên trục ngự đạo x = ±3.6, chừa khoảng thoáng quanh Hòm Công Đức & Bàn Xem Quẻ ở z = 9.8)
+  // 4 ĐÈN ĐÁ CỔ TỰ DỌC NGỰ ĐẠO (2 cặp chính tại chân bậc thang Chánh Điện & giữa sân, giữ lối rẽ thông thoáng)
   public static readonly LANTERN_COORDINATES: Array<[number, number]> = [
     [-3.6, 5.2], [3.6, 5.2],   // Cặp 1: Chân bậc thang Chánh Điện
-    [-3.6, 13.0], [3.6, 13.0], // Cặp 2: Phía Nam sân lư hương (cách Hòm Công Đức & Bàn Xem Quẻ > 3.5m)
-    [-3.6, 16.8], [3.6, 16.8], // Cặp 3: Giữa sân chùa (ngang hồ sen & lầu chuông)
-    [-3.6, 20.6], [3.6, 20.6]  // Cặp 4: Trước Cổng Tam Quan
+    [-3.6, 17.2], [3.6, 17.2]  // Cặp 2: Giữa sân chùa (khung cảnh cân đối trước Cổng Tam Quan)
   ]
 
   // Bậc thang Chánh Điện mặt Nam (Tam cấp chuẩn hóa <= 0.18m mỗi bậc)

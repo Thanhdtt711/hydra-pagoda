@@ -5,6 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { PilgrimAvatar, type AvatarGender, type PilgrimCountry } from './PilgrimAvatar'
 import { createPilgrimNameplate, createSpeechBubbleSprite } from './NameplateHelper'
+import { createPlaqueTexture } from './utils/PlaqueTexture'
 import type { PilgrimPresence } from '../network/MultiplayerClient'
 import { CollisionWorld, CharacterController, CameraSpringArm, BoxCollider, CylinderCollider } from './collision'
 import { PagodaSanctuaryHall } from './sanctuary/PagodaSanctuary'
@@ -25,6 +26,7 @@ import { MountainParkourSystem } from './nature/MountainParkourSystem'
 import { PetalParticleSystem } from './nature/PetalParticleSystem'
 import { FestivalFireworksSystem } from './nature/FestivalFireworksSystem'
 import { LoveTreeProp } from './nature/LoveTreeProp'
+import { ZenGardenProp } from './nature/ZenGardenProp'
 import { MapLayout } from './world/MapLayout'
 import { HallLayout, type MeditationSlot } from './world/HallLayout'
 import { TerrainSystem } from './world/TerrainSystem'
@@ -33,7 +35,7 @@ import { AbbotNpc, type AbbotNpcEmotion } from './characters/AbbotNpc'
 import { PerformanceProfiler } from './debug/PerformanceProfiler'
 import { SeededPRNG } from './utils/SeededPRNG'
 
-export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | null
+export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | 'zen_garden' | 'bell_tower' | null
 
 export interface RemotePilgrimInstance {
   id: string
@@ -56,38 +58,22 @@ export interface RemotePilgrimInstance {
 // 3D SIGNBOARD & BILLBOARD TEXT HELPERS
 // ==========================================
 function createStationPlaqueMesh(text: string, width = 1.25, height = 0.32): THREE.Mesh {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 144
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    ctx.fillStyle = '#1e1610' // Gỗ mun/sơn then trầm cổ truyền
-    ctx.fillRect(0, 0, 512, 144)
-
-    ctx.strokeStyle = '#fcd535'
-    ctx.lineWidth = 8
-    ctx.strokeRect(6, 6, 500, 132)
-    ctx.lineWidth = 2
-    ctx.strokeRect(16, 16, 480, 112)
-
-    ctx.fillStyle = '#fcd535'
-    ctx.font = 'bold 50px "Noto Serif", "Times New Roman", serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
-    ctx.shadowBlur = 6
-    ctx.fillText(text, 256, 74)
-  }
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
+  const aspect = width / Math.max(0.1, height)
+  const baseH = 256
+  const baseW = Math.round(baseH * aspect)
+  const texture = createPlaqueTexture({
+    text,
+    background: '#1a0f0a',
+    border: '#d9a441',
+    textColor: '#f6cf74',
+    width: baseW,
+    height: baseH,
+    resolutionScale: 2,
+    maxAnisotropy: 16
+  })
 
   const geom = new THREE.PlaneGeometry(width, height)
-  const mat = new THREE.MeshStandardMaterial({
-    map: texture,
-    roughness: 0.4,
-    metalness: 0.2
-  })
+  const mat = new THREE.MeshBasicMaterial({ map: texture })
   return new THREE.Mesh(geom, mat)
 }
 
@@ -186,6 +172,11 @@ export class TempleStage {
     MapLayout.LANDMARKS.LOTUS_POND.center.y,
     MapLayout.LANDMARKS.LOTUS_POND.center.z
   )
+  private static readonly PROX_BELL_TOWER = new THREE.Vector3(
+    MapLayout.LANDMARKS.BELL_TOWER.center.x,
+    MapLayout.LANDMARKS.BELL_TOWER.center.y,
+    MapLayout.LANDMARKS.BELL_TOWER.center.z
+  )
   private static readonly PROX_DOOR = new THREE.Vector3(0, 1.35, 0.5)
   private static readonly PROX_ABBOT = new THREE.Vector3(
     HallLayout.ABBOT_SPOT.x,
@@ -227,9 +218,28 @@ export class TempleStage {
     bestDist: number
   } | null = null
   public isSeated = false
+  public isPhotoMode = false
+  public photoFov: number | null = null
 
   public get isInputLocked(): boolean {
-    return this.isSeated || this.autoWalk !== null
+    return this.isSeated || this.autoWalk !== null || this.isPhotoMode
+  }
+
+  public setPhotoMode(active: boolean, fov: number | null = null) {
+    this.isPhotoMode = active
+    this.photoFov = active ? fov : null
+    if (active) {
+      this.exitPointerLock()
+    }
+  }
+
+  public renderImmediateFrame(): HTMLCanvasElement {
+    if (this.postProcessing) {
+      this.postProcessing.render(0)
+    } else {
+      this.composer.render(0)
+    }
+    return this.renderer.domElement
   }
 
   // Props & Interactables & Giai đoạn 4: Kiến trúc & Thiên nhiên
@@ -253,7 +263,11 @@ export class TempleStage {
   public mountainParkourInstance!: MountainParkourSystem
   public petalParticleSystem!: PetalParticleSystem
   public festivalFireworksSystem!: FestivalFireworksSystem
+  private fireflyPoints: THREE.Points | null = null
+  private fireflyBasePositions: Float32Array | null = null
+  private fireflyMat: THREE.PointsMaterial | null = null
   public loveTreeInstance!: LoveTreeProp
+  public zenGardenInstance!: ZenGardenProp
   private mandalaHalo!: THREE.Mesh
 
   // Giai đoạn 1: Dedicated Collision System & Character Controller & Camera Spring Arm
@@ -664,15 +678,54 @@ export class TempleStage {
     b.box('stone', 72.4, 0.3, 0.4, 13, 0.15, 28)
     b.box('stone', 5.6, 0.08, 32, 0, 0.12, 7)
 
-    // Hàng đèn đá bát giác (Tōrō) theo MapLayout; buồng đèn là vật liệu phát sáng
+    // Nâng cấp Trục Ngự Đạo: bó vỉa đá, đường ron đá phiến và 1 thảm đá hoa sen trung tâm
+    b.box('roofDark', 0.24, 0.11, 32, -2.85, 0.13, 7)
+    b.box('roofDark', 0.24, 0.11, 32, 2.85, 0.13, 7)
+    for (let pz = -7.5; pz <= 21.5; pz += 2.4) {
+      b.box('roofDark', 5.4, 0.02, 0.06, 0, 0.155, pz)
+    }
+    b.cylinder('roofDark', 1.15, 1.15, 0.022, 16, 0, 0.156, 16.0)
+    b.cylinder('stone', 0.96, 0.96, 0.026, 16, 0, 0.158, 16.0)
+    b.cylinder('gold', 0.38, 0.38, 0.03, 8, 0, 0.160, 16.0)
+
+    // Hàng đèn đá cổ tự bát giác theo MapLayout; buồng đèn có 6 trụ đá bao quanh lõi phát sáng + mái chùa 2 tầng
     const baseY = 0.14
     MapLayout.LANTERN_COORDINATES.forEach(([x, z]) => {
-      b.cylinder('stone', 0.42, 0.52, 0.25, 8, x, baseY + 0.12, z)
-      b.cylinder('stone', 0.18, 0.22, 1.2, 8, x, baseY + 0.8, z)
-      b.cylinder('stone', 0.55, 0.38, 0.2, 8, x, baseY + 1.48, z)
-      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.3, 0.3, 0.42, 6), { position: [x, baseY + 1.78, z] })
-      b.cone('roofDark', 0.68, 0.35, 6, x, baseY + 2.15, z)
-      b.sphere('gold', 0.08, 0, x, baseY + 2.38, z)
+      // 1. Bệ đá tam cấp bát giác & cổ thắt chạm sen
+      b.cylinder('stone', 0.44, 0.54, 0.14, 8, x, baseY + 0.07, z)
+      b.cylinder('stone', 0.34, 0.42, 0.12, 8, x, baseY + 0.20, z)
+      b.cylinder('roofDark', 0.23, 0.28, 0.06, 8, x, baseY + 0.29, z)
+
+      // 2. Trụ đèn bát giác có gờ chỉ giữa thân & đầu cột loe
+      b.cylinder('stone', 0.16, 0.19, 0.48, 8, x, baseY + 0.56, z)
+      b.cylinder('stone', 0.22, 0.22, 0.07, 8, x, baseY + 0.83, z)
+      b.cylinder('stone', 0.17, 0.16, 0.48, 8, x, baseY + 1.10, z)
+
+      // 3. Đài sen đỡ buồng đèn (2 tầng loe)
+      b.cylinder('stone', 0.36, 0.21, 0.11, 8, x, baseY + 1.39, z)
+      b.cylinder('stone', 0.46, 0.36, 0.10, 6, x, baseY + 1.50, z)
+
+      // 4. Lõi buồng đèn phát sáng + 6 trụ đá góc & khung cửa sổ đèn
+      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.24, 0.24, 0.40, 6), { position: [x, baseY + 1.75, z] })
+      for (let k = 0; k < 6; k++) {
+        const ang = (k * Math.PI) / 3
+        const mx = x + Math.cos(ang) * 0.27
+        const mz = z + Math.sin(ang) * 0.27
+        b.box('stone', 0.055, 0.42, 0.055, mx, baseY + 1.75, mz, 0, -ang, 0)
+      }
+      b.cylinder('stone', 0.36, 0.33, 0.06, 6, x, baseY + 1.98, z)
+
+      // 5. Mái đèn kiểu mái chùa 2 tầng + 6 đầu đao góc mái + búp sen đồng trên đỉnh
+      b.cone('roofDark', 0.66, 0.26, 6, x, baseY + 2.13, z)
+      b.cone('roofDark', 0.42, 0.18, 6, x, baseY + 2.27, z)
+      for (let k = 0; k < 6; k++) {
+        const ang = (k * Math.PI) / 3
+        const ex = x + Math.cos(ang) * 0.58
+        const ez = z + Math.sin(ang) * 0.58
+        b.box('roofDark', 0.12, 0.04, 0.06, ex, baseY + 2.04, ez, 0, -ang, 0.28)
+      }
+      b.cylinder('gold', 0.06, 0.09, 0.06, 8, x, baseY + 2.38, z)
+      b.sphere('gold', 0.075, 0, x, baseY + 2.46, z)
     })
 
     const props = b.build({ name: 'courtyard' })
@@ -824,6 +877,9 @@ export class TempleStage {
     this.petalParticleSystem = new PetalParticleSystem(this.windSystem)
     this.scene.add(this.petalParticleSystem.root)
 
+    // Đom đóm ban đêm & Tia nắng xiên buổi sáng/hoàng hôn (Mục 8)
+    this.buildAtmosphereAccents()
+
     // 3. Pháo hoa chào mừng ngoài Cổng Tam Quan (chỉ bật vào ngày lễ)
     this.festivalFireworksSystem = new FestivalFireworksSystem()
     this.scene.add(this.festivalFireworksSystem.root)
@@ -839,6 +895,10 @@ export class TempleStage {
     // Cây Nguyệt Lão & Án Thư Gieo Quẻ Tơ Duyên bên bờ Hồ Sen Bát Nhã
     this.loveTreeInstance = new LoveTreeProp(this.collisionWorld)
     this.scene.add(this.loveTreeInstance.root)
+
+    // Vườn Thiền Cá Nhân 6 Ô Đất (Mục 14)
+    this.zenGardenInstance = new ZenGardenProp()
+    this.scene.add(this.zenGardenInstance.root)
   }
 
   private buildDetailedIncenseAltar() {
@@ -846,45 +906,78 @@ export class TempleStage {
     const pos = MapLayout.LANDMARKS.INCENSE_BURNER.center
     this.incenseBurner.position.set(pos.x, pos.y, pos.z)
 
-    // Đại Đỉnh Hương Đồng Cổ sân chùa: Bệ đá tam cấp chạm sen, 3 chân quỳ nghê đúc đồng, thân đỉnh chạm nổi, 2 tai mây rồng
+    // Đại Đỉnh Hương Đồng Cổ sân chùa: Bệ đá tam cấp chạm cánh sen, 3 chân quỳ nghê, thân đỉnh gờ nổi & tai mây uốn lượn
     const b = new SlotBatch()
-    // 1. Bệ đá hoa sen 2 tầng
-    b.cylinder('stone', 1.85, 1.95, 0.18, 16, 0, 0.09, 0)
-    b.cylinder('stone', 1.55, 1.65, 0.14, 16, 0, 0.25, 0)
-
-    // 2. 3 chân quỳ đúc nghê bằng đồng kiên cố (góc 120 độ)
-    for (const angle of [0, 2.0944, 4.1888]) {
-      const legX = Math.sin(angle) * 0.82
-      const legZ = Math.cos(angle) * 0.82
-      b.cylinder('gold', 0.16, 0.24, 0.52, 8, legX, 0.58, legZ, 0.22 * Math.cos(angle), 0, -0.22 * Math.sin(angle))
+    // 1. Bệ đá xanh tam cấp chạm cánh sen
+    b.cylinder('stone', 1.92, 2.04, 0.16, 16, 0, 0.08, 0)
+    b.cylinder('stone', 1.62, 1.72, 0.14, 16, 0, 0.23, 0)
+    b.cylinder('roofDark', 1.38, 1.44, 0.05, 16, 0, 0.32, 0)
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI * 2) / 12
+      b.box('stone', 0.22, 0.09, 0.12, Math.sin(a) * 1.48, 0.27, Math.cos(a) * 1.48, 0.25, a, 0)
     }
 
-    // 3. Thân Đỉnh Đồng phình tròn phúc hậu & Cổ thắt loe vành
-    b.cylinder('gold', 1.15, 0.85, 0.36, 16, 0, 0.95, 0) // Đáy đỉnh tròn
-    b.cylinder('gold', 1.30, 1.15, 0.44, 16, 0, 1.35, 0) // Bụng đỉnh phình tròn uy nghiêm
-    b.cylinder('gold', 1.08, 1.30, 0.18, 16, 0, 1.66, 0) // Cổ thắt gờ chỉ
-    b.cylinder('gold', 1.35, 1.08, 0.12, 16, 0, 1.81, 0) // Miệng loe vành đồng đúc nổi
+    // 2. 3 chân quỳ nghê đúc đồng (đế chân tròn + khớp gối phình + bắp chân cong)
+    for (const angle of [0, 2.0944, 4.1888]) {
+      const sinA = Math.sin(angle)
+      const cosA = Math.cos(angle)
+      // Đế chân đồng chạm đất
+      b.cylinder('gold', 0.19, 0.24, 0.12, 10, sinA * 0.90, 0.40, cosA * 0.90)
+      // Ống chân dưới
+      b.cylinder('gold', 0.15, 0.18, 0.24, 10, sinA * 0.87, 0.56, cosA * 0.87, 0.14 * cosA, 0, -0.14 * sinA)
+      // Khớp gối nghê đúc nổi
+      b.sphere('gold', 0.19, 1, sinA * 0.84, 0.72, cosA * 0.84)
+      // Bắp chân nối vào đáy đỉnh
+      b.cylinder('gold', 0.20, 0.16, 0.22, 10, sinA * 0.80, 0.84, cosA * 0.80, -0.18 * cosA, 0, 0.18 * sinA)
+    }
 
-    // 4. Hai tai mây / quai rồng vươn cao hai bên đỉnh
-    b.box('gold', 0.14, 0.58, 0.32, -1.35, 1.92, 0, 0, 0, 0.35)
-    b.box('gold', 0.14, 0.58, 0.32, 1.35, 1.92, 0, 0, 0, -0.35)
+    // 3. Thân Đỉnh Đồng 24 cạnh mượt + đai đồng cổ + núm chạm nổi
+    b.cylinder('gold', 1.14, 0.78, 0.32, 24, 0, 0.94, 0) // Đáy đỉnh thuôn
+    b.cylinder('gold', 1.32, 1.14, 0.40, 24, 0, 1.30, 0) // Bụng đỉnh phình tròn
+    b.cylinder('roofDark', 1.35, 1.35, 0.055, 24, 0, 1.32, 0) // Đai chỉ âm giữa bụng đỉnh
+    b.cylinder('gold', 1.08, 1.32, 0.18, 24, 0, 1.59, 0) // Vai đỉnh thu vào cổ
+    b.cylinder('roofDark', 1.06, 1.06, 0.08, 24, 0, 1.71, 0) // Cổ thắt sẫm màu tạo khối
+    b.cylinder('gold', 1.36, 1.08, 0.11, 24, 0, 1.80, 0) // Miệng loe vành đồng đúc nổi
+    b.cylinder('gold', 1.38, 1.38, 0.045, 24, 0, 1.86, 0) // Gờ môi miệng đỉnh
 
-    // 5. Cát vàng tro mịn trong lòng đỉnh
-    b.cylinder('stone', 1.06, 1.06, 0.04, 16, 0, 1.82, 0)
+    // 4 hạt đồng nổi (mặt hổ phù cách điệu) quanh bụng đỉnh
+    for (const a of [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5]) {
+      b.cylinder('gold', 0.13, 0.15, 0.06, 8, Math.sin(a) * 1.29, 1.32, Math.cos(a) * 1.29, Math.PI / 2, 0, -a)
+    }
 
-    // 6. Chùm nhang trầm đỏ thắm (nén chính vươn cao + 4 nén xung quanh)
-    b.cylinder('roofDark', 0.022, 0.022, 1.15, 6, 0, 2.40, 0)
-    b.addEmissive('lantern', LowPolyBuilder.sphere(0.045, 0), { position: [0, 2.97, 0] })
+    // 4. Hai tai mây / quai rồng uốn lượn nhiều đốt hai bên đỉnh
+    for (const side of [-1, 1]) {
+      b.box('gold', 0.16, 0.14, 0.22, side * 1.22, 1.56, 0, 0, 0, side * 0.25)
+      b.box('gold', 0.14, 0.34, 0.20, side * 1.36, 1.78, 0, 0, 0, -side * 0.18)
+      b.box('gold', 0.16, 0.24, 0.18, side * 1.32, 2.04, 0, 0, 0, side * 0.22)
+      b.sphere('gold', 0.10, 1, side * 1.26, 2.18, 0) // Đầu mây cuộn trên đỉnh quai
+      b.box('gold', 0.18, 0.09, 0.16, side * 1.24, 1.84, 0) // Thanh giằng nối quai vào vành miệng
+    }
 
-    const sideSticks = [
-      [-0.22, 0, 0.98],
-      [0.22, 0, 1.02],
-      [0, -0.20, 0.95],
-      [0, 0.20, 1.00]
+    // 5. Tro hương mịn hơi lõm trong lòng đỉnh
+    b.cylinder('stone', 1.04, 1.04, 0.035, 24, 0, 1.83, 0)
+
+    // 6. Chùm nhang trầm (nén đại ở giữa + 8 nén xung quanh cắm nghiêng tự nhiên, có chân tăm đỏ & đầu lửa hồng)
+    b.cylinder('roofDark', 0.016, 0.016, 0.18, 6, 0, 1.92, 0) // Chân tăm
+    b.cylinder('woodDark', 0.022, 0.022, 0.96, 6, 0, 2.48, 0)
+    b.addEmissive('lantern', LowPolyBuilder.sphere(0.042, 0), { position: [0, 2.97, 0] })
+
+    const sideSticks: Array<[number, number, number, number, number]> = [
+      [-0.22, 0.04, 0.95, 0.04, 0.08],
+      [0.22, -0.04, 0.98, -0.03, -0.07],
+      [0.04, -0.22, 0.92, -0.07, 0.03],
+      [-0.04, 0.22, 0.96, 0.07, -0.03],
+      [-0.14, -0.15, 0.84, -0.05, 0.06],
+      [0.15, 0.14, 0.86, 0.05, -0.06],
+      [-0.16, 0.15, 0.82, 0.06, 0.05],
+      [0.14, -0.16, 0.85, -0.06, -0.05]
     ]
-    for (const [sx, sz, sh] of sideSticks) {
-      b.cylinder('roofDark', 0.018, 0.018, sh, 5, sx, 1.82 + sh / 2, sz)
-      b.addEmissive('lantern', LowPolyBuilder.sphere(0.035, 0), { position: [sx, 1.82 + sh, sz] })
+    for (const [sx, sz, sh, rx, rz] of sideSticks) {
+      const tipY = 1.84 + sh
+      b.cylinder('woodDark', 0.016, 0.016, sh, 5, sx, 1.84 + sh / 2, sz, rx, 0, rz)
+      b.addEmissive('lantern', LowPolyBuilder.sphere(0.032, 0), {
+        position: [sx - Math.sin(rz) * sh * 0.45, tipY, sz + Math.sin(rx) * sh * 0.45]
+      })
     }
 
     this.incenseBurner.add(b.build({ name: 'incense_burner' }))
@@ -892,67 +985,104 @@ export class TempleStage {
   }
 
   private buildMeritAndFortuneStations() {
-    // Hòm công đức (tọa độ từ MapLayout): thân gỗ tối, viền và khe tiền vàng
+    // 1. Hòm công đức gỗ lim chạm đồng (bệ chân giật cấp, 4 trụ góc, pano nổi, nắp hộp 2 tầng, khe tiền thật & khóa đồng)
     this.meritBox = new THREE.Group()
     const meritPos = MapLayout.LANDMARKS.MERIT_BOX.center
     this.meritBox.position.set(meritPos.x, meritPos.y, meritPos.z)
     const m = new SlotBatch()
-    m.box('woodDark', 1.5, 1.2, 1.05, 0, 0.6, 0)
-    m.box('gold', 1.56, 0.08, 1.11, 0, 1.24, 0)
-    m.box('gold', 0.5, 0.06, 0.04, 0, 1.0, 0.54)
-    m.box('roofDark', 1.6, 0.08, 1.15, 0, 0.04, 0)
+    // Đế đá & bệ gỗ giật cấp
+    m.box('stone', 1.66, 0.07, 1.18, 0, 0.035, 0)
+    m.box('woodDark', 1.56, 0.09, 1.10, 0, 0.115, 0)
+    // Thân hòm gỗ sẫm & 4 trụ góc nổi
+    m.box('wood', 1.42, 0.96, 0.96, 0, 0.64, 0)
+    for (const cx of [-0.71, 0.71]) {
+      for (const cz of [-0.48, 0.48]) {
+        m.box('woodDark', 0.11, 1.00, 0.11, cx, 0.65, cz)
+        // Ke đồng bọc góc dưới & góc trên
+        m.box('gold', 0.13, 0.08, 0.13, cx, 0.20, cz)
+        m.box('gold', 0.13, 0.08, 0.13, cx, 1.10, cz)
+      }
+    }
+    // Thanh ngang khung mặt trước & ổ khóa đồng phía trên bảng tên
+    m.box('woodDark', 1.46, 0.08, 1.02, 0, 1.12, 0)
+    m.box('gold', 0.16, 0.14, 0.04, 0, 0.96, 0.50) // Mặt khóa đồng
+    m.box('roofDark', 0.05, 0.08, 0.05, 0, 0.93, 0.52) // Ổ khóa treo
+    // Nắp hòm 2 tầng giật cấp + khe bỏ tiền công đức viền đồng ở mặt trên
+    m.box('woodDark', 1.58, 0.07, 1.12, 0, 1.19, 0)
+    m.box('wood', 1.38, 0.05, 0.92, 0, 1.25, 0)
+    m.box('gold', 0.52, 0.03, 0.12, 0, 1.285, 0) // Viền đồng khe tiền
+    m.box('roofDark', 0.44, 0.035, 0.045, 0, 1.292, 0) // Khe thả tiền sẫm màu
     this.meritBox.add(m.build({ name: 'merit_box' }))
 
-    // Bảng tên 3D gắn mặt trước hòm công đức
-    const meritPlaque = createStationPlaqueMesh('HÒM CÔNG ĐỨC', 1.2, 0.3)
-    meritPlaque.position.set(0, 0.65, 0.54)
+    // Bảng tên 3D gắn gọn vào pano mặt trước hòm công đức
+    const meritPlaque = createStationPlaqueMesh('HÒM CÔNG ĐỨC', 1.14, 0.28)
+    meritPlaque.position.set(0, 0.56, 0.495)
     this.meritBox.add(meritPlaque)
 
     this.scene.add(this.meritBox)
 
-    // Bàn xóc quẻ (tọa độ từ MapLayout): mặt bàn gỗ, ống thẻ tre sơn son, thẻ tre xòe tự nhiên, quẻ âm dương
+    // 2. Án thư Xem Quẻ (chân tủ chạm đứng, khung pano nổi, mặt bàn 2 tầng, khăn gấm viền vàng, ống xăm đốt tre, keo âm dương, sách Kinh Dịch)
     this.fortuneTable = new THREE.Group()
     const fortunePos = MapLayout.LANDMARKS.FORTUNE_TABLE.center
     this.fortuneTable.position.set(fortunePos.x, fortunePos.y, fortunePos.z)
     const f = new SlotBatch()
-    f.box('woodDark', 1.6, 1.15, 1.05, 0, 0.58, 0)
-    f.box('wood', 1.7, 0.08, 1.15, 0, 1.19, 0)
-    f.box('roofDark', 0.9, 0.015, 0.9, 0, 1.24, 0) // Khăn lụa gieo quẻ đỏ son ở giữa bàn
+    // Bệ đá & 4 chân trụ góc chạm đứng
+    f.box('stone', 1.72, 0.06, 1.16, 0, 0.03, 0)
+    for (const cx of [-0.74, 0.74]) {
+      for (const cz of [-0.47, 0.47]) {
+        f.box('woodDark', 0.12, 1.08, 0.12, cx, 0.60, cz)
+        f.box('gold', 0.14, 0.06, 0.14, cx, 0.10, cz)
+      }
+    }
+    // Thân tủ án thư giật vào trong tạo chiều sâu + yếm bàn
+    f.box('wood', 1.46, 0.86, 0.90, 0, 0.66, 0)
+    f.box('woodDark', 1.54, 0.10, 0.98, 0, 0.20, 0) // Xà đế dưới
+    f.box('woodDark', 1.54, 0.10, 0.98, 0, 1.07, 0) // Yếm trên dưới mặt bàn
+    // Mặt bàn 2 tầng nhô ra kiểu án thư cổ
+    f.box('woodDark', 1.74, 0.06, 1.18, 0, 1.15, 0)
+    f.box('wood', 1.66, 0.04, 1.10, 0, 1.20, 0)
+    // Khăn gấm đỏ viền vàng trải giữa mặt bàn
+    f.box('gold', 0.94, 0.014, 0.94, 0, 1.225, 0)
+    f.box('roofDark', 0.86, 0.018, 0.86, 0, 1.230, 0)
 
-    // Ống thẻ xăm bằng tre mộc đai đồng cổ truyền
-    f.cylinder('gold', 0.19, 0.23, 0.06, 12, 0, 1.28, 0) // Đế đồng
-    f.cylinder('woodDark', 0.17, 0.19, 0.45, 12, 0, 1.53, 0) // Thân ống tre tiện tròn
-    f.cylinder('gold', 0.19, 0.17, 0.05, 12, 0, 1.78, 0) // Miệng ống bọc đai đồng
+    // Ống thẻ xăm bằng tre 3 đốt có đai đồng cổ truyền
+    f.cylinder('gold', 0.19, 0.23, 0.06, 14, 0, 1.27, 0) // Đế đồng
+    f.cylinder('woodDark', 0.17, 0.18, 0.15, 14, 0, 1.375, 0) // Đốt 1
+    f.cylinder('gold', 0.185, 0.185, 0.025, 14, 0, 1.46, 0) // Vòng đốt đồng
+    f.cylinder('wood', 0.165, 0.17, 0.16, 14, 0, 1.55, 0) // Đốt 2
+    f.cylinder('gold', 0.18, 0.18, 0.025, 14, 0, 1.64, 0) // Vòng đốt đồng
+    f.cylinder('woodDark', 0.17, 0.165, 0.14, 14, 0, 1.72, 0) // Đốt 3
+    f.cylinder('gold', 0.195, 0.17, 0.05, 14, 0, 1.81, 0) // Miệng ống bọc đai đồng
 
     // Bó thẻ tre sơn son vươn xòe tự nhiên từ miệng ống
-    f.box('wall', 0.024, 0.48, 0.015, 0, 2.02, 0) // Thẻ giữa
-    f.box('roofDark', 0.026, 0.08, 0.017, 0, 2.22, 0) // Đầu thẻ sơn son đỏ
+    const stickAngles: Array<[number, number, number, number, number]> = [
+      [0, 0, 0.50, 0, 0],
+      [-0.06, 0.02, 0.47, 0.03, 0.14],
+      [0.06, -0.02, 0.47, -0.03, -0.14],
+      [-0.02, 0.06, 0.45, -0.14, 0.02],
+      [0.02, -0.06, 0.45, 0.14, -0.02],
+      [-0.05, -0.05, 0.44, 0.10, 0.11],
+      [0.05, 0.05, 0.44, -0.10, -0.11]
+    ]
+    for (const [sx, sz, sh, rx, rz] of stickAngles) {
+      f.box('wall', 0.024, sh, 0.014, sx, 1.82 + sh * 0.45, sz, rx, 0, rz)
+      f.box('roofDark', 0.026, 0.08, 0.016, sx - Math.sin(rz) * sh * 0.45, 1.82 + sh * 0.88, sz + Math.sin(rx) * sh * 0.45, rx, 0, rz)
+    }
 
-    f.box('wall', 0.024, 0.46, 0.015, -0.06, 2.00, 0.02, 0, 0, 0.12)
-    f.box('roofDark', 0.026, 0.08, 0.017, -0.08, 2.19, 0.02, 0, 0, 0.12)
+    // Cặp quẻ âm dương (keo) bằng gỗ sơn son thếp vàng
+    f.cylinder('roofDark', 0.075, 0.075, 0.028, 8, -0.44, 1.255, 0.16, 0, 0.4, 0)
+    f.cylinder('gold', 0.075, 0.075, 0.028, 8, -0.32, 1.255, 0.24, 0, -0.5, 0)
 
-    f.box('wall', 0.024, 0.46, 0.015, 0.06, 2.00, -0.02, 0, 0, -0.12)
-    f.box('roofDark', 0.026, 0.08, 0.017, 0.08, 2.19, -0.02, 0, 0, -0.12)
-
-    f.box('wall', 0.024, 0.44, 0.015, -0.02, 1.98, 0.06, -0.12, 0, 0)
-    f.box('roofDark', 0.026, 0.08, 0.017, -0.02, 2.16, 0.08, -0.12, 0, 0)
-
-    f.box('wall', 0.024, 0.44, 0.015, 0.02, 1.98, -0.06, 0.12, 0, 0)
-    f.box('roofDark', 0.026, 0.08, 0.017, 0.02, 2.16, -0.08, 0.12, 0, 0)
-
-    // Cặp quẻ âm dương bằng gỗ mun hình bán nguyệt úp ngửa
-    f.cylinder('woodDark', 0.07, 0.07, 0.025, 8, -0.42, 1.26, 0.15, 0, 0.4, 0)
-    f.cylinder('woodDark', 0.07, 0.07, 0.025, 8, -0.32, 1.26, 0.22, 0, -0.5, 0)
-
-    // Sách Bói Quẻ Kinh Dịch cổ bìa đỏ thẻ tre
-    f.box('roofDark', 0.28, 0.035, 0.38, 0.42, 1.26, 0.10, 0, 0.2, 0)
-    f.box('wall', 0.26, 0.03, 0.36, 0.42, 1.265, 0.10, 0, 0.2, 0)
+    // Sách Bói Quẻ Kinh Dịch cổ (bìa gấm đỏ + xấp giấy ngà + gáy chỉ vàng)
+    f.box('roofDark', 0.30, 0.042, 0.40, 0.44, 1.255, 0.10, 0, 0.18, 0)
+    f.box('wall', 0.26, 0.034, 0.36, 0.45, 1.26, 0.10, 0, 0.18, 0)
+    f.box('gold', 0.03, 0.045, 0.40, 0.30, 1.258, 0.125, 0, 0.18, 0)
 
     this.fortuneTable.add(f.build({ name: 'fortune_table' }))
 
-    // Bảng tên 3D gắn mặt trước bàn xem quẻ
-    const fortunePlaque = createStationPlaqueMesh('BÀN XEM QUẺ', 1.25, 0.3)
-    fortunePlaque.position.set(0, 0.65, 0.54)
+    // Bảng tên 3D gắn gọn vào pano mặt trước bàn xem quẻ
+    const fortunePlaque = createStationPlaqueMesh('BÀN XEM QUẺ', 1.20, 0.29)
+    fortunePlaque.position.set(0, 0.64, 0.465)
     this.fortuneTable.add(fortunePlaque)
 
     this.scene.add(this.fortuneTable)
@@ -1020,6 +1150,28 @@ export class TempleStage {
   public releaseFloatingLantern() {
     this.lotusPondInstance?.releaseLantern(this.playerPos)
     this.triggerLocalEmote('bowing')
+  }
+
+  /** Đồng bộ kích thước 5 cá Koi theo cấp độ chăm sóc. */
+  public syncKoiLevels(levels: number[]) {
+    this.lotusPondInstance?.setKoiLevels(levels)
+  }
+
+  /** Kích hoạt hiệu ứng cá Koi quẫy đuôi tụ lại khi được cho ăn. */
+  public triggerKoiFeed() {
+    this.lotusPondInstance?.triggerKoiFeed(this.playerPos)
+    this.triggerLocalEmote('bowing')
+  }
+
+  /** Đồng bộ 6 ô đất Vườn Thiền trong thế giới 3D. */
+  public syncZenGarden(plots: Array<{ plotIndex: number; seedId: string | null; stage: number }>) {
+    this.zenGardenInstance?.syncPlots(plots)
+  }
+
+  /** Gõ Đại Hồng Chung tại Lầu Chuông (vung chày, rung chuông, sóng âm). */
+  public ringGreatBell() {
+    this.bellTowerInstance?.ringBell()
+    this.triggerLocalEmote('bowing', 2.4, 1.2)
   }
 
   public setOutfitColor(hexColor: number) {
@@ -1097,8 +1249,10 @@ export class TempleStage {
       this.isSprinting = false
     }
 
-    // Dynamic FOV (Góc nhìn nở rộng khi chạy nhanh như Minecraft Sprint FOV effect)
-    this.targetFov = this.isSprinting && isMoving && !inputLocked ? 63 : 52
+    // Dynamic FOV (Góc nhìn nở rộng khi chạy nhanh như Minecraft Sprint FOV effect, hoặc FOV tùy chỉnh trong Photo Mode)
+    this.targetFov = this.photoFov !== null
+      ? this.photoFov
+      : (this.isSprinting && isMoving && !inputLocked ? 63 : 52)
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, this.targetFov, Math.min(delta * 9.0, 1.0))
     this.camera.updateProjectionMatrix()
 
@@ -1210,11 +1364,20 @@ export class TempleStage {
     const distLoveTree = this.loveTreeInstance
       ? this.playerPos.distanceTo(this.loveTreeInstance.interactPos)
       : Infinity
+    const distZenGarden = this.zenGardenInstance
+      ? this.playerPos.distanceTo(this.zenGardenInstance.interactPos)
+      : Infinity
+    const distBellTower = Math.hypot(
+      this.playerPos.x - TempleStage.PROX_BELL_TOWER.x,
+      this.playerPos.z - TempleStage.PROX_BELL_TOWER.z
+    )
 
     if (distIncenseCourtyard < 2.6 || distIncenseHall < 3.2) nearest = 'incense'
     else if (distMerit < 2.4) nearest = 'merit_box'
     else if (distFortune < 2.4) nearest = 'fortune'
     else if (distLoveTree < 2.8) nearest = 'love_tree'
+    else if (distZenGarden < 4.8) nearest = 'zen_garden'
+    else if (distBellTower < 4.8) nearest = 'bell_tower'
     else if (distParkourStart < 3.0) nearest = 'parkour_start'
     else if (distParkourSummit < 3.8) nearest = 'parkour_summit'
     else if (distHauDong < 5.2) nearest = 'hau_dong'
@@ -1963,6 +2126,64 @@ export class TempleStage {
     if (this.loveTreeInstance) {
       this.loveTreeInstance.update(elapsed)
     }
+
+    // Cập nhật đom đóm bay quanh Hồ Sen & Vườn Thiền (chỉ hiện rõ lúc hoàng hôn / ban đêm)
+    if (this.fireflyPoints && this.fireflyBasePositions && this.fireflyMat) {
+      const targetOp = this.timeOfDay === 'night' ? 0.88 : this.timeOfDay === 'sunset' ? 0.42 : 0.0
+      this.fireflyMat.opacity = THREE.MathUtils.lerp(this.fireflyMat.opacity, targetOp, delta * 2.5)
+      this.fireflyPoints.visible = this.fireflyMat.opacity > 0.02
+      if (this.fireflyPoints.visible) {
+        const posAttr = this.fireflyPoints.geometry.getAttribute('position') as THREE.BufferAttribute
+        const count = posAttr.count
+        for (let i = 0; i < count; i++) {
+          const bx = this.fireflyBasePositions[i * 3]!
+          const by = this.fireflyBasePositions[i * 3 + 1]!
+          const bz = this.fireflyBasePositions[i * 3 + 2]!
+          posAttr.setXYZ(
+            i,
+            bx + Math.sin(elapsed * 0.9 + i * 1.7) * 0.65,
+            by + Math.sin(elapsed * 1.3 + i * 2.3) * 0.35,
+            bz + Math.cos(elapsed * 0.8 + i * 1.1) * 0.65
+          )
+        }
+        posAttr.needsUpdate = true
+      }
+    }
+
+  }
+
+  private buildAtmosphereAccents() {
+    // 1. 48 Đom đóm ánh vàng bay quanh Hồ Sen, Cây Nguyệt Lão và Vườn Thiền
+    const count = 48
+    const positions = new Float32Array(count * 3)
+    const basePositions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const isGarden = i % 2 === 1
+      const cx = isGarden ? 10.2 : -12.0
+      const cz = isGarden ? 18.8 : 17.0
+      const ang = (i * 2.399) % (Math.PI * 2)
+      const rad = 1.5 + ((i * 7) % 10) * 0.45
+      const x = cx + Math.cos(ang) * rad
+      const y = 0.8 + ((i * 13) % 10) * 0.24
+      const z = cz + Math.sin(ang) * rad
+      positions[i * 3] = basePositions[i * 3] = x
+      positions[i * 3 + 1] = basePositions[i * 3 + 1] = y
+      positions[i * 3 + 2] = basePositions[i * 3 + 2] = z
+    }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    this.fireflyMat = new THREE.PointsMaterial({
+      color: 0xffe484,
+      size: 0.18,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+    this.fireflyPoints = new THREE.Points(geo, this.fireflyMat)
+    this.fireflyPoints.visible = false
+    this.fireflyBasePositions = basePositions
+    this.scene.add(this.fireflyPoints)
   }
 
   /**
@@ -2454,6 +2675,9 @@ export class TempleStage {
     }
     if (this.loveTreeInstance) {
       this.scene.remove(this.loveTreeInstance.root)
+    }
+    if (this.zenGardenInstance) {
+      this.scene.remove(this.zenGardenInstance.root)
     }
     if (this.terrainSystem) {
       this.terrainSystem.dispose()

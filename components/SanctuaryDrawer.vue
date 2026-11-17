@@ -49,6 +49,8 @@ import UiInput from '~/components/ui/UiInput.vue'
 import ZenIcon, { type WhitelistedIconName } from '~/components/ZenIcon.vue'
 import HauDongPanel from '~/components/HauDongPanel.vue'
 import StreakPanel from '~/components/StreakPanel.vue'
+import GroupMeditationCard from '~/components/GroupMeditationCard.vue'
+import KoiGardenPanel from '~/components/KoiGardenPanel.vue'
 import { useStreakStore } from '~/stores/streak'
 import { useHauDongStore } from '~/stores/hauDong'
 import CardPackCard from '~/components/cards/CardPackCard.vue'
@@ -68,6 +70,7 @@ export type DrawerTab =
   | 'temple_detail'
   | 'love_couple'
   | 'streak'
+  | 'garden'
 
 type DivinationType = 'stick' | 'love' | 'family' | 'wealth' | 'health' | 'star'
 type DivinationTier = 'basic' | 'auspicious' | 'golden'
@@ -151,6 +154,7 @@ const TAB_NAV = computed<Array<{ id: DrawerTab; label: string; name: string; bad
   { id: 'shop', label: tr('Cửa Hàng', 'Shop'), name: tr('Cửa Hàng Pháp Bảo & Cổ Phục', 'Sanctuary Attire & Offerings Shop'), badge: tr('Pháp bảo & Cổ phục', 'Attire & Offerings'), subtitle: tr('Trang phục hành hương 9 quốc gia, nhang trầm và lễ phẩm cúng dường', 'Pilgrim attire from 9 countries, incense and sacred offerings') },
   { id: 'merit', label: tr('Công Đức', 'Merit'), name: tr('Hòm Công Đức Tam Bảo', 'Sanctuary Merit Box'), badge: tr('Phước đức tâm an', 'Peaceful Merit'), subtitle: tr('Cúng dường tự nguyện bằng MC và lưu danh Bảng vàng công đức', 'Voluntary MC offerings recorded on the Golden Scroll') },
   { id: 'cards', label: tr('Thẻ Bài', 'Cards'), name: tr('Thẻ Bài Di Sản Cổ Tự', '3D Heritage Temple Cards'), badge: tr('Triết lý & Kiến trúc', 'Wisdom & Architecture'), subtitle: tr('Bộ sưu tập cổ tự 3D, thuyết minh âm thanh và khai quang bằng MC', '3D heritage card collection with audio lore and CIP-68 NFT') },
+  { id: 'garden', label: tr('Vườn & Koi', 'Koi & Garden'), name: tr('Đàn Cá Koi & Vườn Thiền', 'Sanctuary Koi & Zen Garden'), badge: tr('Nuôi cá & Trồng cây', 'Feed Koi & Plant Seeds'), subtitle: tr('Cho cá Koi ăn, đặt tên cá và trồng cây sen, trúc, bồ đề tại Vườn Thiền', 'Feed and name the 5 Koi fish and tend 6 sacred planters in the Zen Garden') },
   { id: 'streak', label: tr('Sổ Tu Tập', 'Streak'), name: tr('Sổ Tu Tập Chuỗi Ngày An Lạc', 'Mindful Daily Streak Journal'), badge: tr('Mỗi ngày một việc lành', 'Daily Mindful Deed'), subtitle: tr('Ghi dấu mỗi ngày, nối thành chuỗi và nhận quà ở các cột mốc', 'Mark one good deed daily and claim milestone gifts') },
   { id: 'meditation', label: tr('Thiền', 'Meditate'), name: tr('Hội Thiền Định Tâm 432Hz', '432Hz Mindful Meditation Hall'), badge: tr('Chánh niệm định tâm', 'Mindful Breathing'), subtitle: tr('Chuông xoay 432Hz và vòng điều hòa hơi thở 4-4-6', '432Hz singing bowls and 4-4-6 breathing pacing') },
   { id: 'soundscape', label: tr('Âm Cảnh', 'Audio'), name: tr('Bộ Trộn Âm Cảnh Không Gian', '3D Spatial Soundscape Mixer'), badge: tr('Âm cảnh thiền tự', 'Sanctuary Audio'), subtitle: tr('Tùy chỉnh 6 kênh âm thanh thiên nhiên và pháp khí thời gian thực', 'Customize 6 real-time nature and temple bell audio channels') },
@@ -509,7 +513,11 @@ const offeringItems = computed(() => {
     { id: 'lotus_lantern', name: 'Hoa Đăng Cầu An', priceMc: 60 },
     { id: 'incense_japan', name: 'Đàn Hương Kyoto', priceMc: 80 },
     { id: 'oan_cake', name: 'Bánh Oản Hoàng Cung', priceMc: 100 },
-    { id: 'fruit_basket', name: 'Mâm Ngũ Quả Cúng Dường', priceMc: 120 }
+    { id: 'fruit_basket', name: 'Mâm Ngũ Quả Cúng Dường', priceMc: 120 },
+    { id: 'koi_food', name: 'Thức Ăn Cá Koi', priceMc: 20 },
+    { id: 'seed_lotus', name: 'Hạt Giống Sen Hồng', priceMc: 30 },
+    { id: 'seed_bamboo', name: 'Mầm Trúc Quân Tử', priceMc: 40 },
+    { id: 'seed_bodhi', name: 'Hạt Bồ Đề Tâm', priceMc: 50 }
   ]
 })
 
@@ -607,7 +615,7 @@ async function executeDirectFortuneRoll(payload: {
   isRolling.value = true
 
   try {
-    zenAudio.playFortuneShaking()
+    const shakeDone = zenAudio.playFortuneShaking()
 
     if (payload.paymentMode === 'free_daily' && !wallet.isConnected) {
       const generated = generateFortune({
@@ -622,34 +630,34 @@ async function executeDirectFortuneRoll(payload: {
       markDailyFreeUsed(payload.category)
       freeDrawsTrigger.value++
 
-      setTimeout(() => {
-        finalizeFortuneDisplay(generated, `local_${Date.now().toString(36)}`, 0, 'free_daily', null)
-        isRolling.value = false
-        zenAudio.playTempleBell()
-      }, 550)
+      await shakeDone
+      finalizeFortuneDisplay(generated, `local_${Date.now().toString(36)}`, 0, 'free_daily', null)
+      isRolling.value = false
+      zenAudio.playTempleBell()
       return
     }
 
-    const res = await economy.drawFortune(payload.category, payload.tier, createClientRequestId('fortune'), {
-      mode: payload.mode,
-      questionId: payload.questionId,
-      customQuestion: payload.customQuestion,
-      profile: payload.profile,
-      partnerProfile: payload.partnerProfile,
-      paymentMode: payload.paymentMode,
-      offeringItemId: payload.offeringItemId
-    })
+    const [res] = await Promise.all([
+      economy.drawFortune(payload.category, payload.tier, createClientRequestId('fortune'), {
+        mode: payload.mode,
+        questionId: payload.questionId,
+        customQuestion: payload.customQuestion,
+        profile: payload.profile,
+        partnerProfile: payload.partnerProfile,
+        paymentMode: payload.paymentMode,
+        offeringItemId: payload.offeringItemId
+      }),
+      shakeDone
+    ])
 
     if (payload.paymentMode === 'free_daily') {
       markDailyFreeUsed(payload.category)
       freeDrawsTrigger.value++
     }
 
-    setTimeout(() => {
-      finalizeFortuneDisplay(res.fortune, res.receiptHash, res.spentMc, payload.paymentMode, payload.offeringItemId || null)
-      isRolling.value = false
-      zenAudio.playTempleBell()
-    }, 550)
+    finalizeFortuneDisplay(res.fortune, res.receiptHash, res.spentMc, payload.paymentMode, payload.offeringItemId || null)
+    isRolling.value = false
+    zenAudio.playTempleBell()
   } catch (e: any) {
     isRolling.value = false
     fortuneNotice.value = e?.data?.statusMessage || e?.data?.message || e?.message || 'Không thể gieo quẻ lúc này.'
@@ -743,20 +751,21 @@ async function performConfirmedFortune(c: PendingSpendConfirm) {
   isRolling.value = true
 
   try {
-    zenAudio.playFortuneShaking()
-    const res = await economy.drawFortune(c.payload.category, c.payload.tier, c.requestId, {
-      mode: c.payload.mode,
-      questionId: c.payload.questionId,
-      customQuestion: c.payload.customQuestion,
-      profile: c.payload.profile,
-      partnerProfile: c.payload.partnerProfile,
-      paymentMode: 'mc'
-    })
-    setTimeout(() => {
-      finalizeFortuneDisplay(res.fortune, res.receiptHash, res.spentMc, 'mc', null)
-      isRolling.value = false
-      zenAudio.playTempleBell()
-    }, 550)
+    const shakeDone = zenAudio.playFortuneShaking()
+    const [res] = await Promise.all([
+      economy.drawFortune(c.payload.category, c.payload.tier, c.requestId, {
+        mode: c.payload.mode,
+        questionId: c.payload.questionId,
+        customQuestion: c.payload.customQuestion,
+        profile: c.payload.profile,
+        partnerProfile: c.payload.partnerProfile,
+        paymentMode: 'mc'
+      }),
+      shakeDone
+    ])
+    finalizeFortuneDisplay(res.fortune, res.receiptHash, res.spentMc, 'mc', null)
+    isRolling.value = false
+    zenAudio.playTempleBell()
   } catch (e: any) {
     isRolling.value = false
     fortuneNotice.value = e?.data?.statusMessage || e?.data?.message || e?.message || 'Không thể gieo quẻ lúc này.'
@@ -874,23 +883,27 @@ async function handleDrawCouple() {
 
   coupleLoading.value = true
   try {
-    const res = await $fetch<any>('/api/mc/fortune/draw-couple', {
-      method: 'POST',
-      body: {
-        profile: {
-          fullName: myEffectiveName.value,
-          birthDate: savedProfile.value?.birthDate || '1995-01-01',
-          gender: myEffectiveGender.value
-        },
-        partnerProfile: {
-          fullName: couplePartnerForm.value.fullName.trim(),
-          birthDate: couplePartnerForm.value.birthDate,
-          gender: couplePartnerForm.value.gender
-        },
-        paymentMode: couplePaymentMode.value,
-        requestId: 'couple_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
-      }
-    })
+    const shakeDone = zenAudio.playFortuneShaking()
+    const [res] = await Promise.all([
+      $fetch<any>('/api/mc/fortune/draw-couple', {
+        method: 'POST',
+        body: {
+          profile: {
+            fullName: myEffectiveName.value,
+            birthDate: savedProfile.value?.birthDate || '1995-01-01',
+            gender: myEffectiveGender.value
+          },
+          partnerProfile: {
+            fullName: couplePartnerForm.value.fullName.trim(),
+            birthDate: couplePartnerForm.value.birthDate,
+            gender: couplePartnerForm.value.gender
+          },
+          paymentMode: couplePaymentMode.value,
+          requestId: 'couple_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+        }
+      }),
+      shakeDone
+    ])
     coupleResult.value = res
     if (res.spentMc > 0) {
       economy.meritCoins = res.currentBalanceMc
@@ -2819,6 +2832,8 @@ function sendMantraMessage(text: string) {
               </UiButton>
             </div>
           </div>
+
+          <GroupMeditationCard />
         </div>
 
         <!-- ==================== TAB 6: ÂM THANH 3D ==================== -->
@@ -2991,8 +3006,19 @@ function sendMantraMessage(text: string) {
         <!-- =============================================================== -->
         <!-- TAB: NHÀ HẦU ĐỒNG (ĐIỆN THỜ TỨ PHỦ & TRẦN TRIỀU)                -->
         <!-- =============================================================== -->
+        <div v-else-if="currentTab === 'garden'">
+          <KoiGardenPanel
+            @open-shop="currentTab = 'shop'; shopTab = 'offerings'"
+            @guide-to-pond="emit('guideToDeed', 'lotus_pond')"
+            @guide-to-garden="emit('guideToDeed', 'zen_garden')"
+          />
+        </div>
+
         <div v-else-if="currentTab === 'streak'">
-          <StreakPanel @guide-to-deed="(lm: string) => emit('guideToDeed', lm)" />
+          <StreakPanel
+            @guide-to-deed="(lm: string) => emit('guideToDeed', lm)"
+            @open-shop="currentTab = 'shop'; shopTab = 'offerings'"
+          />
         </div>
 
         <div v-else-if="currentTab === 'hau_dong'">

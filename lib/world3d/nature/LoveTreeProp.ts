@@ -458,8 +458,52 @@ export class LoveTreeProp {
       bellMesh.position.set(0, -length, 0)
       g.add(bellMesh)
 
+      // Thẻ gỗ ước nguyện sơn son treo cạnh nút thắt
+      const wishGeo = new THREE.BoxGeometry(0.11, 0.22, 0.025)
+      const wishMat = new THREE.MeshLambertMaterial({ color: 0xd9a441, flatShading: true })
+      const wishMesh = new THREE.Mesh(wishGeo, wishMat)
+      wishMesh.position.set(0.04, -length * 0.65, 0.02)
+      wishMesh.rotation.z = 0.08
+      g.add(wishMesh)
+
       this.ribbonsGroup.add(g)
     })
+
+    // 2 Cột Đèn Lồng Tơ Hồng chầu hai bên Án Thư Cầu Duyên
+    const mats = FlatMaterialFactory.getInstance()
+    const lanternMat = mats.emissive('lantern')
+    const woodPostMat = mats.get('woodDark')
+    const roofCapMat = mats.get('roofDark')
+    const stonePlinthMat = mats.get('stone')
+    const goldAccentMat = mats.get('gold')
+
+    for (const lx of [-11.8, -9.2]) {
+      const lz = 16.55
+      const plinth = new THREE.Mesh(LowPolyBuilder.box(0.36, 0.16, 0.36), stonePlinthMat)
+      plinth.position.set(lx, 0.08, lz)
+      this.root.add(plinth)
+
+      const post = new THREE.Mesh(LowPolyBuilder.cylinder(0.055, 0.065, 1.55, 6), woodPostMat)
+      post.position.set(lx, 0.92, lz)
+      this.root.add(post)
+
+      const arm = new THREE.Mesh(LowPolyBuilder.box(0.24, 0.06, 0.06), woodPostMat)
+      arm.position.set(lx + (lx < -10.5 ? 0.1 : -0.1), 1.66, lz)
+      this.root.add(arm)
+
+      const lanternX = lx + (lx < -10.5 ? 0.18 : -0.18)
+      const glow = new THREE.Mesh(LowPolyBuilder.cylinder(0.14, 0.14, 0.28, 6), lanternMat)
+      glow.position.set(lanternX, 1.46, lz)
+      this.root.add(glow)
+
+      const cap = new THREE.Mesh(LowPolyBuilder.cone(0.24, 0.14, 6), roofCapMat)
+      cap.position.set(lanternX, 1.66, lz)
+      this.root.add(cap)
+
+      const tassel = new THREE.Mesh(LowPolyBuilder.cylinder(0.03, 0.015, 0.16, 5), goldAccentMat)
+      tassel.position.set(lanternX, 1.24, lz)
+      this.root.add(tassel)
+    }
   }
 
   private buildIncenseSmoke() {

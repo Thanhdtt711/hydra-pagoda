@@ -4,7 +4,7 @@ import { LowPolyBuilder, type ColoredPart } from '../style/LowPolyBuilder'
 import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
 import { SlotBatch } from '../style/SlotBatch'
 import { createCurvedHipRoof } from '../style/RoofBuilder'
-import { createPlaqueTexture } from '../utils/PlaqueTexture'
+import { createPlaqueTexture, drawLacquerPlaqueFrame } from '../utils/PlaqueTexture'
 import { buildPartGeometries, AVATAR_DIMS, type AvatarPalette, type AvatarPartGeometries } from '../characters/AvatarGeometry'
 
 export type HauDongDeityId =
@@ -316,13 +316,52 @@ export class HauDongSanctuary {
     b.box('gold', 1.52, 0.08, 1.06, 7.35, FLOOR_Y + 1.20, 9.75)
     b.box('gold', 0.46, 0.05, 0.04, 7.35, FLOOR_Y + 0.95, 10.27)
 
-    // 12. Đèn lồng Tứ Phủ treo trong điện
+    // 12. Đèn lồng Tứ Phủ treo trong điện & hiên mặt tiền
     for (const lx of [-6.2, -2.8, 2.8, 6.2]) {
       for (const lz of [-2.2, 3.2]) {
         b.cylinder('woodDark', 0.02, 0.02, 1.1, 4, lx, FLOOR_Y + 4.6, lz)
         b.addEmissive('lantern', LowPolyBuilder.box(0.45, 0.65, 0.45), { position: [lx, FLOOR_Y + 3.8, lz] })
       }
     }
+    for (const [lx, slot] of [
+      [-7.2, 'roof'],
+      [-2.7, 'gold'],
+      [2.7, 'gold'],
+      [7.2, 'roof']
+    ] as const) {
+      b.cylinder('woodDark', 0.02, 0.02, 0.45, 4, lx, FLOOR_Y + 3.55, frontZ + 0.65)
+      b.cylinder('gold', 0.22, 0.22, 0.05, 6, lx, FLOOR_Y + 3.30, frontZ + 0.65)
+      b.addEmissive('lantern', LowPolyBuilder.cylinder(0.18, 0.18, 0.34, 6), { position: [lx, FLOOR_Y + 3.10, frontZ + 0.65] })
+      b.cylinder(slot, 0.20, 0.12, 0.10, 6, lx, FLOOR_Y + 2.88, frontZ + 0.65)
+    }
+
+    // 13. Bộ Bát Bửu / Chấp Kích & Lọng Tứ Phủ hai bên Chiếu Hầu (x = ±3.65, z = -1.6)
+    for (const sx of [-1, 1]) {
+      const bx = sx * 3.65
+      const bz = -1.6
+      b.box('woodDark', 1.1, 0.14, 0.36, bx, FLOOR_Y + 0.07, bz)
+      for (const ox of [-0.36, 0, 0.36]) {
+        b.cylinder('woodDark', 0.028, 0.032, 2.6, 6, bx + ox, FLOOR_Y + 1.38, bz)
+        if (ox === 0) {
+          // Lọng tàn vàng đỏ chính giữa
+          b.cone('gold', 0.34, 0.28, 8, bx + ox, FLOOR_Y + 2.68, bz)
+          b.cylinder('roof', 0.32, 0.32, 0.16, 8, bx + ox, FLOOR_Y + 2.48, bz)
+        } else {
+          // Mũi giáo / Kích đồng hai bên
+          b.cone('gold', 0.09, 0.34, 4, bx + ox, FLOOR_Y + 2.75, bz)
+        }
+      }
+    }
+
+    // 14. Trống Chầu & Giá Thanh La bên khu Cung Văn (x = -3.4, z = 1.8)
+    b.box('woodDark', 0.62, 0.52, 0.52, -3.4, FLOOR_Y + 0.26, 1.8)
+    b.cylinder('roof', 0.28, 0.28, 0.44, 12, -3.4, FLOOR_Y + 0.62, 1.8, Math.PI * 0.5, 0, 0)
+    b.cylinder('gold', 0.29, 0.29, 0.06, 12, -3.4, FLOOR_Y + 0.62, 1.8, Math.PI * 0.5, 0, 0)
+    // Giá thanh la đồng nhỏ cạnh trống
+    b.cylinder('woodDark', 0.03, 0.03, 1.25, 6, -4.1, FLOOR_Y + 0.62, 2.2)
+    b.cylinder('woodDark', 0.03, 0.03, 1.25, 6, -3.5, FLOOR_Y + 0.62, 2.2)
+    b.box('woodDark', 0.72, 0.06, 0.06, -3.8, FLOOR_Y + 1.24, 2.2)
+    b.cylinder('gold', 0.20, 0.20, 0.04, 12, -3.8, FLOOR_Y + 0.90, 2.2, Math.PI * 0.5, 0, 0)
 
     return b.build({ name: 'hau_dong_static', castShadow: true, receiveShadow: true })
   }
@@ -359,16 +398,16 @@ export class HauDongSanctuary {
     boxPlaque.position.set(7.35, FLOOR_Y + 0.65, 10.28)
     this.group.add(boxPlaque)
 
-    // 3. Cuốn Thư Vàng Động phía trên Chiếu Hầu (hiển thị Giá Đồng đang ngự & Tên Thí Chủ, tự co chữ vừa khung)
+    // 3. Cuốn Thư Vàng Động phía trên Chiếu Hầu (hiển thị Giá Đồng đang ngự & Tên Thí Chủ, siêu lấy mẫu 2x)
     this.scrollCanvas = document.createElement('canvas')
-    this.scrollCanvas.width = 1024
-    this.scrollCanvas.height = 256
+    this.scrollCanvas.width = 2048
+    this.scrollCanvas.height = 512
     this.scrollTexture = new THREE.CanvasTexture(this.scrollCanvas)
     this.scrollTexture.colorSpace = THREE.SRGBColorSpace
     this.scrollTexture.generateMipmaps = true
     this.scrollTexture.minFilter = THREE.LinearMipmapLinearFilter
     this.scrollTexture.magFilter = THREE.LinearFilter
-    this.scrollTexture.anisotropy = 8
+    this.scrollTexture.anisotropy = 16
 
     const scrollMat = new THREE.MeshBasicMaterial({ map: this.scrollTexture })
     const scrollMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), scrollMat)
@@ -390,38 +429,32 @@ export class HauDongSanctuary {
     const ctx = this.scrollCanvas.getContext('2d')
     if (!ctx) return
 
-    const W = 1024
-    const H = 256
-    ctx.fillStyle = '#1a0f0a'
-    ctx.fillRect(0, 0, W, H)
+    const W = 2048
+    const H = 512
+    drawLacquerPlaqueFrame(ctx, W, H, '#1a0f0a', '#d9a441', 18)
 
-    ctx.strokeStyle = '#d9a441'
-    ctx.lineWidth = 10
-    ctx.strokeRect(10, 10, W - 20, H - 20)
-    ctx.lineWidth = 3
-    ctx.strokeRect(22, 22, W - 44, H - 44)
-
-    const drawFittedLine = (text: string, y: number, maxFontPx: number, color: string, serif = false) => {
-      const family = serif ? '"Noto Serif", "Times New Roman", serif' : '"Inter", system-ui, sans-serif'
-      const maxW = W - 96 // chừa 48px mỗi bên để không bao giờ tràn viền
+    const drawFittedLine = (text: string, y: number, maxFontPx: number, color: string) => {
+      const family = '"Be Vietnam Pro", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif'
+      const maxW = W - 220 // chừa lề 110px mỗi bên để không chạm họa tiết góc
       let size = maxFontPx
-      ctx.font = `bold ${size}px ${family}`
+      ctx.font = `800 ${size}px ${family}`
       const measured = ctx.measureText(text).width
       if (measured > maxW && measured > 0) {
-        size = Math.max(15, Math.floor(size * (maxW / measured)))
-        ctx.font = `bold ${size}px ${family}`
+        size = Math.max(28, Math.floor(size * (maxW / measured)))
+        ctx.font = `800 ${size}px ${family}`
       }
       ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.shadowColor = 'rgba(0,0,0,0.55)'
-      ctx.shadowBlur = 4
+      ctx.shadowColor = 'rgba(0,0,0,0.8)'
+      ctx.shadowBlur = 8
+      ctx.shadowOffsetY = 3
       ctx.fillText(text, W / 2, y, maxW)
     }
 
-    drawFittedLine(line1, 70, 42, '#f6cf74', true)
-    drawFittedLine(line2, 136, 32, '#fef08a', false)
-    drawFittedLine(line3, 196, 26, '#e5e7eb', false)
+    drawFittedLine(line1, 140, 84, '#f6cf74')
+    drawFittedLine(line2, 272, 62, '#fef08a')
+    drawFittedLine(line3, 392, 50, '#f3ede0')
 
     this.scrollTexture.needsUpdate = true
   }

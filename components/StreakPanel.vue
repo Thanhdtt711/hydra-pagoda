@@ -7,9 +7,13 @@ import { useWalletStore } from '~/stores/wallet'
 import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
+import KoiGardenPanel from '~/components/KoiGardenPanel.vue'
 import { t, tr } from '~/lib/ui/copy'
 
-const emit = defineEmits<{ (e: 'guideToDeed', landmark: string): void }>()
+const emit = defineEmits<{
+  (e: 'guideToDeed', landmark: string): void
+  (e: 'openShop'): void
+}>()
 
 const streak = useStreakStore()
 const deeds = useDeedsStore()
@@ -242,5 +246,11 @@ defineExpose({ refresh: () => streak.refreshStatus() })
         </li>
       </ul>
     </div>
+
+    <KoiGardenPanel
+      @open-shop="emit('openShop')"
+      @guide-to-pond="emit('guideToDeed', 'lotus_pond')"
+      @guide-to-garden="emit('guideToDeed', 'zen_garden')"
+    />
   </div>
 </template>

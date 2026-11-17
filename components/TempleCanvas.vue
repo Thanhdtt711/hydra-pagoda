@@ -9,6 +9,10 @@ import { useMeditationStore } from '~/stores/meditation'
 import { useHauDongStore } from '~/stores/hauDong'
 import { useStreakStore } from '~/stores/streak'
 import { useDeedsStore } from '~/stores/deeds'
+import { useOnboardingStore } from '~/stores/onboarding'
+import { useKoiGardenStore } from '~/stores/koiGarden'
+import OnboardingGuide from '~/components/OnboardingGuide.vue'
+import PhotoModeOverlay from '~/components/PhotoModeOverlay.vue'
 import { MapLayout } from '~/lib/world3d/world/MapLayout'
 import { useParkourStore } from '~/stores/parkour'
 import { MultiplayerClient, type PilgrimPresence, type ZenChatMessage } from '~/lib/network/MultiplayerClient'
@@ -48,6 +52,8 @@ const meditation = useMeditationStore()
 const hauDong = useHauDongStore()
 const parkour = useParkourStore()
 const streak = useStreakStore()
+const onboarding = useOnboardingStore()
+const koiGarden = useKoiGardenStore()
 const playerAltitude = ref(0)
 
 // Gợi ý phím dùng chung (lib/ui/controlHints.ts)
@@ -179,7 +185,31 @@ const showWalletModal = ref(false)
 const showAbbotDrawer = ref(false)
 const showEmoteWheel = ref(false)
 const showDisclaimer = ref(false)
+const showPhotoMode = ref(false)
 const isAudioMuted = ref(false)
+
+function setPhotoModeActive(next: boolean) {
+  showPhotoMode.value = next
+  if (next) {
+    closeAllDropups()
+    showDisplayMenu.value = false
+    showMiniMap.value = false
+    showHotkeysMenu.value = false
+    drawerOpen.value = false
+    showAbbotDrawer.value = false
+    if (stage) stage.setPhotoMode(true)
+  } else {
+    if (stage) {
+      stage.setPhotoMode(false)
+      if (stage.avatar) stage.avatar.root.visible = stage.cameraMode !== 'fpp'
+    }
+  }
+}
+
+function setTimeOfDayDirect(mode: 'day' | 'sunset' | 'night') {
+  currentTimeOfDay.value = mode
+  if (stage) stage.setTimeOfDay(mode)
+}
 const showMiniMap = ref(false)
 const livePlayerPos = ref({ x: 0, y: 0, z: 10 })
 const livePlayerYaw = ref(0)
@@ -307,6 +337,7 @@ onMounted(() => {
   user.name = resolveDisplayNameFromProfileAndWallet()
   if (canvasContainer.value) {
     stage = new TempleStage(canvasContainer.value)
+    stage.setGraphicsQuality(graphicsQuality.value)
     stage.festivalFireworksSystem.onLaunch = () => zenAudio.playFireworkLaunch()
     stage.festivalFireworksSystem.onBurst = () => zenAudio.playFireworkBurst()
     stage.setFestivalMode(Boolean(activeFestival.value))
@@ -475,6 +506,8 @@ onMounted(() => {
       stage.spawnDebugBots(botCount)
     }
 
+    void koiGarden.refreshAll()
+
     if (typeof window !== 'undefined') {
       ;(window as any).__STAGE__ = stage
     }
@@ -528,6 +561,13 @@ function onGlobalKeyDown(e: KeyboardEvent) {
     return
   }
 
+  // Hướng dẫn người mới: nhận biết người chơi đã biết di chuyển và mở menu
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    onboarding.notify('move')
+  } else if (['Digit1', 'Digit2', 'Digit3', 'Numpad1', 'Numpad2', 'Numpad3'].includes(e.code)) {
+    onboarding.notify('menu')
+  }
+
   // CÁCH 1: GIỮ PHÍM ALT ĐỂ THOÁT POINTER LOCK VÀ HIỆN CON TRỎ CHUỘT
   if (e.key === 'Alt') {
     e.preventDefault()
@@ -577,6 +617,13 @@ function onGlobalKeyDown(e: KeyboardEvent) {
       showWalletModal.value = false
       return
     }
+    if (showPhotoMode.value) {
+      setPhotoModeActive(false)
+      return
+    }
+  } else if (e.code === 'KeyP') {
+    e.preventDefault()
+    setPhotoModeActive(!showPhotoMode.value)
   } else if (e.code === 'KeyB') {
     triggerBowAction()
   } else if (e.code === 'KeyG') {
@@ -799,7 +846,8 @@ const DEED_APPROACH: Record<string, { x: number; z: number }> = {
   bell_tower: { x: 17.5, z: 8.5 },
   love_tree_shrine: { x: -10.5, z: 15.5 },
   bodhi_tree: { x: -9.0, z: 4.8 },
-  banyan_tree: { x: 9.0, z: 4.8 }
+  banyan_tree: { x: 9.0, z: 4.8 },
+  zen_garden: { x: 10.2, z: 15.2 }
 }
 const DEED_REACH_MARGIN = 3.5
 
@@ -827,7 +875,12 @@ function handleGuideToDeed(landmark: string) {
   if (!stage) return
   const target = DEED_APPROACH[landmark]
   if (!target) return
-  const name = useDeedsStore().status?.deeds.find(d => d.landmark === landmark)?.label ?? 'Điểm việc lành'
+  const fallbackLabel = landmark === 'zen_garden'
+    ? tr('Vườn Thiền', 'Zen Garden')
+    : landmark === 'lotus_pond'
+      ? tr('Hồ Sen', 'Lotus Pond')
+      : tr('Điểm việc lành', 'Good Deed Spot')
+  const name = useDeedsStore().status?.deeds.find(d => d.landmark === landmark)?.label ?? fallbackLabel
   drawerOpen.value = false
   isAutoWalking.value = true
   activeNavTargetName.value = name
@@ -1061,6 +1114,7 @@ async function handleIncenseOffering() {
     })
 
     if (res && res.verse) {
+      onboarding.notify('incense')
       currentScriptureVerse.value = res.verse
       incenseRewardMc.value = res.rewardMc || 0
       incenseHydraProof.value = res.hydra || null
@@ -1179,6 +1233,24 @@ async function handleLanternAction() {
   }
 }
 
+let lastBellRingAt = 0
+function handleRingBell() {
+  const now = performance.now()
+  if (now - lastBellRingAt < 1800) return
+  lastBellRingAt = now
+  stage?.ringGreatBell()
+  setTimeout(() => {
+    zenAudio.playTempleBell()
+  }, 320)
+  void useDeedsStore().reportVisit('bell_tower')
+  showToast(
+    tr('Thỉnh Đại Hồng Chung', 'Ring the Great Bell'),
+    tr('Tiếng chuông ngân vang thanh tịnh', 'Resonant bell brings clarity and peace'),
+    'bell'
+  )
+  multiplayer?.triggerEmote('bow', user.name)
+}
+
 function handleRightClickAction(target: InteractionTarget) {
   if (target === 'incense') {
     void handleIncenseOffering()
@@ -1194,6 +1266,10 @@ function handleRightClickAction(target: InteractionTarget) {
     openAbbotChat()
   } else if (target === 'love_tree') {
     openDrawer('love_couple')
+  } else if (target === 'zen_garden') {
+    openDrawer('garden')
+  } else if (target === 'bell_tower') {
+    handleRingBell()
   } else if (target === 'lantern') {
     void handleLanternAction()
   } else if (target === 'parkour_start') {
@@ -1231,6 +1307,8 @@ function getInteractionPrompt(target: InteractionTarget): string {
   if (target === 'merit_box') return tr('Mở Hòm Công Đức (ADA / Cúng Dường)', 'Open Merit Box (ADA / Donate)')
   if (target === 'fortune') return tr('Rút Quẻ Xăm Linh Tự', 'Draw Sacred Fortune Stick')
   if (target === 'love_tree') return tr('Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)', 'Consult Red Thread Love Altar')
+  if (target === 'zen_garden') return tr('Chăm Sóc Vườn Thiền (Trồng Cây & Tưới Nước)', 'Tend Zen Garden (Plant & Water)')
+  if (target === 'bell_tower') return tr('Thỉnh Đại Hồng Chung (Gõ Chuông)', 'Ring the Great Bell')
   if (target === 'meditation') return tr('Tọa Thiền Tĩnh Tâm', 'Sit in Mindful Meditation')
   if (target === 'abbot') return tr('Thưa chuyện với Thầy Trụ Trì', 'Speak with the Abbot')
   if (target === 'hau_dong') return tr('Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)', 'Enter Four Palaces Ritual Shrine')
@@ -1272,7 +1350,7 @@ function cycleTimeOfDay() {
 }
 
 // Cấu hình chất lượng đồ họa (Giai đoạn 3)
-const graphicsQuality = ref<'low' | 'medium' | 'high' | 'ultra'>('high')
+const graphicsQuality = ref<'low' | 'medium' | 'high' | 'ultra'>('low')
 
 function cycleGraphicsQuality() {
   if (graphicsQuality.value === 'high') {
@@ -1292,6 +1370,10 @@ function cycleGraphicsQuality() {
 
 // Loading Screen trang trọng (Giai đoạn 5)
 const isSceneLoading = ref(true)
+// Người mới: mở hướng dẫn ngay sau khi màn hình tải xong
+watch(isSceneLoading, (loading) => {
+  if (!loading) onboarding.startIfNew()
+})
 const loadingProgress = ref(15)
 const zenQuotes = [
   'Hơi thở vào, tâm tĩnh lặng. Hơi thở ra, miệng mỉm cười. — Thiền sư Thích Nhất Hạnh',
@@ -1373,6 +1455,7 @@ function simulateLoading() {
     </transition>
 
     <!-- Top Navigation HUD (Flat 56px Bar, Solid #100e0c, Hairline #26221d) -->
+    <div v-show="!showPhotoMode">
     <header class="hud-top-bar">
       <!-- Left: Temple Wordmark, Version & Realm, Country Selector -->
       <div class="hud-top-bar__left hud-hide-sm">
@@ -1559,6 +1642,27 @@ function simulateLoading() {
                 </div>
                 <UiKeycap>{{ currentLocale.toUpperCase() }}</UiKeycap>
               </button>
+              <button
+                type="button"
+                @click="setPhotoModeActive(true)"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">{{ tr('Chế độ ảnh', 'Photo Mode') }}</div>
+                  <div class="text-xs text-secondary">{{ tr('Ẩn HUD & chụp ảnh PNG', 'Hide HUD & capture PNG') }}</div>
+                </div>
+                <UiKeycap>P</UiKeycap>
+              </button>
+              <button
+                type="button"
+                @click="onboarding.restart()"
+                class="hud-popover__item hud-popover__item--row ui-focus-ring"
+              >
+                <div>
+                  <div class="text-sm font-semibold">{{ tr('Hướng dẫn', 'Tutorial') }}</div>
+                  <div class="text-xs text-secondary">{{ tr('Xem lại 5 phút đầu', 'Replay the first 5 minutes') }}</div>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -1600,15 +1704,36 @@ function simulateLoading() {
     <!-- Right-Click Action Toast Pill (Luôn ghim ở mép dưới màn hình để không che tầm nhìn của người chơi) -->
     <div
       v-if="nearTarget"
-      class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-20 z-20 transition-all duration-150 transform scale-100"
+      class="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-20 z-20 transition-all duration-150 transform scale-100 flex flex-wrap items-center justify-center gap-2"
     >
-      <div class="bg-surface-card border border-gold px-4 py-2 rounded-md shadow-2xl flex items-center gap-2.5">
+      <button
+        type="button"
+        class="bg-surface-card border border-gold px-4 py-2 rounded-md shadow-2xl flex items-center gap-2.5 cursor-pointer hover:bg-surface-elevated transition"
+        @click="handleAction"
+      >
         <template v-for="(k, ki) in interactHint.keys" :key="k">
           <span v-if="ki > 0" class="text-secondary text-xs">{{ interactHint.sep }}</span>
           <UiKeycap>{{ k }}</UiKeycap>
         </template>
         <span class="text-white text-sm font-semibold">{{ getInteractionPrompt(nearTarget) }}</span>
-      </div>
+      </button>
+
+      <UiButton
+        v-if="nearTarget === 'lantern'"
+        variant="secondary-light"
+        size="sm"
+        @click="openDrawer('garden')"
+      >
+        {{ tr('Cho cá ăn', 'Feed Koi') }}
+      </UiButton>
+      <UiButton
+        v-else-if="nearTarget === 'zen_garden'"
+        variant="secondary-light"
+        size="sm"
+        @click="openDrawer('garden')"
+      >
+        {{ tr('Trồng cây', 'Plant') }}
+      </UiButton>
     </div>
 
     <!-- Banner Lời Vàng Pháp Cú (Hiện trang nghiêm khi Dâng Hương Tam Bảo) -->
@@ -2107,10 +2232,21 @@ function simulateLoading() {
             </button>
             <button
               type="button"
+              @click="openDrawerFromDropup('garden')"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer"
+            >
+              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">05</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Đàn Cá Koi & Vườn Thiền', 'Sanctuary Koi & Zen Garden') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Cho cá ăn, đặt tên & trồng cây sen, trúc, bồ đề', 'Feed & name Koi, plant lotus, bamboo & bodhi') }}</div>
+              </div>
+            </button>
+            <button
+              type="button"
               @click="openDrawerFromDropup('hau_dong')"
               class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
             >
-              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">05</span>
+              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">06</span>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-semibold text-primary leading-snug whitespace-nowrap">{{ tr('Nhà Hầu Đồng (Điện Tứ Phủ)', 'Four Palaces Ritual Shrine') }}</div>
                 <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Hầu đồng 5 Giá (8p), Thỉnh Lộc MC & Mở Đàn', '5-Stage Ritual (8m), Blessings & Sponsorship') }}</div>
@@ -2121,7 +2257,7 @@ function simulateLoading() {
               @click="openAbbotChat()"
               class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
             >
-              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">06</span>
+              <span class="font-numbers text-xs font-semibold text-secondary pt-0.5 w-6 shrink-0">07</span>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Thầy Trụ Trì (Hiên Tiền Điện)', 'Temple Abbot (Front Veranda)') }}</div>
                 <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Hỏi đáp Phật pháp, Nghi lễ & Văn hóa chùa', 'Buddhist wisdom, etiquette & temple lore') }}</div>
@@ -2267,6 +2403,17 @@ function simulateLoading() {
     <WalletConnectModal v-if="showWalletModal" @close="showWalletModal = false" />
     <EmoteWheel v-if="showEmoteWheel" @close="showEmoteWheel = false" @select-emote="handleSelectEmote" />
     <DisclaimerBanner v-if="showDisclaimer" @close="showDisclaimer = false" />
+    <OnboardingGuide />
+    </div>
+
+    <PhotoModeOverlay
+      v-if="showPhotoMode"
+      :stage="stage"
+      :time-of-day="currentTimeOfDay"
+      @close="setPhotoModeActive(false)"
+      @change-time="setTimeOfDayDirect"
+      @captured="() => showToast('Đã lưu ảnh PNG', '', 'camera')"
+    />
   </div>
 </template>
 

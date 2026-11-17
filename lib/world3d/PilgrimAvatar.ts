@@ -58,12 +58,43 @@ export class PilgrimAvatar {
   private bowTimer = 0
   private lastStepDist = 0
   private prevPos = new THREE.Vector3()
+  private meditationAura: THREE.Group
+  private meditationAuraMat: THREE.MeshBasicMaterial
+  private auraTime = 0
 
   constructor(country: PilgrimCountry = 'vietnam', gender: AvatarGender = 'female') {
     this.currentCountry = country
     this.currentGender = gender
     this.model = new LowPolyAvatarModel(country, gender)
     this.root.add(this.model.root)
+
+    // Vầng hào quang hoa sen dưới chân khi ngồi thiền 432Hz
+    this.meditationAura = new THREE.Group()
+    this.meditationAura.position.y = 0.04
+    this.meditationAura.visible = false
+    this.meditationAuraMat = new THREE.MeshBasicMaterial({
+      color: 0xfcd535,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+    const outerRing = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.64, 24), this.meditationAuraMat)
+    outerRing.rotation.x = -Math.PI * 0.5
+    const innerRing = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.40, 24), this.meditationAuraMat)
+    innerRing.rotation.x = -Math.PI * 0.5
+    this.meditationAura.add(outerRing, innerRing)
+    const petalGeo = new THREE.CircleGeometry(0.11, 3)
+    for (let i = 0; i < 8; i++) {
+      const ang = (i * Math.PI * 2) / 8
+      const petal = new THREE.Mesh(petalGeo, this.meditationAuraMat)
+      petal.rotation.x = -Math.PI * 0.5
+      petal.rotation.z = ang
+      petal.position.set(Math.cos(ang) * 0.48, 0.005, Math.sin(ang) * 0.48)
+      this.meditationAura.add(petal)
+    }
+    this.root.add(this.meditationAura)
   }
 
   public setCountryStyle(country: PilgrimCountry) {
@@ -148,9 +179,25 @@ export class PilgrimAvatar {
         this.model.play('idle')
       }
     }
+
+    // Hiệu ứng vầng sen ánh sáng dưới chân khi ngồi thiền
+    const targetOpacity = this.currentAction === 'meditating' ? 0.55 : 0.0
+    this.meditationAuraMat.opacity = THREE.MathUtils.lerp(this.meditationAuraMat.opacity, targetOpacity, delta * 4.5)
+    this.meditationAura.visible = this.meditationAuraMat.opacity > 0.02
+    if (this.meditationAura.visible) {
+      this.auraTime += delta
+      this.meditationAura.rotation.y += delta * 0.45
+      const s = 1 + Math.sin(this.auraTime * 2.0) * 0.05
+      this.meditationAura.scale.setScalar(s)
+    }
   }
 
   public dispose() {
+    this.meditationAura.traverse((c) => {
+      const m = c as THREE.Mesh
+      if (m.isMesh && m.geometry) m.geometry.dispose()
+    })
+    this.meditationAuraMat.dispose()
     this.model.dispose()
     this.root.clear()
   }

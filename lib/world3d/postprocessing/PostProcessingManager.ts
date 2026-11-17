@@ -57,7 +57,7 @@ export class PostProcessingManager {
   private vignettePass: ShaderPass
   private outputPass: OutputPass
 
-  public quality: GraphicsQuality = 'high'
+  public quality: GraphicsQuality = 'low'
   private width = 1280
   private height = 720
 
@@ -99,7 +99,7 @@ export class PostProcessingManager {
     this.outputPass = new OutputPass()
     this.composer.addPass(this.outputPass)
 
-    this.setQuality('high')
+    this.setQuality('low')
   }
 
   private applyBloomParams() {

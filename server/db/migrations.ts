@@ -447,5 +447,57 @@ CREATE TABLE daily_deed_rewards (
   PRIMARY KEY (account_id, day_key)
 );
 `
+  },
+  {
+    version: 13,
+    name: 'onboarding_rewards',
+    sql: `
+-- Hướng dẫn 5 phút đầu: mỗi tài khoản nhận quà chào mừng tối đa một lần.
+CREATE TABLE onboarding_rewards (
+  account_id INTEGER PRIMARY KEY REFERENCES accounts(id),
+  item_id    TEXT    NOT NULL,
+  claimed_at INTEGER NOT NULL
+);
+`
+  },
+  {
+    version: 14,
+    name: 'koi_and_zen_garden',
+    sql: `
+-- Chăm sóc đàn cá Koi tại Hồ Sen Bát Nhã (5 cá chép: koi_index 0..4).
+CREATE TABLE koi_state (
+  account_id   INTEGER NOT NULL REFERENCES accounts(id),
+  koi_index    INTEGER NOT NULL CHECK (koi_index >= 0 AND koi_index < 5),
+  custom_name  TEXT,
+  rename_used  INTEGER NOT NULL DEFAULT 0,
+  total_feeds  INTEGER NOT NULL DEFAULT 0 CHECK (total_feeds >= 0),
+  level        INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1 AND level <= 5),
+  last_fed_day TEXT,
+  fed_today    INTEGER NOT NULL DEFAULT 0 CHECK (fed_today >= 0),
+  updated_at   INTEGER NOT NULL,
+  PRIMARY KEY (account_id, koi_index)
+);
+
+-- Lượt cho cá ăn miễn phí mỗi ngày (1 lần/ngày/tài khoản).
+CREATE TABLE koi_daily_free_feeds (
+  account_id INTEGER NOT NULL REFERENCES accounts(id),
+  day_key    TEXT    NOT NULL,
+  used_at    INTEGER NOT NULL,
+  PRIMARY KEY (account_id, day_key)
+);
+
+-- Vườn Thiền cá nhân: 6 ô đất (plot_index 0..5), cây lớn qua 4 giai đoạn (stage 1..4).
+CREATE TABLE garden_plots (
+  account_id       INTEGER NOT NULL REFERENCES accounts(id),
+  plot_index       INTEGER NOT NULL CHECK (plot_index >= 0 AND plot_index < 6),
+  seed_id          TEXT    NOT NULL,
+  stage            INTEGER NOT NULL DEFAULT 1 CHECK (stage >= 1 AND stage <= 4),
+  water_count      INTEGER NOT NULL DEFAULT 1 CHECK (water_count >= 1),
+  planted_at       INTEGER NOT NULL,
+  last_watered_day TEXT    NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  PRIMARY KEY (account_id, plot_index)
+);
+`
   }
 ]
