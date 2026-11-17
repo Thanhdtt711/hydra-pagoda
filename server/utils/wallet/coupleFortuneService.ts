@@ -103,10 +103,10 @@ export async function drawCoupleFortune(
       })
     }
 
-    // Tặng 1 Bùa Chỉ Đỏ Uyên Ương vào kho đồ
+    // Tặng 1 Bùa Chỉ Đỏ Uyên Ương vào kho đồ (dùng category 'offering' hợp lệ theo CHECK constraint)
     await conn.prepare(
       `INSERT INTO account_inventory (account_id, item_id, category, quantity, unlocked_at, updated_at)
-       VALUES (?, 'love_knot_charm', 'charm', 1, ?, ?)
+       VALUES (?, 'love_knot_charm', 'offering', 1, ?, ?)
        ON CONFLICT(account_id, item_id) DO UPDATE SET
          quantity = account_inventory.quantity + 1,
          updated_at = excluded.updated_at`
