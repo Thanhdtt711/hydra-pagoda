@@ -499,5 +499,40 @@ CREATE TABLE garden_plots (
   PRIMARY KEY (account_id, plot_index)
 );
 `
+  },
+  {
+    version: 15,
+    name: 'board_game_rewards',
+    sql: `
+-- Cờ dưới Bóng Bồ Đề: phiên chơi do server cấp để kiểm tra thời gian tối thiểu trước khi trả thưởng.
+CREATE TABLE board_game_runs (
+  run_token    TEXT    PRIMARY KEY,
+  account_id   INTEGER NOT NULL REFERENCES accounts(id),
+  game_id      TEXT    NOT NULL,
+  day_key      TEXT    NOT NULL,
+  started_at   INTEGER NOT NULL,
+  completed_at INTEGER
+);
+CREATE INDEX board_game_runs_acc_day_idx ON board_game_runs (account_id, day_key);
+
+-- Mỗi tài khoản nhận thưởng tối đa một lần cho mỗi môn cờ mỗi ngày.
+CREATE TABLE board_game_wins (
+  account_id INTEGER NOT NULL REFERENCES accounts(id),
+  day_key    TEXT    NOT NULL,
+  game_id    TEXT    NOT NULL,
+  reward_mc  INTEGER NOT NULL CHECK (reward_mc >= 0),
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, day_key, game_id)
+);
+
+-- Thưởng thêm khi thắng đủ cả 5 môn trong ngày (tối đa một lần mỗi ngày).
+CREATE TABLE board_game_bonus (
+  account_id INTEGER NOT NULL REFERENCES accounts(id),
+  day_key    TEXT    NOT NULL,
+  reward_mc  INTEGER NOT NULL CHECK (reward_mc >= 0),
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, day_key)
+);
+`
   }
 ]

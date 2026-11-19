@@ -223,17 +223,6 @@ export class PagodaSanctuaryHall {
       b.sphere('gold', 0.16, 1, rx, 1.74, zTop)
     }
 
-    // Đôi chậu cây tùng / bonsai cổ thụ đặt hai bên thềm cửa chính trên hiên
-    for (const sx of [-1, 1]) {
-      const bx = sx * 4.8
-      const bz = PORCH_Z - 1.15
-      b.cylinder('stone', 0.48, 0.38, 0.46, 8, bx, FLOOR_Y + 0.23, bz)
-      b.cylinder('gold', 0.50, 0.50, 0.06, 8, bx, FLOOR_Y + 0.47, bz)
-      b.cylinder('woodDark', 0.10, 0.14, 0.65, 6, bx, FLOOR_Y + 0.82, bz, 0, 0, sx * 0.15)
-      b.sphere('leaf', 0.44, 1, bx - sx * 0.08, FLOOR_Y + 1.25, bz)
-      b.sphere('leaf', 0.32, 1, bx + sx * 0.22, FLOOR_Y + 1.08, bz + 0.1)
-    }
-
     // --- Sàn gỗ trong lòng điện + thảm ngự đạo ---
     const interiorW = HALF_W * 2 - WALL_T * 2
     const interiorD = HALF_D * 2 - WALL_T * 2

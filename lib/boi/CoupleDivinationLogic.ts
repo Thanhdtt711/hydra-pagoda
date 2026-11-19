@@ -1,7 +1,6 @@
 // lib/boi/CoupleDivinationLogic.ts
 // Thuật toán so khớp Bát Tự, Ngũ Hành Nạp Âm & Điểm Tương Hợp Cặp Đôi (Đài Tơ Duyên)
 
-import { createHash } from 'node:crypto'
 import { analyzeMetaphysics, formatQuanHeLabel } from './MetaphysicsService'
 import type { PersonProfile, FortuneDrawResult } from './types'
 
@@ -61,11 +60,14 @@ export function calculateCoupleCompatibility(
     baseScore = 76
   }
 
-  // Jitter tất định dựa trên tên và ngày sinh
-  const hash = createHash('sha256')
-    .update(`${profile?.fullName}_${profile?.birthDate}_${partnerProfile?.fullName}_${partnerProfile?.birthDate}`)
-    .digest('hex')
-  const jitter = parseInt(hash.slice(0, 4), 16) % 9 // [0, 8]
+  // Jitter tất định dựa trên tên và ngày sinh (tương thích cả client browser & server)
+  const seedInput = `${profile?.fullName}_${profile?.birthDate}_${partnerProfile?.fullName}_${partnerProfile?.birthDate}`
+  let h = 2166136261
+  for (let i = 0; i < seedInput.length; i++) {
+    h ^= seedInput.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const jitter = (h >>> 0) % 9 // [0, 8]
 
   let score = baseScore + jitter
   if (rel === 'tuong_khac') {

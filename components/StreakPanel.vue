@@ -8,6 +8,8 @@ import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import KoiGardenPanel from '~/components/KoiGardenPanel.vue'
+import { useBoardGamesStore } from '~/stores/boardGames'
+import { BOARD_GAME_IDS, BOARD_GAME_LABELS } from '~/lib/games/boardGameRewards'
 import { t, tr } from '~/lib/ui/copy'
 
 const emit = defineEmits<{
@@ -19,14 +21,25 @@ const streak = useStreakStore()
 const deeds = useDeedsStore()
 const economy = useEconomyStore()
 const wallet = useWalletStore()
+const boardGames = useBoardGamesStore()
 
 const status = computed(() => streak.status)
+const gamesStatus = computed(() => boardGames.status)
+const gameRows = computed(() =>
+  BOARD_GAME_IDS.map((id) => ({
+    id,
+    label: tr(BOARD_GAME_LABELS[id].vi, BOARD_GAME_LABELS[id].en),
+    won: boardGames.hasWonToday(id),
+    playedCount: boardGames.getPlayedCount(id)
+  }))
+)
 
-const DEED_LABELS = computed<Array<{ key: 'meditation' | 'incense' | 'fortune' | 'merit'; label: string }>>(() => [
+const DEED_LABELS = computed<Array<{ key: 'meditation' | 'incense' | 'fortune' | 'merit' | 'games'; label: string }>>(() => [
   { key: 'meditation', label: tr('Ngồi thiền trọn một thời', 'Complete one meditation session') },
   { key: 'incense', label: tr('Thắp hương đầu ngày', 'Offer daily incense') },
   { key: 'fortune', label: tr('Gieo một quẻ cầu an', 'Draw one fortune stick') },
-  { key: 'merit', label: tr('Cúng dường Hòm Công Đức', 'Donate to the Merit Box') }
+  { key: 'merit', label: tr('Cúng dường Hòm Công Đức', 'Donate to the Merit Box') },
+  { key: 'games', label: tr('Thắng một ván cờ dưới Bóng Bồ Đề', 'Win one board game under the Bodhi tree') }
 ])
 
 const introLine = computed(() => {
@@ -71,6 +84,7 @@ async function onClaimDeeds() {
 onMounted(() => {
   void streak.refreshStatus()
   void deeds.refreshStatus()
+  void boardGames.refreshStatus()
 })
 
 defineExpose({ refresh: () => streak.refreshStatus() })
@@ -229,6 +243,63 @@ defineExpose({ refresh: () => streak.refreshStatus() })
         <p v-if="deeds.error" class="text-xs text-down">{{ deeds.error }}</p>
         <p v-if="deeds.lastReward" class="text-xs font-semibold text-primary">Đã nhận: {{ deeds.lastReward.label }}</p>
       </template>
+    </div>
+
+    <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-3 text-left">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h4 class="text-sm font-bold text-white">{{ tr('Nhiệm vụ: Cờ dưới Bóng Bồ Đề', 'Quest: Board games under the Bodhi tree') }}</h4>
+          <p class="text-xs text-secondary leading-relaxed mt-1">
+            {{ tr('Thắng máy ở 5 môn cờ để nhận MC. Mỗi môn chỉ tính ván thắng đầu tiên trong ngày.', 'Beat the AI in 5 board games to earn MC. Only the first win of each game each day counts.') }}
+          </p>
+        </div>
+        <span class="text-sm font-numbers font-bold text-primary shrink-0">{{ boardGames.mergedWonCount }}/{{ gamesStatus?.totalGames ?? 5 }}</span>
+      </div>
+
+      <ul class="space-y-1.5 text-xs text-secondary leading-relaxed">
+        <li>{{ tr('Thắng 1 môn: nhận +10 MC', 'Win 1 game: earn +10 MC') }}</li>
+        <li>{{ tr('Thắng đủ cả 5 môn: nhận thêm +10 MC, tổng cộng 60 MC trong ngày', 'Win all 5 games: earn a +10 MC bonus, 60 MC total per day') }}</li>
+        <li>{{ tr('Thắng thêm ván nữa trong ngày: không nhận thêm MC', 'Winning again the same day: no extra MC') }}</li>
+      </ul>
+
+      <ul class="space-y-2">
+        <li v-for="g in gameRows" :key="g.id" class="flex items-center gap-2 text-xs">
+          <ZenIcon
+            :name="g.won ? 'circle-check' : g.playedCount > 0 ? 'sparkles' : 'moon'"
+            :size="16"
+            class="shrink-0"
+            :class="g.won ? 'text-primary' : g.playedCount > 0 ? 'text-white' : 'text-secondary'"
+          />
+          <span class="min-w-0 flex-1" :class="g.won ? 'text-white' : 'text-secondary'">
+            {{ g.label }}
+            <span class="text-secondary font-numbers">
+              {{ g.playedCount > 0 ? tr(`(Đã chơi ${g.playedCount} ván)`, `(${g.playedCount} played)`) : tr('(Chưa chơi)', '(Not played)') }}
+            </span>
+          </span>
+          <span class="font-numbers font-semibold shrink-0" :class="g.won ? 'text-up' : 'text-primary'">
+            {{ g.won ? tr('Đã nhận +10 MC', 'Received +10 MC') : tr('Thắng: +10 MC', 'Win: +10 MC') }}
+          </span>
+        </li>
+      </ul>
+
+      <div class="rounded-lg border border-hairline bg-surface-elevated p-2.5 text-xs text-secondary leading-relaxed">
+        {{ tr('Đã chơi hôm nay:', 'Played today:') }}
+        <span class="font-numbers font-bold text-white">{{ boardGames.mergedPlayedGamesCount }}/5</span>
+        {{ tr('môn • Đã nhận:', 'games • Earned:') }}
+        <span class="font-numbers font-bold text-up">{{ boardGames.mergedEarnedMc }}</span>
+        / <span class="font-numbers font-bold text-white">{{ gamesStatus?.maxDailyMc ?? 60 }}</span> MC
+        <span v-if="boardGames.mergedWonCount >= 5" class="text-primary font-semibold">
+          {{ tr('(đã nhận thưởng thắng đủ 5 môn)', '(all-5 bonus received)') }}
+        </span>
+      </div>
+
+      <p v-if="!wallet.isConnected" class="text-xs text-secondary leading-relaxed">
+        {{ tr('Kết nối ví để hệ thống cộng MC trực tiếp vào tài khoản của bạn.', 'Connect your wallet to credit MC directly to your account.') }}
+      </p>
+
+      <UiButton variant="secondary" size="md" block @click="emit('guideToDeed', 'bodhi_chess')">
+        {{ tr('Đi chơi cờ ngay', 'Go play now') }}
+      </UiButton>
     </div>
 
     <div class="rounded-lg border border-hairline bg-surface-card p-5 space-y-2.5 text-left">

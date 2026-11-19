@@ -10,6 +10,25 @@ export type Locale = 'vi' | 'en'
 
 const LOCALE_STORAGE_KEY = 'van_canh_locale'
 
+function detectBrowserLocale(): Locale {
+  if (typeof navigator === 'undefined') return 'vi'
+  const candidates: string[] = []
+  if (Array.isArray(navigator.languages)) {
+    for (const lang of navigator.languages) {
+      if (typeof lang === 'string' && lang.trim()) candidates.push(lang.trim().toLowerCase())
+    }
+  }
+  if (typeof navigator.language === 'string' && navigator.language.trim()) {
+    candidates.push(navigator.language.trim().toLowerCase())
+  }
+  for (const tag of candidates) {
+    if (tag === 'vi' || tag.startsWith('vi-') || tag.startsWith('vi_')) return 'vi'
+    if (tag === 'en' || tag.startsWith('en-') || tag.startsWith('en_')) return 'en'
+  }
+  // Trình duyệt dùng ngôn ngữ khác ngoài vi/en -> chọn tiếng Anh làm ngôn ngữ quốc tế mặc định
+  return candidates.length > 0 ? 'en' : 'vi'
+}
+
 function loadInitialLocale(): Locale {
   if (typeof window !== 'undefined') {
     try {
@@ -20,14 +39,22 @@ function loadInitialLocale(): Locale {
     } catch {
       // ignore storage errors
     }
+    return detectBrowserLocale()
   }
   return 'vi'
 }
 
 export const currentLocale = ref<Locale>(loadInitialLocale())
 
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = currentLocale.value
+}
+
 export function setLocale(loc: Locale) {
   currentLocale.value = loc
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = loc
+  }
   if (typeof window !== 'undefined') {
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, loc)

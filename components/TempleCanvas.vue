@@ -21,6 +21,7 @@ import type { DrawerTab } from '~/components/SanctuaryDrawer.vue'
 // không nằm trong chunk vào trang.
 const SanctuaryDrawer = defineAsyncComponent(() => import('~/components/SanctuaryDrawer.vue'))
 const AbbotChatDrawer = defineAsyncComponent(() => import('~/components/AbbotChatDrawer.vue'))
+const BodhiGamesModal = defineAsyncComponent(() => import('~/components/BodhiGamesModal.vue'))
 import type { AbbotNpcEmotion } from '~/lib/world3d/characters/AbbotNpc'
 import UiChip from '~/components/ui/UiChip.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
@@ -119,6 +120,7 @@ const nearTarget = ref<InteractionTarget>(null)
 const isNearFortune = ref(false)
 const isNearMerit = ref(false)
 const isInsideHauDong = ref(false)
+const showBodhiGamesModal = ref(false)
 const currentTimeOfDay = ref<'day' | 'sunset' | 'night'>('day')
 let hauDongSyncTimer: ReturnType<typeof setInterval> | null = null
 
@@ -617,6 +619,10 @@ function onGlobalKeyDown(e: KeyboardEvent) {
       showWalletModal.value = false
       return
     }
+    if (showBodhiGamesModal.value) {
+      closeBodhiGamesModal()
+      return
+    }
     if (showPhotoMode.value) {
       setPhotoModeActive(false)
       return
@@ -670,6 +676,7 @@ function onGlobalKeyUp(e: KeyboardEvent) {
                           showHeritageMenu.value || 
                           showHotkeysMenu.value || 
                           showWalletModal.value || 
+                          showBodhiGamesModal.value ||
                           showEmoteWheel.value || 
                           showDisclaimer.value
     if (!isAnyMenuOpen && stage) {
@@ -873,6 +880,11 @@ function checkDeedVisits(x: number, z: number) {
 
 function handleGuideToDeed(landmark: string) {
   if (!stage) return
+  if (landmark === 'bodhi_chess') {
+    drawerOpen.value = false
+    openBodhiGamesFromDropup()
+    return
+  }
   const target = DEED_APPROACH[landmark]
   if (!target) return
   const fallbackLabel = landmark === 'zen_garden'
@@ -1054,6 +1066,28 @@ function openFortuneCategory(catId: string) {
 function openDrawerFromDropup(tab: DrawerTab) {
   closeAllDropups()
   openDrawer(tab)
+}
+
+function closeBodhiGamesModal() {
+  showBodhiGamesModal.value = false
+  stage?.standUpFromBodhiChess()
+}
+
+function openBodhiGamesFromDropup() {
+  closeAllDropups()
+  if (!stage || nearTarget.value === 'bodhi_chess') {
+    if (stage) {
+      stage.sitAtBodhiChess()
+      stage.exitPointerLock()
+    }
+    showBodhiGamesModal.value = true
+    return
+  }
+  showToast(tr('Đang bước tới Bàn Cờ Bồ Đề...', 'Walking to Bodhi Chess Table...'), '', 'pagoda')
+  stage.walkToBodhiChess(() => {
+    if (stage) stage.exitPointerLock()
+    showBodhiGamesModal.value = true
+  })
 }
 
 const currentCountryObj = computed(() => {
@@ -1268,6 +1302,12 @@ function handleRightClickAction(target: InteractionTarget) {
     openDrawer('love_couple')
   } else if (target === 'zen_garden') {
     openDrawer('garden')
+  } else if (target === 'bodhi_chess') {
+    if (stage) {
+      stage.sitAtBodhiChess()
+      stage.exitPointerLock()
+    }
+    showBodhiGamesModal.value = true
   } else if (target === 'bell_tower') {
     handleRingBell()
   } else if (target === 'lantern') {
@@ -1308,6 +1348,7 @@ function getInteractionPrompt(target: InteractionTarget): string {
   if (target === 'fortune') return tr('Rút Quẻ Xăm Linh Tự', 'Draw Sacred Fortune Stick')
   if (target === 'love_tree') return tr('Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)', 'Consult Red Thread Love Altar')
   if (target === 'zen_garden') return tr('Chăm Sóc Vườn Thiền (Trồng Cây & Tưới Nước)', 'Tend Zen Garden (Plant & Water)')
+  if (target === 'bodhi_chess') return tr('Chơi Cờ Dưới Bóng Bồ Đề (Ô Ăn Quan / Cờ Tướng)', 'Play Board Games Under Bodhi Tree')
   if (target === 'bell_tower') return tr('Thỉnh Đại Hồng Chung (Gõ Chuông)', 'Ring the Great Bell')
   if (target === 'meditation') return tr('Tọa Thiền Tĩnh Tâm', 'Sit in Mindful Meditation')
   if (target === 'abbot') return tr('Thưa chuyện với Thầy Trụ Trì', 'Speak with the Abbot')
@@ -2263,6 +2304,17 @@ function simulateLoading() {
                 <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Hỏi đáp Phật pháp, Nghi lễ & Văn hóa chùa', 'Buddhist wisdom, etiquette & temple lore') }}</div>
               </div>
             </button>
+            <button
+              type="button"
+              @click="openBodhiGamesFromDropup()"
+              class="w-full min-h-[50px] px-3 py-2 rounded-md flex items-start gap-3 text-left hover:bg-surface-elevated transition cursor-pointer border-t border-hairline mt-1 pt-2.5"
+            >
+              <span class="font-numbers text-xs font-semibold text-primary pt-0.5 w-6 shrink-0">08</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-white leading-snug whitespace-nowrap">{{ tr('Kỳ Đài Dưới Bóng Bồ Đề', 'Bodhi Tree Board Games') }}</div>
+                <div class="text-xs text-secondary leading-snug mt-0.5">{{ tr('Chơi Ô Ăn Quan & Cờ Tướng cùng Sư Thầy', 'Play O An Quan & Xiangqi under the Bodhi tree') }}</div>
+              </div>
+            </button>
           </div>
 
           <button
@@ -2400,6 +2452,7 @@ function simulateLoading() {
     />
 
     <!-- Overlays & Modals for specific operations -->
+    <BodhiGamesModal v-if="showBodhiGamesModal" :open="showBodhiGamesModal" @close="closeBodhiGamesModal" />
     <WalletConnectModal v-if="showWalletModal" @close="showWalletModal = false" />
     <EmoteWheel v-if="showEmoteWheel" @close="showEmoteWheel = false" @select-emote="handleSelectEmote" />
     <DisclaimerBanner v-if="showDisclaimer" @close="showDisclaimer = false" />

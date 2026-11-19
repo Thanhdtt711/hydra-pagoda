@@ -16,6 +16,7 @@ export interface StreakDeedsDto {
   incense: boolean
   fortune: boolean
   merit: boolean
+  games: boolean
 }
 
 export interface StreakStatusDto {
@@ -65,7 +66,7 @@ export const useStreakStore = defineStore('streak', {
   getters: {
     deedCount(state): number {
       const d = state.status?.deeds
-      return d ? Number(d.meditation) + Number(d.incense) + Number(d.fortune) + Number(d.merit) : 0
+      return d ? Number(d.meditation) + Number(d.incense) + Number(d.fortune) + Number(d.merit) + Number(Boolean(d.games)) : 0
     }
   },
 

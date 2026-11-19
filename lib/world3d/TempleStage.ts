@@ -7,7 +7,7 @@ import { PilgrimAvatar, type AvatarGender, type PilgrimCountry } from './Pilgrim
 import { createPilgrimNameplate, createSpeechBubbleSprite } from './NameplateHelper'
 import { createPlaqueTexture } from './utils/PlaqueTexture'
 import type { PilgrimPresence } from '../network/MultiplayerClient'
-import { CollisionWorld, CharacterController, CameraSpringArm, BoxCollider, CylinderCollider } from './collision'
+import { CollisionWorld, CharacterController, CameraSpringArm, BoxCollider, CylinderCollider, GridPathfinder } from './collision'
 import { PagodaSanctuaryHall } from './sanctuary/PagodaSanctuary'
 import { HauDongSanctuary, type HauDongVisualState } from './sanctuary/HauDongSanctuary'
 import { AtmosphereManager } from './environment/AtmosphereManager'
@@ -27,6 +27,8 @@ import { PetalParticleSystem } from './nature/PetalParticleSystem'
 import { FestivalFireworksSystem } from './nature/FestivalFireworksSystem'
 import { LoveTreeProp } from './nature/LoveTreeProp'
 import { ZenGardenProp } from './nature/ZenGardenProp'
+import { BodhiChessTableProp } from './nature/BodhiChessTableProp'
+import { BodhiMonkNpc } from './characters/BodhiMonkNpc'
 import { MapLayout } from './world/MapLayout'
 import { HallLayout, type MeditationSlot } from './world/HallLayout'
 import { TerrainSystem } from './world/TerrainSystem'
@@ -35,7 +37,7 @@ import { AbbotNpc, type AbbotNpcEmotion } from './characters/AbbotNpc'
 import { PerformanceProfiler } from './debug/PerformanceProfiler'
 import { SeededPRNG } from './utils/SeededPRNG'
 
-export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | 'zen_garden' | 'bell_tower' | null
+export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | 'zen_garden' | 'bell_tower' | 'bodhi_chess' | null
 
 export interface RemotePilgrimInstance {
   id: string
@@ -268,12 +270,15 @@ export class TempleStage {
   private fireflyMat: THREE.PointsMaterial | null = null
   public loveTreeInstance!: LoveTreeProp
   public zenGardenInstance!: ZenGardenProp
+  public bodhiChessTableInstance!: BodhiChessTableProp
+  public bodhiMonkInstance!: BodhiMonkNpc
   private mandalaHalo!: THREE.Mesh
 
   // Giai đoạn 1: Dedicated Collision System & Character Controller & Camera Spring Arm
   public collisionWorld!: CollisionWorld
   public characterController!: CharacterController
   public cameraSpringArm!: CameraSpringArm
+  private pathfinder = new GridPathfinder()
   public isDebugColliders = false
   private debugColliderGroup: THREE.Group | null = null
 
@@ -487,6 +492,8 @@ export class TempleStage {
     window.addEventListener('resize', this.onResize)
     window.addEventListener('keydown', this.onKeyDown)
     window.addEventListener('keyup', this.onKeyUp)
+    window.addEventListener('blur', this.resetMovementKeys)
+    document.addEventListener('visibilitychange', this.resetMovementKeys)
 
     const canvas = this.renderer.domElement
     canvas.addEventListener('click', this.onCanvasClick)
@@ -565,6 +572,14 @@ export class TempleStage {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
+    // Đang gõ chữ (ô nhập, bộ gõ Unikey/IME đang soạn): không điều khiển nhân vật
+    const kt = e.target as HTMLElement | null
+    const typingNow = !!kt && !!kt.closest('input, textarea, select, [contenteditable="true"]')
+    if (e.isComposing || e.keyCode === 229 || e.key === 'Process' || typingNow) {
+      this.resetMovementKeys()
+      return
+    }
+
     // Phím F2: Bật/Tắt HUD Thống kê Hiệu năng
     if (e.code === 'F2') {
       e.preventDefault()
@@ -636,7 +651,7 @@ export class TempleStage {
       this.lastWPressTime = now
     }
 
-    this.keysPressed[e.key.toLowerCase()] = true
+    this.keysPressed[e.code] = true
   }
 
   private onKeyUp = (e: KeyboardEvent) => {
@@ -645,10 +660,18 @@ export class TempleStage {
       this.isSprinting = false
     }
     // Nhả phím Z: Dừng đi chậm
-    if (e.code === 'KeyZ' || e.key.toLowerCase() === 'z') {
+    if (e.code === 'KeyZ') {
       this.isSneaking = false
     }
-    this.keysPressed[e.key.toLowerCase()] = false
+    // Luôn nhả phím theo mã phím vật lý để bộ gõ (Unikey/IME) không làm kẹt phím
+    this.keysPressed[e.code] = false
+  }
+
+  /** Xóa toàn bộ trạng thái phím di chuyển (mất focus, đổi tab, bộ gõ chen ngang) */
+  private resetMovementKeys = () => {
+    this.keysPressed = {}
+    this.isSprinting = false
+    this.isSneaking = false
   }
 
   // ==========================================
@@ -899,6 +922,17 @@ export class TempleStage {
     // Vườn Thiền Cá Nhân 6 Ô Đất (Mục 14)
     this.zenGardenInstance = new ZenGardenProp()
     this.scene.add(this.zenGardenInstance.root)
+
+    // Bàn Cờ Đá Dưới Bóng Bồ Đề (Ô Ăn Quan & Cờ Tướng)
+    this.bodhiChessTableInstance = new BodhiChessTableProp(this.collisionWorld)
+    this.scene.add(this.bodhiChessTableInstance.root)
+
+    // Sư Thầy ngồi đối cờ ở đôn đá đối diện người chơi
+    this.bodhiMonkInstance = new BodhiMonkNpc(
+      this.bodhiChessTableInstance.centerPos.x,
+      this.bodhiChessTableInstance.centerPos.z
+    )
+    this.scene.add(this.bodhiMonkInstance.root)
   }
 
   private buildDetailedIncenseAltar() {
@@ -1199,10 +1233,10 @@ export class TempleStage {
 
     // Đang tự đi bộ tới bồ đoàn hoặc đang tọa thiền: bỏ qua phím di chuyển của người chơi
     const inputLocked = this.isInputLocked
-    const isW = !inputLocked && (this.keysPressed['w'] || this.keysPressed['arrowup'])
-    const isS = !inputLocked && (this.keysPressed['s'] || this.keysPressed['arrowdown'])
-    const isA = !inputLocked && (this.keysPressed['a'] || this.keysPressed['arrowleft'])
-    const isD = !inputLocked && (this.keysPressed['d'] || this.keysPressed['arrowright'])
+    const isW = !inputLocked && (this.keysPressed['KeyW'] || this.keysPressed['ArrowUp'])
+    const isS = !inputLocked && (this.keysPressed['KeyS'] || this.keysPressed['ArrowDown'])
+    const isA = !inputLocked && (this.keysPressed['KeyA'] || this.keysPressed['ArrowLeft'])
+    const isD = !inputLocked && (this.keysPressed['KeyD'] || this.keysPressed['ArrowRight'])
 
     if (isW) {
       moveX += fwdX
@@ -1367,6 +1401,9 @@ export class TempleStage {
     const distZenGarden = this.zenGardenInstance
       ? this.playerPos.distanceTo(this.zenGardenInstance.interactPos)
       : Infinity
+    const distBodhiChess = this.bodhiChessTableInstance
+      ? this.playerPos.distanceTo(this.bodhiChessTableInstance.interactPos)
+      : Infinity
     const distBellTower = Math.hypot(
       this.playerPos.x - TempleStage.PROX_BELL_TOWER.x,
       this.playerPos.z - TempleStage.PROX_BELL_TOWER.z
@@ -1376,6 +1413,7 @@ export class TempleStage {
     else if (distMerit < 2.4) nearest = 'merit_box'
     else if (distFortune < 2.4) nearest = 'fortune'
     else if (distLoveTree < 2.8) nearest = 'love_tree'
+    else if (distBodhiChess < 2.6) nearest = 'bodhi_chess'
     else if (distZenGarden < 4.8) nearest = 'zen_garden'
     else if (distBellTower < 4.8) nearest = 'bell_tower'
     else if (distParkourStart < 3.0) nearest = 'parkour_start'
@@ -1514,11 +1552,49 @@ export class TempleStage {
       this.avatar.setAction('walking')
     }
 
+    let dirX = dx / dist
+    let dirZ = dz / dist
+
+    // Né vật cản cục bộ (Local Steering): nếu bị khựng > 0.22s, thử bẻ lái nhẹ trái/phải để trượt qua cạnh vật thể
+    if (this.autoWalk.stuckTimer > 0.22 && this.collisionWorld) {
+      const probeDist = 0.75
+      const angles = [0.61, -0.61, 1.22, -1.22] // ±35°, ±70°
+      for (const ang of angles) {
+        const cosA = Math.cos(ang)
+        const sinA = Math.sin(ang)
+        const sx = dirX * cosA - dirZ * sinA
+        const sz = dirX * sinA + dirZ * cosA
+        if (this.pathfinder.isPointWalkable(this.playerPos.x + sx * probeDist, this.playerPos.z + sz * probeDist)) {
+          dirX = sx
+          dirZ = sz
+          break
+        }
+      }
+    }
+
     return {
-      dx: dx / dist,
-      dz: dz / dist,
+      dx: dirX,
+      dz: dirZ,
       speed: this.autoWalk.speed
     }
+  }
+
+  /**
+   * Tạo lộ trình tránh tường & vật cản bằng GridPathfinder (A* + làm mượt).
+   * Tự động mở cửa Chánh Điện nếu điểm đầu hoặc lộ trình đi qua cửa chính.
+   */
+  private buildSafeWaypoints(target: { x: number; z: number }): Array<{ x: number; z: number }> {
+    const waypoints = this.collisionWorld
+      ? this.pathfinder.findPath(this.collisionWorld, this.playerPos.x, this.playerPos.z, target.x, target.z)
+      : [target]
+
+    const startsInside = this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0
+    const crossesDoor = waypoints.some((wp) => Math.abs(wp.x) < 5.0 && wp.z >= -1.8 && wp.z <= 4.0)
+    if ((startsInside || crossesDoor) && this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
+      this.sanctuaryHall.toggleDoor()
+    }
+
+    return waypoints
   }
 
   /**
@@ -1571,7 +1647,7 @@ export class TempleStage {
     this.cancelAutoWalk()
     this.isSeated = false
 
-    const path = HallLayout.computeWalkPath(this.playerPos.x, this.playerPos.z, slot.x, slot.z)
+    const path = this.buildSafeWaypoints({ x: slot.x, z: slot.z })
     this.autoWalk = {
       waypoints: path,
       index: 0,
@@ -1604,18 +1680,7 @@ export class TempleStage {
     }
 
     const insideSpot = { x: 0, z: -2.5 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z > 4.0) {
-      waypoints.push({ x: 0, z: 3.5 }) // Thềm Chánh Điện
-      waypoints.push({ x: 0, z: 0.5 }) // Cửa chính
-      waypoints.push(insideSpot) // Trong lòng điện
-    } else if (this.playerPos.z > 0.6) {
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push(insideSpot)
-    } else {
-      waypoints.push(insideSpot)
-    }
+    const waypoints = this.buildSafeWaypoints(insideSpot)
 
     const finalYaw = HallLayout.getYawToAltar(insideSpot.x, insideSpot.z)
     this.autoWalk = {
@@ -1655,22 +1720,7 @@ export class TempleStage {
 
     const spot = HallLayout.ABBOT_SPOT
     const standPos = { x: spot.x - 1.15, z: spot.z + 0.55 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: -2.0 })
-      waypoints.push({ x: 0, z: 1.8 })
-      waypoints.push(standPos)
-    } else if (this.playerPos.z >= 3.5) {
-      waypoints.push({ x: 2.2, z: 6.8 })
-      waypoints.push({ x: 2.4, z: 3.1 })
-      waypoints.push(standPos)
-    } else {
-      waypoints.push(standPos)
-    }
+    const waypoints = this.buildSafeWaypoints(standPos)
 
     const finalYaw = Math.atan2(spot.x - standPos.x, spot.z - standPos.z)
     this.autoWalk = {
@@ -1695,6 +1745,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường nhân vật bước lại gần Bàn Xin Xăm & Pháp Bảo ngoài sân
    */
@@ -1703,21 +1754,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: -5.0, z: 11.4 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
-      // Đang trong Chánh Điện: mở cửa nếu đóng và đi ra sân
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: -2.5 })
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 3.5 })
-      waypoints.push({ x: -5.0, z: 6.5 })
-      waypoints.push(target)
-    } else {
-      waypoints.push(target)
-    }
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1740,6 +1777,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường nhân vật bước lại gần Hòm Công Đức Tam Bảo ngoài sân
    */
@@ -1748,21 +1786,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: 5.0, z: 11.4 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
-      // Đang trong Chánh Điện: mở cửa nếu đóng và đi ra sân
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: -2.5 })
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 3.5 })
-      waypoints.push({ x: 5.0, z: 6.5 })
-      waypoints.push(target)
-    } else {
-      waypoints.push(target)
-    }
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1785,6 +1809,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường nhân vật di chuyển sang Nhà Hầu Đồng (Điện Thờ Tứ Phủ & Trần Triều ở phía Đông)
    */
@@ -1793,21 +1818,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: 35.0, z: -6.2 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5 && this.playerPos.x < 17.0) {
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 4.5 })
-    }
-    if (this.playerPos.x < 26.0 || this.playerPos.z > 2.5) {
-      waypoints.push({ x: 20.0, z: 4.5 })
-      waypoints.push({ x: 35.0, z: 3.5 })
-      waypoints.push({ x: 35.0, z: -1.5 })
-    }
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1830,6 +1841,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường tới Đài Tơ Duyên Nguyệt Lão (Bên bờ Hồ Sen Bát Nhã & Cầu Kiều)
    */
@@ -1838,17 +1850,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: -10.5, z: 15.5 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5 && this.playerPos.x > -17.0) {
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 4.5 })
-    }
-    waypoints.push({ x: -10.5, z: 8.5 })
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1871,6 +1873,75 @@ export class TempleStage {
     }
   }
 
+
+  /**
+   * Ngồi xuống đôn đá ở Bàn Cờ Đá Dưới Bóng Bồ Đề
+   */
+  public sitAtBodhiChess() {
+    this.cancelAutoWalk()
+    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(-7.4, 0.0, 9.2)
+    // Chọn đôn gần người chơi hơn (phía Nam z + 1.05 hoặc phía Bắc z - 1.05)
+    const southZ = tablePos.z + 1.05
+    const northZ = tablePos.z - 1.05
+    const useSouth = Math.abs(this.playerPos.z - southZ) <= Math.abs(this.playerPos.z - northZ)
+    const stoolZ = useSouth ? southZ : northZ
+    const stoolYaw = useSouth ? Math.PI : 0
+
+    this.playerPos.set(tablePos.x, 0.34, stoolZ)
+    this.characterController.position.copy(this.playerPos)
+    this.playerFacingAngle = stoolYaw
+    this.player.position.copy(this.playerPos)
+    this.player.rotation.y = stoolYaw
+    this.isSeated = true
+    if (this.avatar) {
+      this.avatar.setAction('meditating')
+    }
+  }
+
+  /**
+   * Đứng dậy khỏi đôn đá ở Bàn Cờ Bồ Đề
+   */
+  public standUpFromBodhiChess() {
+    if (!this.isSeated) return
+    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(-7.4, 0.0, 9.2)
+    const useSouth = this.playerPos.z >= tablePos.z
+    this.playerPos.set(tablePos.x, 0.0, useSouth ? tablePos.z + 1.55 : tablePos.z - 1.55)
+    this.characterController.position.copy(this.playerPos)
+    this.player.position.copy(this.playerPos)
+    this.standUpFromMeditation()
+  }
+
+  /**
+   * Dẫn đường tới Bàn Cờ Đá Dưới Bóng Bồ Đề và ngồi xuống đôn đá
+   */
+  public walkToBodhiChess(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const target = { x: -7.4, z: 10.65 }
+    const waypoints = this.buildSafeWaypoints(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: Math.PI,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        this.sitAtBodhiChess()
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
   /**
    * Dẫn đường tới một điểm bất kỳ ngoài sân (dùng cho Ba Việc Lành). Nếu đang trong Chánh Điện thì mở cửa
    * và đi ra qua cửa chính trước.
@@ -1879,16 +1950,7 @@ export class TempleStage {
     this.cancelAutoWalk()
     this.standUpFromMeditation()
 
-    const waypoints: Array<{ x: number; z: number }> = []
-    if (this.playerPos.z < 0.5 && Math.abs(this.playerPos.x) < 16.0) {
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: -2.5 })
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 4.5 })
-    }
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1911,6 +1973,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường ra Cổng Tam Quan
    */
@@ -1919,17 +1982,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: 0, z: 21.0 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z < 0.5) {
-      if (this.sanctuaryHall && this.sanctuaryHall.doorAngle < 0.4) {
-        this.sanctuaryHall.toggleDoor()
-      }
-      waypoints.push({ x: 0, z: 0.5 })
-      waypoints.push({ x: 0, z: 4.5 })
-    }
-    waypoints.push({ x: 0, z: 12.0 })
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1952,6 +2005,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường vào Đại Hùng Bảo Điện (trước Kim Thân Phật Tổ)
    */
@@ -1964,14 +2018,7 @@ export class TempleStage {
     }
 
     const target = { x: 0, z: -14.0 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    if (this.playerPos.z > 3.0) {
-      waypoints.push({ x: 0, z: 3.5 })
-      waypoints.push({ x: 0, z: 0.5 })
-    }
-    waypoints.push({ x: 0, z: -4.0 })
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -1994,6 +2041,7 @@ export class TempleStage {
     }
   }
 
+
   /**
    * Dẫn đường tới Cổng Leo Núi Parkour (phía sau Chánh Điện)
    */
@@ -2002,15 +2050,7 @@ export class TempleStage {
     this.standUpFromMeditation()
 
     const target = { x: 0, z: -31.5 }
-    const waypoints: Array<{ x: number; z: number }> = []
-
-    // Đi vòng qua hành lang phía Tây Chùa nếu đang ở sân trước
-    if (this.playerPos.z > -10.0) {
-      waypoints.push({ x: -18.0, z: 5.0 })
-      waypoints.push({ x: -18.0, z: -20.0 })
-      waypoints.push({ x: -10.0, z: -28.0 })
-    }
-    waypoints.push(target)
+    const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {
       waypoints,
@@ -2032,6 +2072,7 @@ export class TempleStage {
       bestDist: Infinity
     }
   }
+
 
   /**
    * Trả về true nếu nhân vật đang trong trạng thái tự động bước đi (auto-walk)
@@ -2093,6 +2134,15 @@ export class TempleStage {
     }
     if (this.abbotNpc) {
       this.abbotNpc.update(delta, elapsed, this.playerPos)
+    }
+    if (this.bodhiChessTableInstance) {
+      this.bodhiChessTableInstance.update(elapsed)
+    }
+    if (this.bodhiMonkInstance && this.bodhiChessTableInstance) {
+      const tc = this.bodhiChessTableInstance.centerPos
+      const seatedHere =
+        this.isSeated && Math.hypot(this.playerPos.x - tc.x, this.playerPos.z - tc.z) < 1.6
+      this.bodhiMonkInstance.update(delta, this.playerPos, seatedHere)
     }
 
     // Cập nhật Hồ sen sống động, Cầu đá vòm cong & Hướng mặt trời shader (Giai đoạn 4 & Phase 6)
@@ -2593,6 +2643,8 @@ export class TempleStage {
     window.removeEventListener('resize', this.onResize)
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
+    window.removeEventListener('blur', this.resetMovementKeys)
+    document.removeEventListener('visibilitychange', this.resetMovementKeys)
 
     const canvas = this.renderer.domElement
     if (canvas) {

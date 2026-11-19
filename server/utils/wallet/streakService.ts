@@ -30,6 +30,8 @@ export interface StreakDeeds {
   incense: boolean
   fortune: boolean
   merit: boolean
+  /** Thắng ít nhất một ván cờ dưới Bóng Bồ Đề hôm nay. */
+  games: boolean
 }
 
 export interface StreakRewardGrant {
@@ -97,12 +99,17 @@ export async function getTodayDeeds(conn: DbConn, accountId: number, now = Date.
       accountId,
       start,
       end
+    ),
+    games: await exists(
+      'SELECT 1 AS ok FROM board_game_wins WHERE account_id = ? AND day_key = ? LIMIT 1',
+      accountId,
+      dayKey
     )
   }
 }
 
 function anyDeed(d: StreakDeeds): boolean {
-  return d.meditation || d.incense || d.fortune || d.merit
+  return d.meditation || d.incense || d.fortune || d.merit || d.games
 }
 
 async function listGrantedMilestones(conn: DbConn, accountId: number): Promise<Set<number>> {
@@ -135,7 +142,7 @@ export async function getStreakStatus(accountId: number | null, now = Date.now()
       canClaim: false,
       restUsedThisWeek: false,
       title: null as string | null,
-      deeds: { meditation: false, incense: false, fortune: false, merit: false } as StreakDeeds,
+      deeds: { meditation: false, incense: false, fortune: false, merit: false, games: false } as StreakDeeds,
       nextMilestone: nextMilestoneOf(0),
       milestones: publicMilestones(new Set(), 0)
     }

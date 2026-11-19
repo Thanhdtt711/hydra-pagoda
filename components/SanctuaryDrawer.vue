@@ -9,6 +9,8 @@ import {
   resolveMonId
 } from '~/lib/boi/ContentRepository'
 import { generateFortune } from '~/lib/boi/FortuneEngine'
+import { calculateCoupleCompatibility } from '~/lib/boi/CoupleDivinationLogic'
+import { getVietnamDayKey } from '~/lib/time/vietnamDay'
 import {
   appendLocalFortuneHistory,
   applyFortuneDailyEffect,
@@ -599,6 +601,44 @@ function finalizeFortuneDisplay(rawFortune: any, receiptHash: string, spentMc: n
   })
 }
 
+function isUnauthorizedError(err: any): boolean {
+  const status = err?.statusCode || err?.status || err?.data?.statusCode || err?.response?.status
+  if (status === 401) return true
+  const code = err?.data?.data?.code || err?.data?.code || ''
+  if (code === 'unauthorized') return true
+  const msg = String(err?.data?.statusMessage || err?.data?.message || err?.message || '')
+  return /chưa đăng nhập|hết hạn|unauthorized/i.test(msg)
+}
+
+async function finishLocalFreeFortune(
+  payload: {
+    category: DivinationType
+    mode: InputMode
+    questionId: string
+    customQuestion: string
+    profile: PersonProfile | null
+    partnerProfile: PersonProfile | null
+  },
+  shakeDone: Promise<void>
+) {
+  const generated = generateFortune({
+    mon: payload.category,
+    mode: payload.mode,
+    questionId: payload.questionId,
+    customQuestion: payload.customQuestion,
+    profile: payload.profile,
+    partnerProfile: payload.partnerProfile
+  })
+
+  markDailyFreeUsed(payload.category)
+  freeDrawsTrigger.value++
+
+  await shakeDone
+  finalizeFortuneDisplay(generated, `local_${Date.now().toString(36)}`, 0, 'free_daily', null)
+  isRolling.value = false
+  zenAudio.playTempleBell()
+}
+
 async function executeDirectFortuneRoll(payload: {
   category: DivinationType
   tier: DivinationTier
@@ -614,26 +654,10 @@ async function executeDirectFortuneRoll(payload: {
   pendingConfirm.value = null
   isRolling.value = true
 
+  const shakeDone = zenAudio.playFortuneShaking()
   try {
-    const shakeDone = zenAudio.playFortuneShaking()
-
     if (payload.paymentMode === 'free_daily' && !wallet.isConnected) {
-      const generated = generateFortune({
-        mon: payload.category,
-        mode: payload.mode,
-        questionId: payload.questionId,
-        customQuestion: payload.customQuestion,
-        profile: payload.profile,
-        partnerProfile: payload.partnerProfile
-      })
-
-      markDailyFreeUsed(payload.category)
-      freeDrawsTrigger.value++
-
-      await shakeDone
-      finalizeFortuneDisplay(generated, `local_${Date.now().toString(36)}`, 0, 'free_daily', null)
-      isRolling.value = false
-      zenAudio.playTempleBell()
+      await finishLocalFreeFortune(payload, shakeDone)
       return
     }
 
@@ -659,6 +683,14 @@ async function executeDirectFortuneRoll(payload: {
     isRolling.value = false
     zenAudio.playTempleBell()
   } catch (e: any) {
+    if (payload.paymentMode === 'free_daily' && isUnauthorizedError(e)) {
+      try {
+        await finishLocalFreeFortune(payload, shakeDone)
+        return
+      } catch {
+        // fallback error handled below
+      }
+    }
     isRolling.value = false
     fortuneNotice.value = e?.data?.statusMessage || e?.data?.message || e?.message || 'Không thể gieo quẻ lúc này.'
   }
@@ -881,23 +913,54 @@ async function handleDrawCouple() {
     return
   }
 
+  const myProfilePayload: PersonProfile = {
+    fullName: myEffectiveName.value,
+    birthDate: savedProfile.value?.birthDate || '1995-01-01',
+    gender: myEffectiveGender.value
+  }
+  const partnerProfilePayload: PersonProfile = {
+    fullName: couplePartnerForm.value.fullName.trim(),
+    birthDate: couplePartnerForm.value.birthDate,
+    gender: couplePartnerForm.value.gender
+  }
+
+  const buildLocalCoupleRes = () => {
+    const today = getVietnamDayKey(Date.now())
+    const compatibility = calculateCoupleCompatibility(myProfilePayload, partnerProfilePayload, today)
+    const fortune = generateFortune({
+      mon: 'to_duyen',
+      mode: 'profile',
+      profile: myProfilePayload,
+      partnerProfile: partnerProfilePayload,
+      dateStr: today
+    })
+    return {
+      ok: true,
+      spentMc: 0,
+      paymentMode: 'free_daily',
+      compatibility,
+      fortune,
+      receiptHash: `local_love_${Date.now().toString(36)}`,
+      awardedCharm: false
+    }
+  }
+
   coupleLoading.value = true
+  const shakeDone = zenAudio.playFortuneShaking()
   try {
-    const shakeDone = zenAudio.playFortuneShaking()
+    if (couplePaymentMode.value === 'free_daily' && !wallet.isConnected) {
+      await shakeDone
+      coupleResult.value = buildLocalCoupleRes()
+      zenAudio.playTempleBell()
+      return
+    }
+
     const [res] = await Promise.all([
       $fetch<any>('/api/mc/fortune/draw-couple', {
         method: 'POST',
         body: {
-          profile: {
-            fullName: myEffectiveName.value,
-            birthDate: savedProfile.value?.birthDate || '1995-01-01',
-            gender: myEffectiveGender.value
-          },
-          partnerProfile: {
-            fullName: couplePartnerForm.value.fullName.trim(),
-            birthDate: couplePartnerForm.value.birthDate,
-            gender: couplePartnerForm.value.gender
-          },
+          profile: myProfilePayload,
+          partnerProfile: partnerProfilePayload,
           paymentMode: couplePaymentMode.value,
           requestId: 'couple_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
         }
@@ -913,6 +976,12 @@ async function handleDrawCouple() {
     }
     zenAudio.playTempleBell()
   } catch (err: any) {
+    if (couplePaymentMode.value === 'free_daily' && isUnauthorizedError(err)) {
+      await shakeDone
+      coupleResult.value = buildLocalCoupleRes()
+      zenAudio.playTempleBell()
+      return
+    }
     coupleError.value = err?.data?.message || err?.message || 'Không thể thỉnh quẻ lúc này.'
   } finally {
     coupleLoading.value = false
