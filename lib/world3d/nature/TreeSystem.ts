@@ -131,18 +131,6 @@ function buildSpeciesGeometry(species: TreeSpeciesType): SpeciesGeometry {
       for (const a of [0.2, 1.7, 3.3, 4.9]) {
         limb(trunk, [0, 6.0, 0], [Math.cos(a) * 4.0, 7.6, Math.sin(a) * 4.0], 0.62, 0.3, 6, MID)
       }
-      // Rễ phụ rủ từ cành xuống đất
-      const roots: Array<[number, number]> = [
-        [2.9, 1.2],
-        [-2.7, 1.6],
-        [0.8, -3.1],
-        [-1.4, -2.9],
-        [3.4, -1.4],
-        [-3.2, -0.9]
-      ]
-      for (const [rx, rz] of roots) {
-        limb(trunk, [rx, 6.8, rz], [rx * 1.02, 0, rz * 1.02], 0.1, 0.17, 4, DARK)
-      }
       blob(foliage, 0, 8.4, 0, 4.8, 1.8, 4.8, LIGHT, 21)
       blob(foliage, 3.0, 7.4, 1.6, 3.3, 1.5, 3.3, MID, 22)
       blob(foliage, -3.1, 7.2, 1.7, 3.1, 1.4, 3.1, DARK, 23)

@@ -80,6 +80,7 @@ export async function drawCoupleFortune(
       .get(accountId, dayStart) as { count: number }
 
     let spentMc = 0
+    let ledgerId: number | null = null
     if (paymentMode === 'free_daily') {
       if ((freeCount?.count || 0) >= 1) {
         throw apiError(
@@ -94,13 +95,14 @@ export async function drawCoupleFortune(
       if (bal < 50) {
         throw apiError(400, 'insufficient_mc', 'Số dư không đủ 50 MC để thỉnh thêm lượt Tơ Duyên.')
       }
-      await spend(accountId, 50, 'custom_service', cleanReqId, {
+      const spendRes = await spend(accountId, 50, 'custom_service', cleanReqId, {
         refType: 'couple_divination',
         metadata: {
           note: `Thỉnh quẻ Đài Tơ Duyên Nguyệt Lão: ${profile.fullName} & ${partnerProfile.fullName}`,
           partnerName: partnerProfile.fullName
         }
       })
+      ledgerId = spendRes.ledgerId
     }
 
     // Tặng 1 Bùa Chỉ Đỏ Uyên Ương vào kho đồ (dùng category 'offering' hợp lệ theo CHECK constraint)
@@ -139,6 +141,7 @@ export async function drawCoupleFortune(
 
     return {
       ok: true,
+      ledgerId,
       spentMc,
       paymentMode,
       currentBalanceMc: await getAccountBalance(conn, accountId),

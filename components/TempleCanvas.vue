@@ -13,6 +13,7 @@ import { useOnboardingStore } from '~/stores/onboarding'
 import { useKoiGardenStore } from '~/stores/koiGarden'
 import OnboardingGuide from '~/components/OnboardingGuide.vue'
 import PhotoModeOverlay from '~/components/PhotoModeOverlay.vue'
+import HydraHeadWidget from '~/components/HydraHeadWidget.vue'
 import { MapLayout } from '~/lib/world3d/world/MapLayout'
 import { useParkourStore } from '~/stores/parkour'
 import { MultiplayerClient, type PilgrimPresence, type ZenChatMessage } from '~/lib/network/MultiplayerClient'
@@ -2452,6 +2453,7 @@ function simulateLoading() {
     />
 
     <!-- Overlays & Modals for specific operations -->
+    <HydraHeadWidget v-if="!drawerOpen && !showAbbotDrawer && !showBodhiGamesModal && !showPhotoMode" />
     <BodhiGamesModal v-if="showBodhiGamesModal" :open="showBodhiGamesModal" @close="closeBodhiGamesModal" />
     <WalletConnectModal v-if="showWalletModal" @close="showWalletModal = false" />
     <EmoteWheel v-if="showEmoteWheel" @close="showEmoteWheel = false" @select-emote="handleSelectEmote" />

@@ -1,5 +1,6 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { startParkourRun } from '../../../utils/wallet/parkourService'
+import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async (event) => {
@@ -8,6 +9,10 @@ export default defineEventHandler(async (event) => {
   const account = await requireSession(event)
   const res = await startParkourRun(account.id)
   setResponseHeader(event, 'Cache-Control', 'no-store')
-  return { ok: true, ...res }
+  return {
+    ok: true,
+    ...res,
+    hydra: res.ledgerId ? await getHydraProof(res.ledgerId).catch(() => null) : null
+  }
 })
 

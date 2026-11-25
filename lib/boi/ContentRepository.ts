@@ -203,7 +203,30 @@ export function getCandidateBlocks(
 
   // Ưu tiên các block khớp đúng tag chủ đề
   const byTag = byMucAndKhoi.filter(b => b.tags.includes(tag))
-  const finalPool = byTag.length >= 2 ? byTag : byMucAndKhoi
+  let finalPool = byTag.length >= 2 ? byTag : byMucAndKhoi
+
+  // Nếu người xem < 18 tuổi và đang gọi trực tiếp môn 'cau_tu' (bị chặn cố ý theo quy tắc bảo vệ độ tuổi), giữ nguyên rỗng
+  const isBlockedUnderageCauTu = userAge !== undefined && userAge < 18 && mon === 'cau_tu'
+
+  // Fallback an toàn nhiều tầng nếu bộ lọc quanHe / tuổi / giới tính lọc quá chặt làm rỗng pool:
+  if (!isBlockedUnderageCauTu) {
+    // 1) Nới lỏng bộ lọc quanHe / giới tính nhưng vẫn giữ quy tắc chặn tuổi
+    if (finalPool.length === 0) {
+      finalPool = pool.filter(b => b.muc === muc && b.khoi === khoi)
+    }
+    // 2) Nếu mức đó (ví dụ dai_hung) thiếu khối hoagiai, lấy sang mức tương đương (hung <-> dai_hung)
+    if (finalPool.length === 0 && khoi === 'hoagiai') {
+      finalPool = pool.filter(b => b.khoi === 'hoagiai')
+    }
+    // 3) Fallback cuối cùng: lấy từ kho chuẩn xin_xam để không bao giờ gây 500 Server Error
+    if (finalPool.length === 0 && mon !== 'xin_xam') {
+      const fallbackRepo = SUBJECT_REPOS.xin_xam || []
+      finalPool = fallbackRepo.filter(b => b.muc === muc && b.khoi === khoi)
+      if (finalPool.length === 0) {
+        finalPool = fallbackRepo.filter(b => b.khoi === khoi)
+      }
+    }
+  }
 
   // Ràng buộc an toàn bắt buộc cho Cầu Tự và Dược Sư ở mức xấu (Hung / Đại Hung):
   // Luôn đảm bảo có cụm "cần kiên nhẫn, chú ý nghỉ ngơi, nên đi khám định kỳ", cấm phán bệnh, cấm nói vô sinh.

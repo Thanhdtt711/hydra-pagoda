@@ -1,5 +1,6 @@
 import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { sponsorHauDongSession } from '../../../utils/wallet/hauDongService'
+import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async event => {
@@ -16,12 +17,16 @@ export default defineEventHandler(async event => {
   }
 
   const acc = await requireSession(event)
-  return sponsorHauDongSession(acc.id, {
+  const res = await sponsorHauDongSession(acc.id, {
     requestId: body.requestId,
     mode: body.mode,
     amountMc: body.amountMc,
     customDeityId: body.customDeityId,
     prayerText: body.prayerText
   })
+  return {
+    ...res,
+    hydra: res.ledgerId ? await getHydraProof(res.ledgerId).catch(() => null) : null
+  }
 })
 

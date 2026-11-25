@@ -44,6 +44,7 @@ export interface BoardGameWinResultDto {
   /** MC thưởng thêm nếu vừa thắng đủ 5 môn. */
   bonusMc: number
   alreadyRewarded: boolean
+  ledgerId: number | null
   status: BoardGameStatusDto
 }
 
@@ -131,11 +132,12 @@ export async function winBoardGame(accountId: number, runTokenRaw: unknown, now 
     if (!run || !isBoardGameId(run.game_id)) throw apiError(404, 'run_not_found', 'Phiên chơi không tồn tại')
     const gameId = run.game_id
 
-    const result = async (rewardMc: number, bonusMc: number, already: boolean): Promise<BoardGameWinResultDto> => ({
+    const result = async (rewardMc: number, bonusMc: number, already: boolean, ledgerId: number | null = null): Promise<BoardGameWinResultDto> => ({
       gameId,
       rewardMc,
       bonusMc,
       alreadyRewarded: already,
+      ledgerId,
       status: await buildStatus(conn, accountId, today)
     })
 
@@ -156,7 +158,7 @@ export async function winBoardGame(accountId: number, runTokenRaw: unknown, now 
       .run(accountId, today, gameId, BOARD_GAME_REWARD_PER_GAME, now)
     if (Number(ins.changes) === 0) return result(0, 0, true)
 
-    await credit(accountId, BOARD_GAME_REWARD_PER_GAME, 'custom_service', {
+    const winCred = await credit(accountId, BOARD_GAME_REWARD_PER_GAME, 'custom_service', {
       refType: 'board_game_win',
       refId: `bgwin_${accountId}_${today}_${gameId}`,
       metadata: { note: `Thắng ${gameId} dưới Bóng Bồ Đề (+${BOARD_GAME_REWARD_PER_GAME} MC)`, gameId, dayKey: today }
@@ -180,6 +182,6 @@ export async function winBoardGame(accountId: number, runTokenRaw: unknown, now 
       }
     }
 
-    return result(BOARD_GAME_REWARD_PER_GAME, bonusMc, false)
+    return result(BOARD_GAME_REWARD_PER_GAME, bonusMc, false, winCred.ledgerId)
   })
 }

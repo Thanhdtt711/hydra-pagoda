@@ -31,6 +31,7 @@ export interface ParkourStartResultDto {
   chargedMc: number
   currentBalanceMc: number
   startedAt: number
+  ledgerId?: number | null
 }
 
 export interface ParkourCompleteResultDto {
@@ -163,7 +164,8 @@ export async function startParkourRun(accountId: number): Promise<ParkourStartRe
       grantedMc: granted,
       chargedMc: charged,
       currentBalanceMc: await getAccountBalance(db, accountId),
-      startedAt: now
+      startedAt: now,
+      ledgerId
     }
   })
 }

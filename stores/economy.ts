@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useCardsStore } from './cards'
+import { useHydraStore } from './hydra'
 import { useWalletStore } from './wallet'
 
 export interface ShopCatalogItemDto {
@@ -178,6 +179,9 @@ export const useEconomyStore = defineStore('economy', {
         const wallet = useWalletStore()
         wallet.mcBalance = this.meritCoins
       }
+      try {
+        void useHydraStore().refresh()
+      } catch { /* ignore */ }
     },
 
     isUnlocked(itemId: string): boolean {

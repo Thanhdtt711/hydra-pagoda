@@ -138,7 +138,12 @@ class SqliteConn implements DbConn {
   }
 }
 
-const txStorage = new AsyncLocalStorage<DbConn>()
+interface TxContext {
+  conn: DbConn
+  afterCommit: Array<() => void>
+}
+
+const txStorage = new AsyncLocalStorage<TxContext>()
 
 let pgPool: pg.Pool | null = null
 let pgReadyPromise: Promise<DbConn> | null = null
@@ -223,11 +228,8 @@ async function ensurePgPool(databaseUrl: string): Promise<DbConn> {
   return pgReadyPromise
 }
 
-/** Lấy kết nối CSDL (tự động chọn PostgreSQL nếu có `DATABASE_URL`, ngược lại dùng SQLite). */
-export async function getDb(): Promise<DbConn> {
-  const activeTx = txStorage.getStore()
-  if (activeTx) return activeTx
-
+/** Lấy kết nối CSDL gốc ngoài transaction (dùng cho các tác vụ nền như Hydra L2 queue sau khi transaction đã commit). */
+export async function getRootDb(): Promise<DbConn> {
   const cfg = getWalletConfig()
   if (cfg.databaseUrl) {
     return ensurePgPool(cfg.databaseUrl)
@@ -249,6 +251,23 @@ export async function getDb(): Promise<DbConn> {
   return sqliteConn
 }
 
+/** Lấy kết nối CSDL (tự động chọn PostgreSQL nếu có `DATABASE_URL`, ngược lại dùng SQLite). */
+export async function getDb(): Promise<DbConn> {
+  const activeTx = txStorage.getStore()
+  if (activeTx) return activeTx.conn
+  return getRootDb()
+}
+
+/** Đăng ký callback chạy ngay SAU KHI transaction ngoài cùng đã COMMIT thành công (hoặc chạy ngay nếu không ở trong transaction). */
+export function onAfterCommit(cb: () => void): void {
+  const activeTx = txStorage.getStore()
+  if (activeTx) {
+    activeTx.afterCommit.push(cb)
+  } else {
+    cb()
+  }
+}
+
 /**
  * Chạy `fn` trong transaction nguyên tử (hỗ trợ lồng nhau qua AsyncLocalStorage).
  * - PostgreSQL: mở PoolClient riêng với BEGIN / COMMIT / ROLLBACK.
@@ -257,7 +276,7 @@ export async function getDb(): Promise<DbConn> {
 export async function withTransaction<T>(fn: (conn: DbConn) => Promise<T> | T): Promise<T> {
   const existing = txStorage.getStore()
   if (existing) {
-    return fn(existing)
+    return fn(existing.conn)
   }
 
   const cfg = getWalletConfig()
@@ -265,29 +284,40 @@ export async function withTransaction<T>(fn: (conn: DbConn) => Promise<T> | T): 
     await ensurePgPool(cfg.databaseUrl)
     const client = await pgPool!.connect()
     const conn = new PgConn(client)
+    const ctx: TxContext = { conn, afterCommit: [] }
+    let committed = false
     try {
       await client.query('BEGIN')
-      const result = await txStorage.run(conn, () => fn(conn))
+      const result = await txStorage.run(ctx, () => fn(conn))
       await client.query('COMMIT')
+      committed = true
       return result
     } catch (e) {
       try { await client.query('ROLLBACK') } catch { /* ignore */ }
       throw e
     } finally {
       client.release()
+      if (committed) {
+        for (const cb of ctx.afterCommit) {
+          try { cb() } catch { /* ignore */ }
+        }
+      }
     }
   }
 
-  const conn = await getDb()
+  const conn = await getRootDb()
   const prev = sqliteTxChain
   let release!: () => void
   sqliteTxChain = new Promise<void>(r => { release = r })
   await prev
+  const ctx: TxContext = { conn, afterCommit: [] }
+  let committed = false
   try {
     await conn.exec('BEGIN IMMEDIATE')
     try {
-      const result = await txStorage.run(conn, () => fn(conn))
+      const result = await txStorage.run(ctx, () => fn(conn))
       await conn.exec('COMMIT')
+      committed = true
       return result
     } catch (e) {
       try { await conn.exec('ROLLBACK') } catch { /* ignore */ }
@@ -295,5 +325,10 @@ export async function withTransaction<T>(fn: (conn: DbConn) => Promise<T> | T): 
     }
   } finally {
     release()
+    if (committed) {
+      for (const cb of ctx.afterCommit) {
+        try { cb() } catch { /* ignore */ }
+      }
+    }
   }
 }

@@ -3,6 +3,7 @@
 
 import { assertSameOrigin, requireSession, setAccountFortuneName } from '../../../utils/wallet/auth'
 import { drawCoupleFortune } from '../../../utils/wallet/coupleFortuneService'
+import { getHydraProof } from '../../../utils/hydra/hydraQueue'
 import { rateLimit } from '../../../utils/wallet/rateLimit'
 
 export default defineEventHandler(async (event) => {
@@ -52,6 +53,9 @@ export default defineEventHandler(async (event) => {
   )
 
   setResponseHeader(event, 'Cache-Control', 'no-store')
-  return res
+  return {
+    ...res,
+    hydra: (res as any).ledgerId ? await getHydraProof((res as any).ledgerId).catch(() => null) : null
+  }
 })
 

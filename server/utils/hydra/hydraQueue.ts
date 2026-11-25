@@ -7,7 +7,7 @@
  *    cùng một input (tránh BadInputsUTxO).
  *  - Mọi lỗi chỉ để `hydra_status = 'offchain'`; KHÔNG BAO GIỜ ném lỗi ra ngoài luồng gameplay.
  */
-import { getDb } from '../wallet/db'
+import { getRootDb, onAfterCommit } from '../wallet/db'
 import { getWalletConfig } from '../wallet/config'
 import { getHydraConfig, type HydraConfig } from './config'
 import { getHydraClient, type HydraClient, type HydraUtxoMap } from './hydraClient'
@@ -83,7 +83,7 @@ interface LedgerRow {
 }
 
 async function readLedger(ledgerId: number): Promise<LedgerRow | undefined> {
-    const db = await getDb()
+    const db = await getRootDb()
     return await db
         .prepare('SELECT id, account_id, delta_mc, balance_after, reason, ref_id, hydra_tx_hash, hydra_status FROM mc_ledger WHERE id = ?')
         .get(ledgerId) as LedgerRow | undefined
@@ -102,7 +102,7 @@ function wire(client: HydraClient) {
     st.wiredClient = client
     client.on('snapshotConfirmed', async ({ number, txIds }: { number: number; txIds: string[] }) => {
         try {
-            const db = await getDb()
+            const db = await getRootDb()
             const stmt = db.prepare(
                 "UPDATE mc_ledger SET hydra_status = 'snapshot_confirmed', hydra_snapshot_no = ? WHERE hydra_tx_hash = ?"
             )
@@ -118,6 +118,11 @@ function wire(client: HydraClient) {
         s.poolReady = false
         s.state.clear()
         s.stateLoaded.clear()
+    })
+    client.on('utxoUpdated', () => {
+        const s = S()
+        s.fuel = []
+        s.poolReady = false
     })
 }
 
@@ -138,7 +143,14 @@ async function ensureFuelPool(client: HydraClient, fuelKey: L2Key, cfg: HydraCon
         const all = entriesAt(utxo, fuelKey.bech32).filter(u => !st.inUse.has(u.ref))
         st.fuel = all
         st.poolReady = true
-        if (all.length === 0 || all.length >= cfg.fuelTarget) return
+        if (all.length === 0) {
+            const totalInHead = Object.keys(utxo).length
+            console.warn(
+                `[hydra:l2] Head đang Open (có ${totalInHead} UTxO trong Head), nhưng chưa có UTxO mồi tại địa chỉ Fuel: ${fuelKey.bech32}`
+            )
+            return
+        }
+        if (all.length >= cfg.fuelTarget) return
 
         // Chia UTxO lớn nhất thành nhiều UTxO nhỏ cho đủ Fuel Pool.
         const biggest = [...all].sort((a, b) => b.lovelace - a.lovelace)[0]!
@@ -201,7 +213,7 @@ async function getStateUtxo(client: HydraClient, accountId: number, l2Address: s
 async function processLedger(client: HydraClient, ledgerId: number): Promise<void> {
     const cfg = getHydraConfig()
     const st = S()
-    const db = await getDb()
+    const db = await getRootDb()
     if (!client.isOpen()) return
     const row = await readLedger(ledgerId)
     if (!row || row.hydra_tx_hash) return
@@ -272,24 +284,29 @@ export function scheduleHydraRecord(ledgerId: number): Promise<void> {
         const existing = st.inflight.get(ledgerId)
         if (existing) return existing
 
-        const p: Promise<void> = (async () => {
-            try {
-                const row = await readLedger(ledgerId)
-                if (!row || row.hydra_tx_hash || (row.hydra_status && row.hydra_status !== 'offchain')) return
+        const p: Promise<void> = new Promise<void>((resolve) => {
+            onAfterCommit(() => {
+                void (async () => {
+                    try {
+                        const row = await readLedger(ledgerId)
+                        if (!row || row.hydra_tx_hash || (row.hydra_status && row.hydra_status !== 'offchain')) return
 
-                const prev = st.chains.get(row.account_id) ?? Promise.resolve()
-                const chained = prev
-                    .then(() => processLedger(client, ledgerId))
-                    .catch((e: any) => {
-                        console.warn(`[hydra:l2] ledger #${ledgerId} giữ ở SQLite (offchain): ${String(e?.message || e).slice(0, 200)}`)
-                    })
-                st.chains.set(row.account_id, chained)
-                await chained
-                if (st.chains.get(row.account_id) === chained) st.chains.delete(row.account_id)
-            } finally {
-                st.inflight.delete(ledgerId)
-            }
-        })()
+                        const prev = st.chains.get(row.account_id) ?? Promise.resolve()
+                        const chained = prev
+                            .then(() => processLedger(client, ledgerId))
+                            .catch((e: any) => {
+                                console.warn(`[hydra:l2] ledger #${ledgerId} giữ ở SQLite (offchain): ${String(e?.message || e).slice(0, 200)}`)
+                            })
+                        st.chains.set(row.account_id, chained)
+                        await chained
+                        if (st.chains.get(row.account_id) === chained) st.chains.delete(row.account_id)
+                    } finally {
+                        st.inflight.delete(ledgerId)
+                        resolve()
+                    }
+                })()
+            })
+        })
 
         st.inflight.set(ledgerId, p)
         return p
@@ -303,7 +320,7 @@ export function scheduleHydraRecord(ledgerId: number): Promise<void> {
 export async function scheduleHydraRecordByRef(reason: string, refId: string): Promise<void> {
     try {
         if (!getHydraConfig().enabled) return
-        const db = await getDb()
+        const db = await getRootDb()
         const row = await db.prepare('SELECT id FROM mc_ledger WHERE reason = ? AND ref_id = ?').get(reason, refId) as { id: number } | undefined
         if (row) return scheduleHydraRecord(row.id)
     } catch {
@@ -315,7 +332,7 @@ async function readProof(ledgerId: number): Promise<HydraProof> {
     const row = await readLedger(ledgerId)
     const dbEngine = currentDbEngine()
     if (!row) return { ...OFFCHAIN, enabled: true, dbEngine }
-    const db = await getDb()
+    const db = await getRootDb()
     const snap = await db.prepare('SELECT hydra_snapshot_no AS n FROM mc_ledger WHERE id = ?').get(ledgerId) as { n: number | null }
     return {
         enabled: true,
@@ -348,7 +365,7 @@ export async function getHydraProof(ledgerId: number, waitMs = 1500): Promise<Hy
 }
 
 export async function getHydraStats() {
-    const db = await getDb()
+    const db = await getRootDb()
     const rows = await db
         .prepare("SELECT COALESCE(hydra_status, 'offchain') AS s, COUNT(*) AS n FROM mc_ledger GROUP BY s")
         .all() as Array<{ s: string; n: number }>

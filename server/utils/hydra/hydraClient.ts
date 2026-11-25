@@ -75,6 +75,7 @@ export class HydraClient extends EventEmitter {
     private utxoWaiters: UtxoWaiter[] = []
     private confirmedCache = new Map<string, number>()
     private snapshotUtxo: HydraUtxoMap = {}
+    private hasSnapshotUtxo = false
 
     connected = false
     headStatus: HydraHeadStatus = 'Disconnected'
@@ -85,6 +86,7 @@ export class HydraClient extends EventEmitter {
     invalidL2Txs = 0
     private confirmMsTotal = 0
     private confirmMsCount = 0
+    private confirmLatencyByTx = new Map<string, number>()
 
     constructor(private readonly url: string) {
         super()
@@ -113,6 +115,11 @@ export class HydraClient extends EventEmitter {
     /** snapshotNo đã xác nhận cho txId (nếu SnapshotConfirmed tới trước khi caller kịp xử lý) */
     confirmedSnapshotOf(txId: string): number | null {
         return this.confirmedCache.get(txId.toLowerCase()) ?? null
+    }
+
+    /** Thời gian xác nhận L2 (ms) gần nhất của một txId (từ lúc gửi NewTx tới TxValid/SnapshotConfirmed). */
+    confirmLatencyOf(txId: string): number | null {
+        return this.confirmLatencyByTx.get(txId.toLowerCase()) ?? null
     }
 
     getStatus(): HydraClientStatus {
@@ -184,6 +191,7 @@ export class HydraClient extends EventEmitter {
         const was = this.connected
         this.connected = false
         this.headStatus = 'Disconnected'
+        this.hasSnapshotUtxo = false
         const err = new Error(`hydra_disconnected:${reason}`)
         for (const [txId, p] of this.pending) {
             clearTimeout(p.timer)
@@ -214,20 +222,43 @@ export class HydraClient extends EventEmitter {
             case 'Greetings': {
                 const hs = String(msg.headStatus || 'Idle') as HydraHeadStatus
                 this.setHead(hs, msg.headId ?? null)
-                if (msg.snapshotUtxo) this.snapshotUtxo = normalizeUtxo(msg.snapshotUtxo)
+                if (msg.snapshotUtxo && typeof msg.snapshotUtxo === 'object') {
+                    this.snapshotUtxo = normalizeUtxo(msg.snapshotUtxo)
+                    this.hasSnapshotUtxo = true
+                }
                 break
             }
             case 'HeadIsInitializing': this.setHead('Initializing', msg.headId); break
             case 'HeadIsOpen':
-                if (msg.utxo) this.snapshotUtxo = normalizeUtxo(msg.utxo)
+                if (msg.utxo && typeof msg.utxo === 'object') {
+                    this.snapshotUtxo = normalizeUtxo(msg.utxo)
+                    this.hasSnapshotUtxo = true
+                }
                 this.setHead('Open', msg.headId)
                 break
-            case 'HeadIsClosed': this.setHead('Closed', msg.headId); break
-            case 'ReadyToFanout': this.setHead('FanoutPossible', msg.headId); break
-            case 'HeadIsFinalized': this.setHead('Final', msg.headId); break
+            case 'NodeDisconnected':
+            case 'NodeStopped': {
+                this.markDisconnected(String(msg.tag))
+                break
+            }
+            case 'HeadIsAborted':
+                this.snapshotUtxo = {}
+                this.setHead('Idle', msg.headId)
+                break
+            case 'HeadIsClosed':
+                this.setHead('Closed', msg.headId)
+                break
+            case 'ReadyToFanout':
+                this.setHead('FanoutPossible', msg.headId)
+                break
+            case 'HeadIsFinalized':
+                this.snapshotUtxo = {}
+                this.setHead('Final', msg.headId)
+                break
             case 'GetUTxOResponse': {
                 const u = normalizeUtxo(msg.utxo)
                 this.snapshotUtxo = u
+                this.hasSnapshotUtxo = true
                 for (const w of this.utxoWaiters.splice(0)) {
                     clearTimeout(w.timer)
                     w.resolve(u)
@@ -238,11 +269,22 @@ export class HydraClient extends EventEmitter {
                 const txId = pickTxId(msg)
                 this.totalL2Txs++
                 if (!txId) break
+                const now = Date.now()
+                const t0 = this.sentAt.get(txId)
+                if (t0) {
+                    const ms = Math.max(1, now - t0)
+                    this.confirmLatencyByTx.set(txId, ms)
+                    while (this.confirmLatencyByTx.size > 500) {
+                        const k = this.confirmLatencyByTx.keys().next().value
+                        if (k === undefined) break
+                        this.confirmLatencyByTx.delete(k)
+                    }
+                }
                 const p = this.pending.get(txId)
                 if (p) {
                     clearTimeout(p.timer)
                     this.pending.delete(txId)
-                    p.resolve({ txId, validAt: Date.now() })
+                    p.resolve({ txId, validAt: now })
                 }
                 this.emit('txValid', txId)
                 break
@@ -266,12 +308,18 @@ export class HydraClient extends EventEmitter {
             }
             case 'SnapshotConfirmed': {
                 const snap = msg.snapshot || {}
-                const number = Number(snap.number ?? 0)
+                const number = Number(snap.number ?? snap.snapshotNumber ?? 0)
                 if (number > this.latestSnapshotNo) this.latestSnapshotNo = number
-                if (snap.utxo) this.snapshotUtxo = normalizeUtxo(snap.utxo)
+                if (snap.utxo && typeof snap.utxo === 'object') {
+                    this.snapshotUtxo = normalizeUtxo(snap.utxo)
+                    this.hasSnapshotUtxo = true
+                }
                 const ids: string[] = []
-                for (const c of Array.isArray(snap.confirmed) ? snap.confirmed : []) {
-                    const id = typeof c === 'string' ? c : (c?.txId ?? c?.id)
+                const rawList = Array.isArray(snap.confirmed)
+                    ? snap.confirmed
+                    : (Array.isArray(snap.confirmedTransactions) ? snap.confirmedTransactions : [])
+                for (const c of rawList) {
+                    const id = typeof c === 'string' ? c : (c?.txId ?? c?.id ?? c?.transactionId)
                     if (typeof id === 'string') ids.push(id.toLowerCase())
                 }
                 const now = Date.now()
@@ -280,8 +328,10 @@ export class HydraClient extends EventEmitter {
                     this.confirmedL2Txs++
                     const t0 = this.sentAt.get(id)
                     if (t0) {
-                        this.confirmMsTotal += now - t0
+                        const ms = Math.max(1, now - t0)
+                        this.confirmMsTotal += ms
                         this.confirmMsCount++
+                        this.confirmLatencyByTx.set(id, ms)
                         this.sentAt.delete(id)
                     }
                 }
@@ -293,12 +343,72 @@ export class HydraClient extends EventEmitter {
                 this.emit('snapshotConfirmed', { number, txIds: ids })
                 break
             }
+            case 'CommitFinalized':
+            case 'CommitApproved':
+            case 'CommitRecorded':
+            case 'DepositRecorded':
+            case 'DepositApproved':
+            case 'DepositFinalized': {
+                if (msg.utxo && typeof msg.utxo === 'object') {
+                    this.snapshotUtxo = normalizeUtxo(msg.utxo)
+                    this.hasSnapshotUtxo = true
+                } else {
+                    void this.resolveWaitersViaHttpOrSnapshot()
+                }
+                this.emit('utxoUpdated')
+                break
+            }
+            case 'InvalidInput':
             case 'CommandFailed':
             case 'PostTxOnChainFailed':
-                console.warn(`[hydra:l2] ${msg.tag}:`, JSON.stringify(msg).slice(0, 300))
+                // hydra-node >= 0.20 đã bỏ lệnh GetUTxO qua WebSocket (trả InvalidInput) -> dùng HTTP /snapshot/utxo hoặc snapshotUtxo từ Greetings
+                if (this.utxoWaiters.length > 0 && (msg.tag === 'InvalidInput' || msg.tag === 'CommandFailed')) {
+                    void this.resolveWaitersViaHttpOrSnapshot()
+                } else {
+                    console.warn(`[hydra:l2] ${msg.tag}:`, JSON.stringify(msg).slice(0, 300))
+                }
                 break
             default:
                 break
+        }
+    }
+
+    private buildSnapshotUtxoHttpUrl(): { url: string; headers: Record<string, string> } | null {
+        try {
+            const u = new URL(this.url)
+            u.protocol = u.protocol === 'wss:' ? 'https:' : 'http:'
+            // Hexcore định tuyến HTTP REST dưới .../socket/snapshot/utxo; local hydra-node dùng .../snapshot/utxo
+            u.pathname = u.pathname.replace(/\/$/, '') + '/snapshot/utxo'
+            u.searchParams.delete('history')
+            const headers: Record<string, string> = { Accept: 'application/json' }
+            const apiKey = u.searchParams.get('X-Api-Key')
+            if (apiKey) headers['X-Api-Key'] = apiKey
+            return { url: u.toString(), headers }
+        } catch {
+            return null
+        }
+    }
+
+    private async resolveWaitersViaHttpOrSnapshot(): Promise<void> {
+        const httpTarget = this.buildSnapshotUtxoHttpUrl()
+        if (httpTarget) {
+            try {
+                const res = await fetch(httpTarget.url, { headers: httpTarget.headers })
+                if (res.ok) {
+                    const raw = await res.json()
+                    const norm = normalizeUtxo(raw)
+                    this.snapshotUtxo = norm
+                    this.hasSnapshotUtxo = true
+                }
+            } catch {
+                // Bỏ qua lỗi HTTP, dùng snapshotUtxo từ Greetings
+            }
+        }
+        if (Object.keys(this.snapshotUtxo).length > 0 || this.hasSnapshotUtxo) {
+            for (const w of this.utxoWaiters.splice(0)) {
+                clearTimeout(w.timer)
+                w.resolve(this.snapshotUtxo)
+            }
         }
     }
 
@@ -307,15 +417,29 @@ export class HydraClient extends EventEmitter {
         this.ws.send(JSON.stringify(obj))
     }
 
-    /** Lấy UTxO set hiện tại của Head (GetUTxO). */
-    getUTxO(timeoutMs = 3000): Promise<HydraUtxoMap> {
+    /** Lấy bản sao UTxO snapshot gần nhất đang lưu trong bộ nhớ. */
+    getSnapshotUtxo(): HydraUtxoMap {
+        return this.snapshotUtxo
+    }
+
+    /** Lấy UTxO set hiện tại của Head (ưu tiên snapshotUtxo đã nhận từ Greetings/SnapshotConfirmed, hoặc gọi GetUTxO / HTTP). */
+    async getUTxO(timeoutMs = 800): Promise<HydraUtxoMap> {
+        if (!this.connected) throw new Error('hydra_unavailable')
+        // Nếu đã có sẵn UTxO từ Greetings / HeadIsOpen / SnapshotConfirmed trên remote node (Hexcore), trả ngay trong 0ms
+        // để không bao giờ vượt quá ngưỡng chờ 1500ms của getHydraProof().
+        const isLocalMock = this.url.includes('127.0.0.1') || this.url.includes('localhost')
+        if (!isLocalMock && (Object.keys(this.snapshotUtxo).length > 0 || this.hasSnapshotUtxo)) {
+            if (Object.keys(this.snapshotUtxo).length === 0) {
+                await this.resolveWaitersViaHttpOrSnapshot()
+            }
+            return this.snapshotUtxo
+        }
         return new Promise((resolve, reject) => {
             if (!this.connected) return reject(new Error('hydra_unavailable'))
             const timer = setTimeout(() => {
                 const i = this.utxoWaiters.findIndex(w => w.timer === timer)
                 if (i >= 0) this.utxoWaiters.splice(i, 1)
-                // Dự phòng: dùng snapshot UTxO gần nhất nếu hydra-node phiên bản cũ không trả GetUTxOResponse
-                if (Object.keys(this.snapshotUtxo).length) resolve(this.snapshotUtxo)
+                if (Object.keys(this.snapshotUtxo).length > 0 || this.hasSnapshotUtxo) resolve(this.snapshotUtxo)
                 else reject(new Error('hydra_getutxo_timeout'))
             }, timeoutMs)
             this.utxoWaiters.push({ resolve, reject, timer })
@@ -357,15 +481,29 @@ export class HydraClient extends EventEmitter {
     }
 }
 
-const KEY = '__hydraPagodaClient'
+const KEY = '__hydraPagodaClient_v2'
 
-/** Singleton theo process (an toàn khi Nitro dev reload). Trả null nếu HYDRA_L2_ENABLED=false. */
+/** Singleton theo process (an toàn khi Nitro dev reload). Trả null và tự đóng WS nếu HYDRA_L2_ENABLED=false. */
 export function getHydraClient(): HydraClient | null {
     const cfg = getHydraConfig()
-    if (!cfg.enabled) return null
     const g = globalThis as any
+    // Dọn instance cũ (nếu có từ bản trước khi HMR)
+    if (g.__hydraPagodaClient) {
+        try { g.__hydraPagodaClient.stop() } catch { /* ignore */ }
+        delete g.__hydraPagodaClient
+    }
+    if (!cfg.enabled) {
+        if (g[KEY]) {
+            try { g[KEY].stop() } catch { /* ignore */ }
+            delete g[KEY]
+        }
+        return null
+    }
     let c: HydraClient | undefined = g[KEY]
-    if (!c) {
+    if (!c || c.getStatus().wsUrl !== cfg.wsUrl) {
+        if (c) {
+            try { c.stop() } catch { /* ignore */ }
+        }
         c = new HydraClient(cfg.wsUrl)
         g[KEY] = c
     }

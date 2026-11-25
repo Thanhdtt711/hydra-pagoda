@@ -1879,7 +1879,7 @@ export class TempleStage {
    */
   public sitAtBodhiChess() {
     this.cancelAutoWalk()
-    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(-7.4, 0.0, 9.2)
+    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(9.0, 0.0, 12.5)
     // Chọn đôn gần người chơi hơn (phía Nam z + 1.05 hoặc phía Bắc z - 1.05)
     const southZ = tablePos.z + 1.05
     const northZ = tablePos.z - 1.05
@@ -1899,11 +1899,11 @@ export class TempleStage {
   }
 
   /**
-   * Đứng dậy khỏi đôn đá ở Bàn Cờ Bồ Đề
+   * Đứng dậy khỏi đôn đá ở Bàn Cờ
    */
   public standUpFromBodhiChess() {
     if (!this.isSeated) return
-    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(-7.4, 0.0, 9.2)
+    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(9.0, 0.0, 12.5)
     const useSouth = this.playerPos.z >= tablePos.z
     this.playerPos.set(tablePos.x, 0.0, useSouth ? tablePos.z + 1.55 : tablePos.z - 1.55)
     this.characterController.position.copy(this.playerPos)
@@ -1912,13 +1912,14 @@ export class TempleStage {
   }
 
   /**
-   * Dẫn đường tới Bàn Cờ Đá Dưới Bóng Bồ Đề và ngồi xuống đôn đá
+   * Dẫn đường tới Bàn Cờ Đá Dưới Bóng Cây Đa (Sân Đông đối diện Lầu Chuông) và ngồi xuống đôn đá
    */
   public walkToBodhiChess(onArrive?: () => void, onAbort?: () => void) {
     this.cancelAutoWalk()
     this.standUpFromMeditation()
 
-    const target = { x: -7.4, z: 10.65 }
+    const tablePos = this.bodhiChessTableInstance?.centerPos ?? new THREE.Vector3(9.0, 0.0, 12.5)
+    const target = { x: tablePos.x, z: tablePos.z + 1.45 }
     const waypoints = this.buildSafeWaypoints(target)
 
     this.autoWalk = {

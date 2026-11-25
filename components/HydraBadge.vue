@@ -36,10 +36,29 @@ const shortTx = computed(() => {
   return h ? `${h.slice(0, 4)}…${h.slice(-4)}` : ''
 })
 
+const liveTx = computed(() => {
+  const h = props.proof?.txHash
+  if (!h) return null
+  return hydra.status?.recentTxs?.find(t => t.txHash.toLowerCase() === h.toLowerCase()) ?? null
+})
+
+const effectiveStatus = computed(() => {
+  const s = props.proof?.status
+  const live = liveTx.value
+  if (live?.status === 'snapshot_confirmed') return 'snapshot_confirmed'
+  if (s === 'submitted' && live?.status === 'valid') return 'valid'
+  return s
+})
+
+const effectiveSnapshotNo = computed(() => {
+  return props.proof?.snapshotNo ?? liveTx.value?.snapshotNo ?? hydra.status?.latestSnapshotNo ?? null
+})
+
 const view = computed(() => {
   const p = props.proof
   if (!p) return null
-  const onL2 = p.enabled !== false && (p.status === 'snapshot_confirmed' || p.status === 'valid' || p.status === 'submitted')
+  const st = effectiveStatus.value
+  const onL2 = p.enabled !== false && (st === 'snapshot_confirmed' || st === 'valid' || st === 'submitted')
   if (!onL2) {
     const isPg = p.dbEngine ? p.dbEngine === 'postgres' : hydra.isPostgres
     const dbName = isPg ? 'PostgreSQL' : 'SQLite'
@@ -52,19 +71,20 @@ const view = computed(() => {
         : tr('Giao dịch chỉ nằm ở sổ cái cục bộ SQLite, chưa được xác nhận trên Hydra L2.', 'Recorded on local SQLite ledger, not yet confirmed on Hydra L2.')
     }
   }
-  if (p.status === 'snapshot_confirmed') {
+  if (st === 'snapshot_confirmed') {
     return {
       variant: 'success' as const,
       short: 'Hydra L2',
-      full: `Hydra L2 · Snapshot #${p.snapshotNo ?? '?'}${shortTx.value ? ` · Tx ${shortTx.value}` : ''}`,
+      full: `Hydra L2 · Snapshot #${effectiveSnapshotNo.value ?? '?'}${shortTx.value ? ` · Tx ${shortTx.value}` : ''}`,
       title: tr(`Đã xác nhận trên Hydra L2${p.txHash ? ` – Tx ${p.txHash}` : ''}`, `Confirmed on Hydra L2${p.txHash ? ` – Tx ${p.txHash}` : ''}`)
     }
   }
-  if (p.status === 'valid') {
+  if (st === 'valid') {
+    const snapText = effectiveSnapshotNo.value ? `Snapshot #${effectiveSnapshotNo.value}` : tr('Đã xác thực', 'Validated')
     return {
       variant: 'success' as const,
       short: 'Hydra L2',
-      full: `Hydra L2 · ${tr('Đã xác thực', 'Validated')}${shortTx.value ? ` · Tx ${shortTx.value}` : ''}`,
+      full: `Hydra L2 · ${snapText}${shortTx.value ? ` · Tx ${shortTx.value}` : ''}`,
       title: tr(`Giao dịch hợp lệ trên Hydra L2${p.txHash ? ` – Tx ${p.txHash}` : ''}`, `Valid transaction on Hydra L2${p.txHash ? ` – Tx ${p.txHash}` : ''}`)
     }
   }

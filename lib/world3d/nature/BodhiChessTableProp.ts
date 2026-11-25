@@ -12,12 +12,11 @@ import { FlatMaterialFactory } from '../style/FlatMaterialFactory'
  */
 export class BodhiChessTableProp {
   public root = new THREE.Group()
-  public readonly centerPos = new THREE.Vector3(-7.4, 0.0, 9.2)
-  public readonly interactPos = new THREE.Vector3(-7.4, 0.6, 9.2)
+  public readonly centerPos = new THREE.Vector3(9.0, 0.0, 12.5)
+  public readonly interactPos = new THREE.Vector3(9.0, 0.6, 12.5)
 
   private ringMesh!: THREE.Mesh
   private ringMat!: THREE.MeshBasicMaterial
-  private gemMesh!: THREE.Mesh
 
   constructor(collisionWorld?: CollisionWorld) {
     this.root.name = 'BodhiChessTableProp'
@@ -41,28 +40,18 @@ export class BodhiChessTableProp {
       side: THREE.DoubleSide,
       depthWrite: false
     })
-    this.ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.15, 40), this.ringMat)
+    this.ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.75, 2.0, 40), this.ringMat)
     this.ringMesh.rotation.x = -Math.PI / 2
     this.ringMesh.position.set(cx, 0.04, cz)
     this.root.add(this.ringMesh)
-
-    // Viên ngọc vàng nổi xoay phía trên bàn cờ
-    this.gemMesh = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.17, 0),
-      new THREE.MeshBasicMaterial({ color: 0xf3cf6a })
-    )
-    this.gemMesh.position.set(cx, 1.55, cz)
-    this.root.add(this.gemMesh)
   }
 
-  /** Nhấp nhô vòng sáng, xoay & nhấp nhô viên ngọc */
+  /** Nhấp nhô vòng sáng */
   public update(elapsed: number): void {
     const pulse = 0.5 + 0.5 * Math.sin(elapsed * 2.4)
     this.ringMat.opacity = 0.35 + pulse * 0.4
     const s = 1 + pulse * 0.06
     this.ringMesh.scale.set(s, s, 1)
-    this.gemMesh.rotation.y = elapsed * 1.6
-    this.gemMesh.position.y = 1.55 + Math.sin(elapsed * 2.0) * 0.07
   }
 
   private buildTable(): void {
@@ -77,6 +66,19 @@ export class BodhiChessTableProp {
     const redPiece = 0xb8372b
     const inkPiece = 0x1d1916
     const pebbleColor = 0xd9cdb8
+    const matCrimson = 0x6b2019
+
+    // Thảm chiếu tròn sơn mài đỏ son viền vàng thếp lót dưới chân bàn và 2 đôn đá
+    parts.push({
+      geometry: LowPolyBuilder.cylinder(1.68, 1.72, 0.024, 20),
+      color: goldColor,
+      position: [cx, 0.012, cz]
+    })
+    parts.push({
+      geometry: LowPolyBuilder.cylinder(1.58, 1.60, 0.03, 20),
+      color: matCrimson,
+      position: [cx, 0.018, cz]
+    })
 
     // Đế trụ đá & thân trụ bàn
     parts.push({
@@ -193,7 +195,6 @@ export class BodhiChessTableProp {
       }
     })
     this.ringMat.dispose()
-    ;(this.gemMesh.material as THREE.Material).dispose()
   }
 }
 

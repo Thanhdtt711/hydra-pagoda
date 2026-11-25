@@ -3,19 +3,53 @@ import { defineStore } from 'pinia'
 export type HydraMode = 'hydra_l2' | 'local_ledger'
 export type DbEngine = 'postgres' | 'sqlite'
 
+export interface HydraActivityDto {
+    id: number
+    accountId?: number
+    reason: string
+    deltaMc: number
+    balanceAfter?: number
+    refType?: string
+    refId?: string
+    txHash: string
+    status: string
+    snapshotNo: number | null
+    address: string
+    l1Address?: string
+    sessionVkey?: string
+    stateUtxoRef?: string
+    stateLovelace?: number
+    cip20Lines?: string[]
+    createdAt: number
+    latencyMs: number
+}
+
 export interface HydraStatusDto {
     enabled: boolean
     connected: boolean
     mode: HydraMode
     dbEngine?: DbEngine
+    network?: string
     headStatus: string
+    headId?: string | null
     latestSnapshotNo: number
     totalL2Txs: number
     confirmedL2Txs: number
     avgConfirmMs: number | null
+    fuelAddress?: string | null
+    headUtxoCount?: number
+    fuelUtxoCount?: number
+    adaLockedLovelace?: number
+    adaLocked?: number
+    recentTxs?: HydraActivityDto[]
+    ledger?: {
+        byStatus: Record<string, number>
+        fuelPoolSize: number
+        inFlight: number
+    } | null
 }
 
-const POLL_MS = 15_000
+const POLL_MS = 8_000
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let pollRefs = 0
