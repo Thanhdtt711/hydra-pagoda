@@ -23,6 +23,8 @@ import {
 } from './config'
 import { addressNetworkId, decodeBech32Address } from './cose'
 import { getDb, withTransaction } from './db'
+import { quoteByLovelace, QuoteError } from '../../../lib/mc/pricing'
+import { MC_SALE_POOL } from '../../../lib/mc/tokenomics'
 import { attachOrderWitness, buildOrderUnsignedTx } from './txBuilder'
 
 export type OrderStatus =
@@ -170,12 +172,24 @@ export async function createMcOrder(account: PublicAccount, input: { adaAmount?:
     expectedLovelace = ada * LOVELACE_PER_ADA
   }
 
-  const expectedMc = Math.floor(expectedLovelace / LOVELACE_PER_MC)
+  const db = await getDb()
+  const fundRow = (await db.prepare('SELECT sale_sold FROM mc_fund_state WHERE id = 1').get()) as { sale_sold: number } | undefined
+  const currentSold = BigInt(fundRow?.sale_sold ?? 0)
+  let expectedMc: number
+  try {
+    const q = quoteByLovelace(currentSold, BigInt(expectedLovelace))
+    expectedMc = Number(q.totalMc)
+  } catch (e: any) {
+    if (e instanceof QuoteError) {
+      apiError(e.code === 'sold_out' ? 409 : 400, e.code, e.message)
+    }
+    throw e
+  }
+
   const now = Date.now()
   const expiresAt = now + cfg.orderTtlMs
   const orderId = `ord_${now.toString(36)}_${randomBytes(6).toString('hex')}`
 
-  const db = await getDb()
   await db.prepare(
     `INSERT INTO mc_orders (
       order_id, account_id, address, treasury_address,
@@ -547,9 +561,21 @@ export async function inspectAndSettleTx(
     }
 
     // Trường hợp 3: Hợp lệ (đúng hoặc thừa ADA) -> tính MC theo số lovelace thực nhận (1 MC = 1.000 lovelace)
-    const creditedMc = Math.floor(receivedLovelace / LOVELACE_PER_MC)
+    // Tính MC thực nhận theo bậc giá hiện tại của quỹ bán (nguyên tử trong transaction)
+    const fundRow = (await conn.prepare('SELECT sale_sold FROM mc_fund_state WHERE id = 1').get()) as { sale_sold: number } | undefined
+    const currentSold = BigInt(fundRow?.sale_sold ?? 0)
+    let creditedMc = 0
+    try {
+      const q = quoteByLovelace(currentSold, BigInt(receivedLovelace))
+      creditedMc = Number(q.totalMc)
+    } catch {
+      creditedMc = Math.min(Number(MC_SALE_POOL - currentSold), Math.floor(receivedLovelace / LOVELACE_PER_MC))
+    }
+    if (creditedMc <= 0) {
+      return { txHash, orderId: freshOrder.order_id, action: 'failed', confirmations, creditedMc: 0, note: 'Quỹ bán MC đã hết' }
+    }
 
-    // Bước 3.1: Claim tx_hash trong chain_deposits (PRIMARY KEY chống cộng trùng tuyệt đối)
+    // Bước 3.1: Claim tx_hash trong chain_deposits TRƯỚC (PRIMARY KEY chống cộng trùng & chống trừ quỹ 2 lần)
     const claim = await conn.prepare(
       `INSERT INTO chain_deposits (tx_hash, order_id, account_id, lovelace, mc_credited, block_height, confirmations, status, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'credited', ?, ?)
@@ -567,6 +593,14 @@ export async function inspectAndSettleTx(
     )
     if (Number(claim.changes) === 0) {
       return { txHash, orderId: freshOrder.order_id, action: 'already_processed', confirmations, creditedMc: 0 }
+    }
+
+    // Bước 3.1b: Trừ nguyên tử quỹ bán `mc_fund_state.sale_sold` (chống bán vượt 850M MC)
+    const fundUpd = await conn
+      .prepare('UPDATE mc_fund_state SET sale_sold = sale_sold + ?, updated_at = ? WHERE id = 1 AND sale_sold + ? <= ?')
+      .run(creditedMc, now, creditedMc, Number(MC_SALE_POOL))
+    if (Number(fundUpd.changes) !== 1) {
+      throw new Error('sale_pool_exhausted')
     }
 
     // Bước 3.2: Cộng số dư MC vào tài khoản
@@ -605,7 +639,8 @@ export async function inspectAndSettleTx(
     return { txHash, orderId: freshOrder.order_id, action: 'completed', confirmations, creditedMc }
   })
 
-  // Hybrid Hydra L2: sau khi SQLite commit bút toán deposit_ada, phản chiếu lên Hydra Head (không chặn, không ném lỗi).
+  // Hybrid Hydra L2: mua ADA -> MC vào thẳng số dư Hydra L2 (1 bước, không bắn đúp L1).
+  // Người chơi muốn mang MC thật về ví Eternl sẽ dùng luồng Rút MC (L2 -> L1) bằng Co-sign.
   if (settled.action === 'completed' && settled.orderId) {
     void scheduleHydraRecordByRef('deposit_ada', settled.orderId)
   }

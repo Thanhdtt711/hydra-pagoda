@@ -268,6 +268,22 @@ export class MapLayout {
       isWalkable: true,
       isExclusion: true,
       size: { width: 6.8, height: 2.2, depth: 4.8 }
+    },
+
+    // 14. BẢO TÀNG DI SẢN CỔ TỰ — CIP-68 NFT GALLERY (Phía Tây Đại Hùng Bảo Điện, đối xứng Nhà Hầu Đồng)
+    HERITAGE_MUSEUM: {
+      id: 'heritage_museum',
+      name: 'Bảo Tàng Di Sản Cổ Tự',
+      category: 'building',
+      center: { x: -35.0, y: 0, z: -9.5 },
+      footprint: { type: 'box', width: 20.0, depth: 18.0 },
+      elevation: 0.90,
+      rotationY: 0,
+      clearance: 2.0,
+      isWalkable: true,
+      isExclusion: true,
+      size: { width: 18.0, height: 9.0, depth: 16.0 },
+      doorCenter: { x: -35.0, y: 0.90, z: -1.5 }
     }
   }
 
@@ -341,9 +357,9 @@ export class MapLayout {
       { id: 'tree_pine_corner_1', species: 'pine', x: -28.0, z: 24.0, scale: 1.0, rotY: 1.5, seed: 1008 },
       { id: 'tree_pine_corner_2', species: 'pine', x: 28.0, z: 24.0, scale: 1.0, rotY: 2.1, seed: 1009 },
 
-      // 4. Phong Đỏ / Anh Đào (Bốn góc hoa viên ngoại vi)
-      { id: 'tree_sakura_sw', species: 'cherry_maple', x: -26.0, z: 2.0, scale: 0.95, rotY: 1.2, seed: 1010 },
-      { id: 'tree_sakura_nw', species: 'cherry_maple', x: -26.5, z: -14.0, scale: 1.05, rotY: 0.5, seed: 1011 },
+      // 4. Phong Đỏ / Anh Đào (Bốn góc hoa viên ngoại vi, tránh đè lên Bảo Tàng Di Sản phía Tây)
+      { id: 'tree_sakura_sw', species: 'cherry_maple', x: -53.5, z: -2.0, scale: 0.95, rotY: 1.2, seed: 1010 },
+      { id: 'tree_sakura_nw', species: 'cherry_maple', x: -54.0, z: -14.0, scale: 1.05, rotY: 0.5, seed: 1011 },
       { id: 'tree_sakura_se', species: 'cherry_maple', x: 53.5, z: -2.0, scale: 0.95, rotY: 2.1, seed: 1012 },
       { id: 'tree_sakura_ne', species: 'cherry_maple', x: 54.0, z: -14.0, scale: 1.05, rotY: 1.7, seed: 1013 },
 
@@ -354,8 +370,8 @@ export class MapLayout {
       { id: 'tree_palm_bell_2', species: 'palm', x: 26.0, z: 18.0, scale: 0.95, rotY: 0.9, seed: 1017 },
 
       // 6. Rặng Trúc Thiền Tông (Dọc vách hoa viên Tây và Đông)
-      { id: 'tree_bamboo_w1', species: 'bamboo', x: -28.0, z: 6.0, scale: 1.05, rotY: 0.0, seed: 1018 },
-      { id: 'tree_bamboo_w2', species: 'bamboo', x: -28.5, z: 8.5, scale: 0.95, rotY: 0.8, seed: 1019 },
+      { id: 'tree_bamboo_w1', species: 'bamboo', x: -53.5, z: 6.0, scale: 1.05, rotY: 0.0, seed: 1018 },
+      { id: 'tree_bamboo_w2', species: 'bamboo', x: -54.0, z: 8.5, scale: 0.95, rotY: 0.8, seed: 1019 },
       { id: 'tree_bamboo_e1', species: 'bamboo', x: 53.5, z: 6.0, scale: 1.05, rotY: 0.4, seed: 1020 },
       { id: 'tree_bamboo_e2', species: 'bamboo', x: 54.0, z: 8.5, scale: 0.95, rotY: 1.2, seed: 1021 }
     ]
@@ -445,13 +461,13 @@ export class MapLayout {
       return true
     }
 
-    // Khuôn viên mở rộng phía Đông (Nhà Hầu Đồng, sân trước, bậc tam cấp & đường đá kết nối từ sân chính):
-    // Không cho bất kỳ cây rừng, khóm cỏ hay hoa dại nào mọc đè lên Nhà Hầu Đồng và lối đi phía Đông
+    // Toàn bộ sân lát gạch liền khối cả 3 khu (Bảo Tàng Di Sản Tây + Đại Hùng Bảo Điện + Nhà Hầu Đồng Đông):
+    // Không cho bất kỳ cây rừng, khóm cỏ hay hoa dại ngẫu nhiên nào mọc đè trong khuôn viên sân gạch
     if (
-      x >= 10.0 - extraMargin &&
+      x >= -50.0 - extraMargin &&
       x <= 50.0 + extraMargin &&
       z >= -23.0 - extraMargin &&
-      z <= 11.5 + extraMargin
+      z <= 29.0 + extraMargin
     ) {
       return true
     }

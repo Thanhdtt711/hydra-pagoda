@@ -41,12 +41,12 @@ export class TerrainSystem {
 
   /**
    * Tính toán độ cao địa hình giải tích tại tọa độ bất kỳ (x, z)
-   * Phẳng tuyệt đối tại sân chùa trung tâm + khu Nhà Hầu Đồng phía Đông (x in [-26, 52], z in [-32, 28])
+   * Phẳng tuyệt đối tại sân chùa trung tâm + Bảo Tàng Di Sản phía Tây + Nhà Hầu Đồng phía Đông (x in [-52, 52], z in [-32, 28])
    * và lối đi Nam dẫn ra ngoài
    */
   public static computeElevation(x: number, z: number): number {
-    // 1. Khuôn viên chùa trung tâm & Điện Thờ Tứ Phủ (Nhà Hầu Đồng phía Đông) phẳng tuyệt đối
-    const inCourtyardX = x > -26.0 && x < 52.0
+    // 1. Khuôn viên chùa trung tâm, Bảo Tàng Di Sản (Tây) & Nhà Hầu Đồng (Đông) phẳng tuyệt đối
+    const inCourtyardX = x > -52.0 && x < 52.0
     const inCourtyardZ = z > -32.0 && z < 28.0
     if (inCourtyardX && inCourtyardZ) {
       return 0.0
@@ -63,9 +63,9 @@ export class TerrainSystem {
       return 0.0
     }
 
-    // 3. Tính khoảng cách tới biên khuôn viên chùa (Tây -26m, Đông +52m, Bắc -32m, Nam +28m)
+    // 3. Tính khoảng cách tới biên khuôn viên chùa (Tây -52m, Đông +52m, Bắc -32m, Nam +28m)
     let dx = 0
-    if (x <= -26.0) dx = -26.0 - x
+    if (x <= -52.0) dx = -52.0 - x
     else if (x >= 52.0) dx = x - 52.0
 
     let dz = 0
@@ -150,7 +150,7 @@ export class TerrainSystem {
           const mx = (ax + bx + cx) / 3
           const mz = (az + bz + cz) / 3
           const my = (ay + by + cy) / 3
-          const dxTemple = mx < -26 ? -26 - mx : mx > 52 ? mx - 52 : 0
+          const dxTemple = mx < -52 ? -52 - mx : mx > 52 ? mx - 52 : 0
           const dzTemple = Math.max(0, Math.abs(mz) - 28)
           const distTemple = Math.hypot(dxTemple, dzTemple)
           const soil = distTemple < 8.0 ? 1.0 - distTemple / 8.0 : 0.0

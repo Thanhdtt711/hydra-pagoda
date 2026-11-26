@@ -534,5 +534,126 @@ CREATE TABLE board_game_bonus (
   PRIMARY KEY (account_id, day_key)
 );
 `
+  },
+  {
+    version: 16,
+    name: 'reset_legacy_mc_balances',
+    sql: `
+-- Sao lưu số dư MC cũ và sổ cái trước khi xóa toàn bộ về 0 (chạy đúng 1 lần theo schema_migrations).
+CREATE TABLE IF NOT EXISTS accounts_mc_backup_v16 AS
+  SELECT id, address, mc_balance, last_login_at FROM accounts WHERE mc_balance > 0;
+
+CREATE TABLE IF NOT EXISTS mc_ledger_backup_v16 AS
+  SELECT * FROM mc_ledger;
+
+-- Ghi bút toán bù âm cho các tài khoản có số dư cũ để sổ cái mc_ledger luôn đối soát bằng 0.
+INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
+  SELECT id, -mc_balance, 0, 'legacy_reset', 'migration_v16', 'legacy_reset_v16_' || id, NULL, '{"migration":16}', last_login_at
+  FROM accounts WHERE mc_balance > 0;
+
+UPDATE accounts SET mc_balance = 0 WHERE mc_balance != 0;
+`
+  },
+  {
+    version: 17,
+    name: 'mc_tokenomics_funds_quotes_quests',
+    sql: `
+-- Theo dõi 2 quỹ MC cố định: quỹ bán (850M) và quỹ nhiệm vụ (150M). Cập nhật nguyên tử chống race condition.
+CREATE TABLE mc_fund_state (
+  id             INTEGER PRIMARY KEY CHECK (id = 1),
+  sale_sold      INTEGER NOT NULL DEFAULT 0 CHECK (sale_sold >= 0),
+  quest_paid     INTEGER NOT NULL DEFAULT 0 CHECK (quest_paid >= 0),
+  quest_recycled INTEGER NOT NULL DEFAULT 0 CHECK (quest_recycled >= 0),
+  updated_at     INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO mc_fund_state (id, sale_sold, quest_paid, quest_recycled, updated_at) VALUES (1, 0, 0, 0, 0);
+
+-- Báo giá mua MC theo bậc (hiệu lực 60 giây).
+CREATE TABLE mc_quotes (
+  quote_id           TEXT    PRIMARY KEY,
+  account_id         INTEGER NOT NULL REFERENCES accounts(id),
+  wallet_address     TEXT    NOT NULL,
+  mode               TEXT    NOT NULL,
+  input_amount       TEXT    NOT NULL,
+  total_mc           INTEGER NOT NULL CHECK (total_mc > 0),
+  total_lovelace     INTEGER NOT NULL CHECK (total_lovelace > 0),
+  unused_lovelace    INTEGER NOT NULL DEFAULT 0,
+  tier_number        INTEGER NOT NULL,
+  sale_sold_snapshot INTEGER NOT NULL,
+  segments_json      TEXT    NOT NULL,
+  status             TEXT    NOT NULL DEFAULT 'open',
+  used_tx_hash       TEXT,
+  created_at         INTEGER NOT NULL,
+  expires_at         INTEGER NOT NULL
+);
+CREATE INDEX mc_quotes_account_idx ON mc_quotes (account_id, created_at DESC);
+
+-- Đơn mua MC đã nộp txHash: UNIQUE(tx_hash) và UNIQUE(quote_id) chống replay và double-credit ở tầng DB.
+CREATE TABLE mc_purchases (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  quote_id         TEXT    NOT NULL UNIQUE REFERENCES mc_quotes(quote_id),
+  tx_hash          TEXT    NOT NULL UNIQUE,
+  account_id       INTEGER NOT NULL REFERENCES accounts(id),
+  wallet_address   TEXT    NOT NULL,
+  mc_amount        INTEGER NOT NULL CHECK (mc_amount > 0),
+  lovelace_paid    INTEGER NOT NULL CHECK (lovelace_paid > 0),
+  status           TEXT    NOT NULL,
+  delivery_tx_hash TEXT,
+  failure_reason   TEXT,
+  created_at       INTEGER NOT NULL,
+  settled_at       INTEGER
+);
+CREATE INDEX mc_purchases_account_idx ON mc_purchases (account_id, created_at DESC);
+
+-- Sổ phát thưởng nhiệm vụ từ quỹ 150M MC (trần 1.000 MC/ví/ngày, chống trùng theo quest_key + wallet_address + period_key).
+CREATE TABLE mc_quest_grants (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id     INTEGER NOT NULL REFERENCES accounts(id),
+  wallet_address TEXT    NOT NULL,
+  quest_key      TEXT    NOT NULL,
+  period_key     TEXT    NOT NULL,
+  day_key        TEXT    NOT NULL,
+  requested_mc   INTEGER NOT NULL CHECK (requested_mc > 0),
+  granted_mc     INTEGER NOT NULL CHECK (granted_mc >= 0),
+  reason         TEXT    NOT NULL,
+  ref_id         TEXT    NOT NULL,
+  ledger_id      INTEGER,
+  created_at     INTEGER NOT NULL,
+  UNIQUE(quest_key, wallet_address, period_key)
+);
+CREATE INDEX mc_quest_grants_wallet_day_idx ON mc_quest_grants (wallet_address, day_key);
+CREATE INDEX mc_quest_grants_cooldown_idx ON mc_quest_grants (wallet_address, quest_key, created_at DESC);
+`
+  },
+  {
+    version: 18,
+    name: 'mc_withdrawals_cosign',
+    sql: `
+-- Lệnh rút MC từ số dư Hydra L2 về ví Eternl L1 bằng giao dịch Co-sign 2 bên (không mất min-UTxO).
+CREATE TABLE mc_withdrawals (
+  withdraw_id      TEXT    PRIMARY KEY,
+  account_id       INTEGER NOT NULL REFERENCES accounts(id),
+  wallet_address   TEXT    NOT NULL,
+  mc_amount        INTEGER NOT NULL CHECK (mc_amount > 0),
+  unsigned_tx_hash TEXT,
+  unsigned_tx_cbor TEXT,
+  tx_hash          TEXT,
+  status           TEXT    NOT NULL DEFAULT 'pending',
+  failure_reason   TEXT,
+  created_at       INTEGER NOT NULL,
+  expires_at       INTEGER NOT NULL,
+  settled_at       INTEGER
+);
+CREATE INDEX mc_withdrawals_account_idx ON mc_withdrawals (account_id, created_at DESC);
+`
+  },
+  {
+    version: 19,
+    name: 'mc_fund_sink_splits',
+    sql: `
+-- Phân bổ minh bạch MC người chơi tiêu trong game vào 3 giỏ: Tái cấp thưởng (50%), Đốt khan hiếm (20%), Vận hành (30%).
+ALTER TABLE mc_fund_state ADD COLUMN burned_mc INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE mc_fund_state ADD COLUMN ops_mc INTEGER NOT NULL DEFAULT 0;
+`
   }
 ]

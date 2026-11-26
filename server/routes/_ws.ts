@@ -136,13 +136,17 @@ export default defineWebSocketHandler({
       const now = Date.now()
 
       if (data.type === 'client:join') {
-        // --- Xác thực danh tính ---
-        // Có vé WS hợp lệ (đổi từ phiên đăng nhập ví) => tên do SERVER đặt theo tài khoản,
-        // bỏ qua tên client gửi. Không có vé => khách, tên cố định "Khách xxxx" để không ai
-        // mạo danh người chơi đã xác thực.
+        // --- Xác thực danh tính (Wallet Gate) ---
+        // BẮT BUỘC có vé WS hợp lệ (đổi từ phiên đăng nhập ví). Không còn kết nối khách vãng lai.
+        // Tên hiển thị do SERVER đặt theo tài khoản, bỏ qua tên client gửi.
         const account = data.ticket ? await consumeWsTicket(data.ticket) : null
-        if (data.ticket && !account) {
-          peer.send(JSON.stringify({ type: 'server:error', code: 'bad_ticket', message: 'Vé kết nối không hợp lệ hoặc đã hết hạn' }))
+        if (!account) {
+          peer.send(JSON.stringify({
+            type: 'server:error',
+            code: data.ticket ? 'bad_ticket' : 'wallet_required',
+            message: data.ticket ? 'Vé kết nối không hợp lệ hoặc đã hết hạn' : 'Cần kết nối ví Cardano để vào Sangha'
+          }))
+          return
         }
 
         const requestedId = typeof data.id === 'string' && PILGRIM_ID_RE.test(data.id) ? data.id : peer.id
@@ -175,18 +179,9 @@ export default defineWebSocketHandler({
             ? 'male'
             : 'female'
 
-        const rawGuestFortune = cleanText(data.fortuneName, 40, '')
-        const safeGuestFortune =
-          rawGuestFortune &&
-          !rawGuestFortune.startsWith('addr_') &&
-          !/^khách\s/i.test(rawGuestFortune) &&
-          rawGuestFortune !== 'Hành Giả Tâm An'
-            ? rawGuestFortune
-            : ''
-
         const presence: PilgrimPresence = {
           id: requestedId,
-          name: account ? account.displayName : (safeGuestFortune || `Khách ${requestedId.slice(-4)}`),
+          name: account.displayName,
           title: cleanText(data.title, 40, 'Sơ Tâm Nhập Đạo'),
           country: ALLOWED_COUNTRIES.has(rawCountry) ? rawCountry : 'vietnam',
           gender: rawGender,
@@ -194,7 +189,7 @@ export default defineWebSocketHandler({
           yaw: typeof data.yaw === 'number' && Number.isFinite(data.yaw) ? data.yaw : 0,
           action: data.action || 'standing',
           updatedAt: now,
-          verified: !!account
+          verified: true
         }
 
         peerPilgrimIds.set(peer.id, presence.id)

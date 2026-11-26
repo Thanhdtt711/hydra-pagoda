@@ -10,6 +10,7 @@ import type { PilgrimPresence } from '../network/MultiplayerClient'
 import { CollisionWorld, CharacterController, CameraSpringArm, BoxCollider, CylinderCollider, GridPathfinder } from './collision'
 import { PagodaSanctuaryHall } from './sanctuary/PagodaSanctuary'
 import { HauDongSanctuary, type HauDongVisualState } from './sanctuary/HauDongSanctuary'
+import { HeritageMuseumHall } from './sanctuary/HeritageMuseumHall'
 import { AtmosphereManager } from './environment/AtmosphereManager'
 import { Palette } from './style/Palette'
 import { SlotBatch } from './style/SlotBatch'
@@ -18,6 +19,7 @@ import { PostProcessingManager, type GraphicsQuality } from './postprocessing/Po
 import { LotusPond } from './nature/LotusPond'
 import { BellTower } from './architecture/BellTower'
 import { TamQuanGate } from './architecture/TamQuanGate'
+import { CourtyardMonuments } from './architecture/CourtyardMonuments'
 import { WindGrass } from './nature/WindGrass'
 import { WindSystem } from './nature/WindSystem'
 import { TreeSystem } from './nature/TreeSystem'
@@ -37,7 +39,7 @@ import { AbbotNpc, type AbbotNpcEmotion } from './characters/AbbotNpc'
 import { PerformanceProfiler } from './debug/PerformanceProfiler'
 import { SeededPRNG } from './utils/SeededPRNG'
 
-export type InteractionTarget = 'incense' | 'merit_box' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | 'zen_garden' | 'bell_tower' | 'bodhi_chess' | null
+export type InteractionTarget = 'incense' | 'merit_box' | 'merit_stele' | 'fortune' | 'meditation' | 'lantern' | 'door' | 'hau_dong' | 'heritage_museum' | 'parkour_start' | 'parkour_summit' | 'love_tree' | 'abbot' | 'zen_garden' | 'bell_tower' | 'bodhi_chess' | null
 
 export interface RemotePilgrimInstance {
   id: string
@@ -253,6 +255,8 @@ export class TempleStage {
   public sanctuaryHall!: PagodaSanctuaryHall
   public abbotNpc!: AbbotNpc
   public hauDongSanctuary!: HauDongSanctuary
+  public heritageMuseumHall!: HeritageMuseumHall
+  public courtyardMonuments!: CourtyardMonuments
   public hauDongVisualState: HauDongVisualState | null = null
   public lotusPondInstance!: LotusPond
   public bellTowerInstance!: BellTower
@@ -695,10 +699,11 @@ export class TempleStage {
     // 2. Sân chùa, bó vỉa, ngự đạo và đèn đá: gộp theo slot màu, không PointLight
     const b = new SlotBatch()
 
-    // Sân lát phẳng liền khối bao phủ cả Đại Hùng Bảo Điện và Nhà Hầu Đồng phía Đông (x = -23..+49, z = -22..+28, mặt trên y = 0.14)
-    b.box('ground', 72, 0.20, 50, 13, 0.04, 3)
-    b.box('stone', 72.4, 0.3, 0.4, 13, 0.15, -22)
-    b.box('stone', 72.4, 0.3, 0.4, 13, 0.15, 28)
+    // Sân lát phẳng liền khối bao phủ cả 3 khu: Bảo Tàng Di Sản (Tây) — Đại Hùng Bảo Điện (Trung tâm) — Nhà Hầu Đồng (Đông)
+    // (x = -49..+49, z = -22..+28, mặt trên y = 0.14)
+    b.box('ground', 98, 0.20, 50, 0, 0.04, 3)
+    b.box('stone', 98.4, 0.3, 0.4, 0, 0.15, -22)
+    b.box('stone', 98.4, 0.3, 0.4, 0, 0.15, 28)
     b.box('stone', 5.6, 0.08, 32, 0, 0.12, 7)
 
     // Nâng cấp Trục Ngự Đạo: bó vỉa đá, đường ron đá phiến và 1 thảm đá hoa sen trung tâm
@@ -766,9 +771,9 @@ export class TempleStage {
     this.characterController.position.copy(this.playerPos)
     this.cameraSpringArm = new CameraSpringArm(this.collisionWorld)
 
-    // 1. Mặt sân chùa lát đá liền khối (Walkable Ground x = -24..+50, mặt trên y = 0.14) & Ngự đạo trung tâm (mặt trên y = 0.16)
+    // 1. Mặt sân chùa lát đá liền khối cả 3 khu (Walkable Ground x = -50..+50, mặt trên y = 0.14) & Ngự đạo trung tâm (mặt trên y = 0.16)
     this.collisionWorld.add(
-      new BoxCollider('ground_courtyard', new THREE.Vector3(13, 0.04, 3), new THREE.Vector3(74, 0.2, 52), true, true, 0.14)
+      new BoxCollider('ground_courtyard', new THREE.Vector3(0, 0.04, 3), new THREE.Vector3(100, 0.2, 52), true, true, 0.14)
     )
     this.collisionWorld.add(
       new BoxCollider('ground_royal_path', new THREE.Vector3(0, 0.08, 7), new THREE.Vector3(5.6, 0.16, 32), true, true, 0.16)
@@ -862,6 +867,12 @@ export class TempleStage {
     // Khởi tạo Nhà Hầu Đồng (Điện Thờ Tứ Phủ & Trần Triều) ở phía Đông (bên phải) Đại Hùng Bảo Điện
     this.hauDongSanctuary = new HauDongSanctuary(this.collisionWorld)
     this.scene.add(this.hauDongSanctuary.group)
+
+    this.heritageMuseumHall = new HeritageMuseumHall(this.collisionWorld)
+    this.scene.add(this.heritageMuseumHall.group)
+
+    this.courtyardMonuments = new CourtyardMonuments(this.collisionWorld)
+    this.scene.add(this.courtyardMonuments.root)
   }
 
   private buildSacredBuddha() {
@@ -1389,6 +1400,9 @@ export class TempleStage {
           this.playerPos.distanceTo(this.hauDongSanctuary.meritBoxWorldPos)
         )
       : Infinity
+    const distHeritageMuseum = this.heritageMuseumHall
+      ? this.playerPos.distanceTo(this.heritageMuseumHall.podiumWorldPos)
+      : Infinity
     const distParkourStart = this.mountainParkourInstance
       ? this.playerPos.distanceTo(this.mountainParkourInstance.startChestPos)
       : Infinity
@@ -1408,9 +1422,13 @@ export class TempleStage {
       this.playerPos.x - TempleStage.PROX_BELL_TOWER.x,
       this.playerPos.z - TempleStage.PROX_BELL_TOWER.z
     )
+    const distMeritStele = this.courtyardMonuments
+      ? this.playerPos.distanceTo(this.courtyardMonuments.steleInteractPos)
+      : Infinity
 
     if (distIncenseCourtyard < 2.6 || distIncenseHall < 3.2) nearest = 'incense'
     else if (distMerit < 2.4) nearest = 'merit_box'
+    else if (distMeritStele < 3.8) nearest = 'merit_stele'
     else if (distFortune < 2.4) nearest = 'fortune'
     else if (distLoveTree < 2.8) nearest = 'love_tree'
     else if (distBodhiChess < 2.6) nearest = 'bodhi_chess'
@@ -1419,6 +1437,7 @@ export class TempleStage {
     else if (distParkourStart < 3.0) nearest = 'parkour_start'
     else if (distParkourSummit < 3.8) nearest = 'parkour_summit'
     else if (distHauDong < 5.2) nearest = 'hau_dong'
+    else if (distHeritageMuseum < 6.0 || (this.heritageMuseumHall && this.heritageMuseumHall.isPointInside(this.playerPos.x, this.playerPos.z))) nearest = 'heritage_museum'
     else if (distAbbot < HallLayout.ABBOT_SPOT.interactionRadius) nearest = 'abbot'
     else if (distDoor < 3.2 && (this.sanctuaryHall ? this.sanctuaryHall.doorAngle < 0.4 : false)) nearest = 'door'
     else if (distBuddha < 4.8 || this.isInsideSanctuary()) nearest = 'meditation'
@@ -1473,7 +1492,11 @@ export class TempleStage {
   }
 
   public isNearMerit(maxDist = 3.2): boolean {
-    return this.playerPos.distanceTo(TempleStage.PROX_MERIT) < maxDist
+    const nearBox = this.playerPos.distanceTo(TempleStage.PROX_MERIT) < maxDist
+    const nearStele = this.courtyardMonuments
+      ? this.playerPos.distanceTo(this.courtyardMonuments.steleInteractPos) < Math.max(maxDist, 4.2)
+      : false
+    return nearBox || nearStele
   }
 
   public getPlayerXZ(): { x: number; z: number } {
@@ -1811,6 +1834,37 @@ export class TempleStage {
 
 
   /**
+   * Dẫn đường nhân vật di chuyển sang Bảo Tàng Di Sản Cổ Tự (CIP-68 NFT Gallery phía Tây)
+   */
+  public walkToHeritageMuseum(onArrive?: () => void, onAbort?: () => void) {
+    this.cancelAutoWalk()
+    this.standUpFromMeditation()
+
+    const target = { x: -35.0, z: -6.2 }
+    const waypoints = this.buildSafeWaypoints(target)
+
+    this.autoWalk = {
+      waypoints,
+      index: 0,
+      speed: 4.2,
+      startDelay: 0.05,
+      finalYaw: Math.PI,
+      snapOnStuck: true,
+      actionOnArrive: 'stand',
+      onArrive: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onArrive) onArrive()
+      },
+      onAbort: () => {
+        if (this.avatar) this.avatar.setAction('standing')
+        if (onAbort) onAbort()
+      },
+      stuckTimer: 0,
+      bestDist: Infinity
+    }
+  }
+
+  /**
    * Dẫn đường nhân vật di chuyển sang Nhà Hầu Đồng (Điện Thờ Tứ Phủ & Trần Triều ở phía Đông)
    */
   public walkToHauDongHall(onArrive?: () => void, onAbort?: () => void) {
@@ -2132,6 +2186,12 @@ export class TempleStage {
 
     if (this.hauDongSanctuary) {
       this.hauDongSanctuary.update(delta, elapsed, this.hauDongVisualState)
+    }
+    if (this.heritageMuseumHall) {
+      this.heritageMuseumHall.update(elapsed)
+    }
+    if (this.courtyardMonuments) {
+      this.courtyardMonuments.update(elapsed)
     }
     if (this.abbotNpc) {
       this.abbotNpc.update(delta, elapsed, this.playerPos)

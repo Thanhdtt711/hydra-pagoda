@@ -26,10 +26,58 @@
           </UiButton>
         </div>
         <div
-          v-if="winMessage"
-          class="bg-[#26221d] border border-[#0ecb81]/60 rounded-[2px] px-2.5 py-1.5 text-xs font-bold text-[#0ecb81] leading-snug"
+          v-if="matchResult"
+          class="bg-[#26221d] border-2 rounded-[2px] px-3.5 py-3 flex items-center justify-between gap-3"
+          :class="
+            matchResult.outcome === 'win'
+              ? 'border-[#0ecb81]'
+              : matchResult.outcome === 'lose'
+                ? 'border-[#f6465d]'
+                : 'border-[#c9a24b]'
+          "
         >
-          {{ winMessage }}
+          <div class="flex items-start gap-2.5 min-w-0">
+            <ZenIcon
+              :name="matchResult.outcome === 'win' ? 'circle-check' : matchResult.outcome === 'lose' ? 'close' : 'sparkles'"
+              :size="20"
+              class="shrink-0 mt-0.5"
+              :class="
+                matchResult.outcome === 'win'
+                  ? 'text-[#0ecb81]'
+                  : matchResult.outcome === 'lose'
+                    ? 'text-[#f6465d]'
+                    : 'text-[#c9a24b]'
+              "
+            />
+            <div class="min-w-0 space-y-0.5">
+              <div
+                class="text-sm font-bold leading-snug"
+                :class="
+                  matchResult.outcome === 'win'
+                    ? 'text-[#0ecb81]'
+                    : matchResult.outcome === 'lose'
+                      ? 'text-[#f6465d]'
+                      : 'text-[#c9a24b]'
+                "
+              >
+                {{ matchResult.title }}
+              </div>
+              <div class="text-xs text-[#f0e6d2] leading-snug">
+                {{ matchResult.subtitle }}
+              </div>
+              <div
+                v-if="matchResult.rewardText"
+                class="text-xs font-semibold text-[#0ecb81] leading-snug"
+              >
+                {{ matchResult.rewardText }}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <UiButton variant="primary" size="sm" @click="resetActiveGame">
+              {{ tr('Chơi lại', 'Play Again') }}
+            </UiButton>
+          </div>
         </div>
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-[#f0e6d2] leading-relaxed">{{ rewardHint }}</span>
@@ -53,9 +101,50 @@
       <!-- TAB 1: CỜ TƯỚNG (XIANGQI) - HIỆN LÊN TRƯỚC            -->
       <!-- ===================================================== -->
       <div v-if="activeTab === 'xiangqi'" class="space-y-3">
+        <!-- Thanh lượt đi rõ ràng 2 bên + số nước + nút điều khiển -->
+        <div class="grid grid-cols-2 gap-2">
+          <div
+            class="bg-[#1a1714] border rounded-[2px] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+            :class="!xqWinner && xqTurn === 'red' ? 'border-[#0ecb81] bg-[#26221d]' : 'border-[#332d26]'"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#f6ecd8] border-2 border-[#b8372b] shrink-0"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-[#f0e6d2] truncate">{{ tr('Đạo Hữu (Đỏ)', 'You (Red)') }}</div>
+                <div class="text-xs text-[#9c9283] font-numbers">{{ tr(`Nước ${xqHistory.length}`, `Move ${xqHistory.length}`) }}</div>
+              </div>
+            </div>
+            <UiBadge v-if="!xqWinner && xqTurn === 'red'" variant="success">
+              {{ tr('Lượt bạn', 'Your Turn') }}
+            </UiBadge>
+            <UiBadge v-else-if="xqWinner === 'red'" variant="success">
+              {{ tr('Thắng', 'Win') }}
+            </UiBadge>
+          </div>
+
+          <div
+            class="bg-[#1a1714] border rounded-[2px] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+            :class="!xqWinner && xqTurn === 'black' ? 'border-[#c9a24b] bg-[#26221d]' : 'border-[#332d26]'"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#1a1714] border-2 border-[#c9a24b] shrink-0"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-[#f0e6d2] truncate">{{ tr('Sư Thầy (Đen)', 'Abbot (Black)') }}</div>
+                <div class="text-xs text-[#9c9283]">{{ xqThinking ? tr('Đang tính nước...', 'Thinking...') : tr('Đối thủ AI', 'AI Opponent') }}</div>
+              </div>
+            </div>
+            <UiBadge v-if="!xqWinner && xqTurn === 'black'" variant="gold">
+              {{ tr('Đang đi', 'Turn') }}
+            </UiBadge>
+            <UiBadge v-else-if="xqWinner === 'black'" variant="danger">
+              {{ tr('Thắng', 'Win') }}
+            </UiBadge>
+          </div>
+        </div>
+
         <div class="bg-[#26221d] border border-[#332d26] rounded-[2px] px-3 py-2 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
-            <UiBadge :variant="xqWinner ? (xqWinner === 'red' ? 'success' : 'danger') : (xqTurn === 'red' ? 'gold' : 'neutral')">
+            <UiBadge :variant="xqWinner ? (xqWinner === 'red' ? 'success' : 'danger') : xqCheckWarning ? 'danger' : (xqTurn === 'red' ? 'gold' : 'neutral')">
               {{ xqBadgeText }}
             </UiBadge>
             <span class="text-xs text-[#f0e6d2] truncate">{{ xqStatusText }}</span>
@@ -75,87 +164,138 @@
           </div>
         </div>
 
-        <div class="flex justify-center bg-[#14110e] border border-[#332d26] rounded-[2px] p-2.5 select-none">
-          <div class="relative w-full max-w-[380px] aspect-[9/10] bg-[#241c14] border-2 border-[#c9a24b] rounded-[2px] p-1.5">
-            <svg viewBox="0 0 800 900" class="w-full h-full pointer-events-none">
-              <line
-                v-for="r in 10"
-                :key="`hr-${r}`"
-                x1="40"
-                :y1="40 + (r - 1) * 90"
-                x2="760"
-                :y2="40 + (r - 1) * 90"
-                stroke="#8b7346"
-                stroke-width="2"
-              />
-              <line
-                v-for="c in 9"
-                :key="`vt-${c}`"
-                :x1="40 + (c - 1) * 90"
-                y1="40"
-                :x2="40 + (c - 1) * 90"
-                y2="400"
-                stroke="#8b7346"
-                stroke-width="2"
-              />
-              <line
-                v-for="c in 9"
-                :key="`vb-${c}`"
-                :x1="40 + (c - 1) * 90"
-                y1="490"
-                :x2="40 + (c - 1) * 90"
-                y2="850"
-                stroke="#8b7346"
-                stroke-width="2"
-              />
-              <line x1="40" y1="400" x2="40" y2="490" stroke="#8b7346" stroke-width="2" />
-              <line x1="760" y1="400" x2="760" y2="490" stroke="#8b7346" stroke-width="2" />
-              <line x1="310" y1="40" x2="490" y2="220" stroke="#8b7346" stroke-width="2" />
-              <line x1="490" y1="40" x2="310" y2="220" stroke="#8b7346" stroke-width="2" />
-              <line x1="310" y1="670" x2="490" y2="850" stroke="#8b7346" stroke-width="2" />
-              <line x1="490" y1="670" x2="310" y2="850" stroke="#8b7346" stroke-width="2" />
-              <text x="230" y="454" text-anchor="middle" fill="#c9a24b" font-size="26" font-weight="600">楚 河</text>
-              <text x="570" y="454" text-anchor="middle" fill="#c9a24b" font-size="26" font-weight="600">漢 界</text>
-            </svg>
+        <!-- Cảnh báo CHIẾU TƯỚNG nổi bật -->
+        <div
+          v-if="xqCheckWarning && !xqWinner"
+          class="bg-[#26221d] border-2 border-[#f6465d] rounded-[2px] px-3 py-2 flex items-center gap-2"
+        >
+          <UiBadge variant="danger">{{ tr('CHIẾU TƯỚNG', 'CHECK') }}</UiBadge>
+          <span class="text-xs font-bold text-[#f6465d]">
+            {{
+              xqTurn === 'red'
+                ? tr('Tướng Đỏ của bạn đang bị chiếu! Hãy di chuyển hoặc che chắn ngay.', 'Your Red General is in check! Defend immediately.')
+                : tr('Tướng Đen của Sư Thầy đang bị chiếu!', 'The Black General is in check!')
+            }}
+          </span>
+        </div>
 
-            <div class="absolute inset-1.5 grid grid-cols-9 grid-rows-10">
-              <template v-for="r in 10" :key="`row-${r - 1}`">
-                <button
+        <div class="flex justify-center bg-[#14110e] border border-[#332d26] rounded-[2px] p-2.5 select-none">
+          <!-- Khung gỗ trắc viền vàng thếp bao ngoài bàn Cờ Tướng gỗ hoàng dương -->
+          <div class="w-full max-w-[404px] bg-[#4a2e19] border-2 border-[#c9a24b] rounded-[2px] p-2">
+            <div class="relative w-full aspect-[9/10] bg-[#dfb878] border border-[#5c3a1e] rounded-[2px]">
+              <svg viewBox="0 0 900 1000" class="w-full h-full pointer-events-none">
+                <!-- Khung viền kép cổ điển -->
+                <rect x="34" y="34" width="832" height="932" fill="none" stroke="#3e2713" stroke-width="5" />
+                <rect x="44" y="44" width="812" height="912" fill="none" stroke="#3e2713" stroke-width="1.5" />
+
+                <!-- 10 đường ngang (y = 50..950, khớp tuyệt đối tâm lưới 9x10) -->
+                <line
+                  v-for="r in 10"
+                  :key="`hr-${r}`"
+                  x1="50"
+                  :y1="50 + (r - 1) * 100"
+                  x2="850"
+                  :y2="50 + (r - 1) * 100"
+                  stroke="#3e2713"
+                  stroke-width="2.5"
+                />
+
+                <!-- 9 đường dọc phía trên sông -->
+                <line
                   v-for="c in 9"
-                  :key="`cell-${r - 1}-${c - 1}`"
-                  type="button"
-                  class="relative flex items-center justify-center cursor-pointer focus:outline-none"
-                  @click="onXiangqiCellClick(r - 1, c - 1)"
-                >
-                  <span
-                    v-if="isLastMoveCell(r - 1, c - 1)"
-                    class="absolute inset-0.5 rounded-[2px] border border-[#c9a24b]/60 bg-[#c9a24b]/10 pointer-events-none"
-                  ></span>
-                  <span
-                    v-if="isLegalTarget(r - 1, c - 1) && !xqBoard[r - 1]![c - 1]"
-                    class="w-2.5 h-2.5 rounded-full bg-[#0ecb81] opacity-85 pointer-events-none"
-                  ></span>
-                  <span
-                    v-if="isLegalTarget(r - 1, c - 1) && xqBoard[r - 1]![c - 1]"
-                    class="absolute inset-0.5 rounded-full border-2 border-[#f6465d] pointer-events-none"
-                  ></span>
-                  <span
-                    v-if="xqBoard[r - 1]![c - 1]"
-                    class="w-[82%] h-[82%] rounded-full border-2 flex items-center justify-center text-sm font-bold transition-transform"
-                    :class="[
-                      xqBoard[r - 1]![c - 1]!.side === 'red'
-                        ? 'bg-[#f6ecd8] text-[#b8372b] border-[#b8372b]'
-                        : 'bg-[#1a1714] text-[#f0e6d2] border-[#c9a24b]',
-                      xqSelected?.r === r - 1 && xqSelected?.c === c - 1
-                        ? 'ring-2 ring-[#0ecb81] scale-110'
-                        : ''
-                    ]"
-                    :title="getPieceViName(xqBoard[r - 1]![c - 1]!)"
+                  :key="`vt-${c}`"
+                  :x1="50 + (c - 1) * 100"
+                  y1="50"
+                  :x2="50 + (c - 1) * 100"
+                  y2="450"
+                  stroke="#3e2713"
+                  stroke-width="2.5"
+                />
+
+                <!-- 9 đường dọc phía dưới sông -->
+                <line
+                  v-for="c in 9"
+                  :key="`vb-${c}`"
+                  :x1="50 + (c - 1) * 100"
+                  y1="550"
+                  :x2="50 + (c - 1) * 100"
+                  y2="950"
+                  stroke="#3e2713"
+                  stroke-width="2.5"
+                />
+
+                <!-- 2 cạnh biên nối liền qua sông -->
+                <line x1="50" y1="450" x2="50" y2="550" stroke="#3e2713" stroke-width="2.5" />
+                <line x1="850" y1="450" x2="850" y2="550" stroke="#3e2713" stroke-width="2.5" />
+
+                <!-- Đường chéo Cửu Cung (Đen & Đỏ) -->
+                <line x1="350" y1="50" x2="550" y2="250" stroke="#3e2713" stroke-width="2.5" />
+                <line x1="550" y1="50" x2="350" y2="250" stroke="#3e2713" stroke-width="2.5" />
+                <line x1="350" y1="750" x2="550" y2="950" stroke="#3e2713" stroke-width="2.5" />
+                <line x1="550" y1="750" x2="350" y2="950" stroke="#3e2713" stroke-width="2.5" />
+
+                <!-- Dấu định vị góc Pháo & Tốt chuẩn bàn cờ cổ truyền -->
+                <path
+                  v-for="(d, idx) in XQ_STAR_PATHS"
+                  :key="`star-${idx}`"
+                  :d="d"
+                  fill="none"
+                  stroke="#3e2713"
+                  stroke-width="2.4"
+                  stroke-linecap="square"
+                />
+
+                <!-- Sông Sở Hà - Hán Giới -->
+                <rect x="52" y="452" width="796" height="96" fill="#d4ab68" />
+                <text x="260" y="514" text-anchor="middle" fill="#4a2e19" font-size="38" font-weight="700" letter-spacing="10">楚 河</text>
+                <text x="640" y="514" text-anchor="middle" fill="#4a2e19" font-size="38" font-weight="700" letter-spacing="10">漢 界</text>
+              </svg>
+
+              <div class="absolute inset-0 grid grid-cols-9 grid-rows-10">
+                <template v-for="r in 10" :key="`row-${r - 1}`">
+                  <button
+                    v-for="c in 9"
+                    :key="`cell-${r - 1}-${c - 1}`"
+                    type="button"
+                    class="relative flex items-center justify-center cursor-pointer focus:outline-none"
+                    @click="onXiangqiCellClick(r - 1, c - 1)"
                   >
-                    {{ getPieceChar(xqBoard[r - 1]![c - 1]!) }}
-                  </span>
-                </button>
-              </template>
+                    <span
+                      v-if="isLastMoveCell(r - 1, c - 1)"
+                      class="absolute inset-0.5 rounded-[2px] border-2 border-[#b8372b]/80 bg-[#c9a24b]/25 pointer-events-none"
+                    ></span>
+                    <span
+                      v-if="isLegalTarget(r - 1, c - 1) && !xqBoard[r - 1]![c - 1]"
+                      class="w-3 h-3 rounded-full bg-[#0ecb81] border-2 border-[#14110e] pointer-events-none"
+                    ></span>
+                    <span
+                      v-if="isLegalTarget(r - 1, c - 1) && xqBoard[r - 1]![c - 1]"
+                      class="absolute inset-0 rounded-full border-[3px] border-[#f6465d] pointer-events-none"
+                    ></span>
+                    <span
+                      v-if="xqBoard[r - 1]![c - 1]"
+                      class="relative w-[86%] h-[86%] rounded-full border-2 border-b-[3px] flex items-center justify-center text-base font-bold transition-transform shadow-sm"
+                      :class="[
+                        xqBoard[r - 1]![c - 1]!.side === 'red'
+                          ? 'bg-[#fcf4e3] text-[#a8201a] border-[#a8201a]'
+                          : 'bg-[#211d1a] text-[#f5e9cf] border-[#c9a24b]',
+                        xqCheckWarning && !xqWinner && xqBoard[r - 1]![c - 1]!.type === 'K' && xqBoard[r - 1]![c - 1]!.side === xqTurn
+                          ? 'ring-2 ring-[#f6465d] scale-110'
+                          : xqSelected?.r === r - 1 && xqSelected?.c === c - 1
+                            ? 'ring-2 ring-[#0ecb81] scale-110'
+                            : ''
+                      ]"
+                      :title="getPieceViName(xqBoard[r - 1]![c - 1]!)"
+                    >
+                      <span
+                        class="absolute inset-[2px] rounded-full border pointer-events-none"
+                        :class="xqBoard[r - 1]![c - 1]!.side === 'red' ? 'border-[#a8201a]/40' : 'border-[#c9a24b]/45'"
+                      ></span>
+                      <span class="relative leading-none">{{ getPieceChar(xqBoard[r - 1]![c - 1]!) }}</span>
+                    </span>
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -347,9 +487,50 @@
       <!-- TAB 4: CỜ VUA (CHESS 8x8)                             -->
       <!-- ===================================================== -->
       <div v-else-if="activeTab === 'chess'" class="space-y-3">
+        <!-- Thanh lượt đi rõ ràng 2 bên + số nước + nút điều khiển -->
+        <div class="grid grid-cols-2 gap-2">
+          <div
+            class="bg-[#1a1714] border rounded-[2px] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+            :class="!chessWinner && chessState.turn === 'w' ? 'border-[#0ecb81] bg-[#26221d]' : 'border-[#332d26]'"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#ffffff] border-2 border-[#181818] shrink-0"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-[#f0e6d2] truncate">{{ tr('Đạo Hữu (Trắng)', 'You (White)') }}</div>
+                <div class="text-xs text-[#9c9283] font-numbers">{{ tr(`Nước ${chessHistory.length}`, `Move ${chessHistory.length}`) }}</div>
+              </div>
+            </div>
+            <UiBadge v-if="!chessWinner && chessState.turn === 'w'" variant="success">
+              {{ tr('Lượt bạn', 'Your Turn') }}
+            </UiBadge>
+            <UiBadge v-else-if="chessWinner === 'w'" variant="success">
+              {{ tr('Thắng', 'Win') }}
+            </UiBadge>
+          </div>
+
+          <div
+            class="bg-[#1a1714] border rounded-[2px] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+            :class="!chessWinner && chessState.turn === 'b' ? 'border-[#c9a24b] bg-[#26221d]' : 'border-[#332d26]'"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#181818] border-2 border-[#f0f0f0] shrink-0"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-[#f0e6d2] truncate">{{ tr('Sư Thầy (Đen)', 'Abbot (Black)') }}</div>
+                <div class="text-xs text-[#9c9283]">{{ chessThinking ? tr('Đang tính nước...', 'Thinking...') : tr('Đối thủ AI', 'AI Opponent') }}</div>
+              </div>
+            </div>
+            <UiBadge v-if="!chessWinner && chessState.turn === 'b'" variant="gold">
+              {{ tr('Đang đi', 'Turn') }}
+            </UiBadge>
+            <UiBadge v-else-if="chessWinner === 'b'" variant="danger">
+              {{ tr('Thắng', 'Win') }}
+            </UiBadge>
+          </div>
+        </div>
+
         <div class="bg-[#26221d] border border-[#332d26] rounded-[2px] px-3 py-2 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
-            <UiBadge :variant="chessWinner ? (chessWinner === 'w' ? 'success' : chessWinner === 'b' ? 'danger' : 'neutral') : (chessState.turn === 'w' ? 'gold' : 'neutral')">
+            <UiBadge :variant="chessWinner ? (chessWinner === 'w' ? 'success' : chessWinner === 'b' ? 'danger' : 'neutral') : chessCheck ? 'danger' : (chessState.turn === 'w' ? 'gold' : 'neutral')">
               {{ chessBadgeText }}
             </UiBadge>
             <span class="text-xs text-[#f0e6d2] truncate">{{ chessStatusText }}</span>
@@ -364,35 +545,58 @@
           </div>
         </div>
 
+        <!-- Cảnh báo CHIẾU VUA nổi bật -->
+        <div
+          v-if="chessCheck && !chessWinner"
+          class="bg-[#26221d] border-2 border-[#f6465d] rounded-[2px] px-3 py-2 flex items-center gap-2"
+        >
+          <UiBadge variant="danger">{{ tr('CHIẾU VUA', 'CHECK') }}</UiBadge>
+          <span class="text-xs font-bold text-[#f6465d]">
+            {{
+              chessState.turn === 'w'
+                ? tr('Vua Trắng của bạn đang bị chiếu! Hãy di chuyển hoặc đỡ chiếu ngay.', 'Your White King is in check! Defend immediately.')
+                : tr('Vua Đen của Sư Thầy đang bị chiếu!', 'The Black King is in check!')
+            }}
+          </span>
+        </div>
+
         <div class="flex justify-center bg-[#14110e] border border-[#332d26] rounded-[2px] p-2.5 select-none">
-          <div class="w-full max-w-[368px] aspect-square grid grid-cols-8 grid-rows-8 border-2 border-[#c9a24b]">
+          <div class="w-full max-w-[368px] aspect-square grid grid-cols-8 grid-rows-8 border-2 border-[#332d26]">
             <template v-for="r in 8" :key="`chr-${r - 1}`">
               <button
                 v-for="c in 8"
                 :key="`chc-${r - 1}-${c - 1}`"
                 type="button"
-                class="relative flex items-center justify-center text-2xl cursor-pointer focus:outline-none"
+                class="relative flex items-center justify-center cursor-pointer focus:outline-none"
                 :class="[
-                  (r + c) % 2 === 0 ? 'bg-[#3d3326]' : 'bg-[#211b14]',
-                  chessSelected?.r === r - 1 && chessSelected?.c === c - 1 ? 'ring-2 ring-inset ring-[#0ecb81]' : '',
-                  isChessLastMove(r - 1, c - 1) ? 'bg-[#4f4229]/80' : ''
+                  (r + c) % 2 === 0 ? 'bg-[#f0f0f0]' : 'bg-[#8a8a8a]',
+                  chessCheck && !chessWinner && chessState.board[r - 1]![c - 1]?.type === 'K' && chessState.board[r - 1]![c - 1]?.side === chessState.turn
+                    ? 'ring-2 ring-inset ring-[#f6465d]'
+                    : chessSelected?.r === r - 1 && chessSelected?.c === c - 1
+                      ? 'ring-2 ring-inset ring-[#0ecb81]'
+                      : isChessLastMove(r - 1, c - 1)
+                        ? 'ring-2 ring-inset ring-[#c9a24b]'
+                        : ''
                 ]"
                 @click="onChessClick(r - 1, c - 1)"
               >
                 <span
+                  v-if="chessCheck && !chessWinner && chessState.board[r - 1]![c - 1]?.type === 'K' && chessState.board[r - 1]![c - 1]?.side === chessState.turn"
+                  class="absolute inset-0 bg-[#f6465d]/30 pointer-events-none"
+                ></span>
+                <span
                   v-if="isChessLegalTarget(r - 1, c - 1) && !chessState.board[r - 1]![c - 1]"
-                  class="w-3 h-3 rounded-full bg-[#0ecb81] opacity-80 pointer-events-none"
+                  class="w-3 h-3 rounded-full bg-[#0ecb81] border border-[#14110e] pointer-events-none"
                 ></span>
                 <span
                   v-if="isChessLegalTarget(r - 1, c - 1) && chessState.board[r - 1]![c - 1]"
                   class="absolute inset-0.5 rounded-[2px] border-2 border-[#f6465d] pointer-events-none"
                 ></span>
-                <span
+                <ChessPieceSvg
                   v-if="chessState.board[r - 1]![c - 1]"
-                  :class="chessState.board[r - 1]![c - 1]!.side === 'w' ? 'text-[#f6ecd8]' : 'text-[#c9a24b]'"
-                >
-                  {{ getChessSymbol(chessState.board[r - 1]![c - 1]!) }}
-                </span>
+                  :type="chessState.board[r - 1]![c - 1]!.type"
+                  :side="chessState.board[r - 1]![c - 1]!.side"
+                />
               </button>
             </template>
           </div>
@@ -624,6 +828,7 @@ import UiModal from '~/components/ui/UiModal.vue'
 import UiTabs from '~/components/ui/UiTabs.vue'
 import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
+import ChessPieceSvg from '~/components/ui/ChessPieceSvg.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import { tr } from '~/lib/ui/copy'
 import { useBoardGamesStore } from '~/stores/boardGames'
@@ -676,7 +881,6 @@ import {
   applyChessMove,
   isChessInCheck,
   chooseBestChessMove,
-  getChessSymbol,
   type ChessMove,
   type ChessPos,
   type ChessSide,
@@ -706,10 +910,10 @@ const emit = defineEmits<{
 const activeTab = ref<'xiangqi' | 'oanquan' | 'caro' | 'chess' | 'go'>('xiangqi')
 const gameTabs = computed(() => [
   { id: 'xiangqi', label: tr('Cờ Tướng', 'Xiangqi') },
-  { id: 'oanquan', label: tr('Ô Ăn Quan', 'O An Quan') },
-  { id: 'caro', label: tr('Cờ Caro', 'Caro') },
   { id: 'chess', label: tr('Cờ Vua', 'Chess') },
-  { id: 'go', label: tr('Cờ Vây', 'Go 9x9') }
+  { id: 'caro', label: tr('Cờ Caro', 'Caro') },
+  { id: 'go', label: tr('Cờ Vây', 'Go 9x9') },
+  { id: 'oanquan', label: tr('Ô Ăn Quan', 'O An Quan') }
 ])
 
 function playStoneSound(pitch = 420, duration = 0.055) {
@@ -743,7 +947,60 @@ function sleep(ms: number) {
 // THƯỞNG MC (server quyết định số tiền)
 // ==========================================
 const boardGames = useBoardGamesStore()
-const winMessage = ref('')
+const matchResult = ref<{
+  outcome: 'win' | 'lose' | 'draw'
+  title: string
+  subtitle: string
+  rewardText?: string
+} | null>(null)
+
+function playOutcomeSound(outcome: 'win' | 'lose' | 'draw') {
+  if (outcome === 'win') {
+    playStoneSound(523, 0.1)
+    setTimeout(() => playStoneSound(659, 0.12), 95)
+    setTimeout(() => playStoneSound(784, 0.16), 190)
+  } else if (outcome === 'lose') {
+    playStoneSound(330, 0.12)
+    setTimeout(() => playStoneSound(247, 0.18), 110)
+  } else {
+    playStoneSound(440, 0.12)
+    setTimeout(() => playStoneSound(440, 0.12), 110)
+  }
+}
+
+function showMatchOutcome(id: BoardGameId, outcome: 'win' | 'lose' | 'draw', subtitle: string) {
+  const title =
+    outcome === 'win'
+      ? tr(`Chiến thắng — ${gameName(id)}`, `Victory — ${gameName(id)}`)
+      : outcome === 'lose'
+        ? tr(`Thất bại — ${gameName(id)}`, `Defeat — ${gameName(id)}`)
+        : tr(`Hòa cờ — ${gameName(id)}`, `Draw — ${gameName(id)}`)
+  matchResult.value = { outcome, title, subtitle }
+  playOutcomeSound(outcome)
+  if (outcome === 'win') {
+    void onGameWon(id)
+  }
+}
+
+function resetActiveGame() {
+  switch (activeTab.value) {
+    case 'xiangqi':
+      resetXiangqi()
+      break
+    case 'oanquan':
+      resetOAnQuan()
+      break
+    case 'caro':
+      resetCaro()
+      break
+    case 'chess':
+      resetChess()
+      break
+    case 'go':
+      resetGo()
+      break
+  }
+}
 
 const gameName = (id: BoardGameId) => tr(BOARD_GAME_LABELS[id].vi, BOARD_GAME_LABELS[id].en)
 
@@ -785,34 +1042,68 @@ function beginRun(id: BoardGameId, force = false) {
 
 async function onGameWon(id: BoardGameId) {
   const res = await boardGames.reportWin(id)
+  if (!matchResult.value || matchResult.value.outcome !== 'win') return
   if (!boardGames.status?.authenticated) {
-    winMessage.value = tr('Bạn thắng rồi! Kết nối ví để lần sau thắng được nhận MC.', 'You won! Connect your wallet to earn MC next time.')
+    matchResult.value = {
+      ...matchResult.value,
+      rewardText: tr('Kết nối ví Cardano để nhận thưởng +10 MC cho lần thắng tiếp theo.', 'Connect your Cardano wallet to earn +10 MC next time.')
+    }
     return
   }
-  if (!res) {
-    winMessage.value = tr('Bạn thắng rồi!', 'You won!')
-    return
-  }
+  if (!res) return
   if (res.rewardMc > 0) {
     const total = res.rewardMc + res.bonusMc
-    winMessage.value =
-      res.bonusMc > 0
-        ? tr(
-            `Chúc mừng! Thắng đủ ${BOARD_GAME_IDS.length} môn hôm nay, bạn nhận +${total} MC (gồm +${res.bonusMc} MC thưởng thêm).`,
-            `Congratulations! All ${BOARD_GAME_IDS.length} games won today: +${total} MC (including +${res.bonusMc} MC bonus).`
-          )
-        : tr(`Chúc mừng! Bạn thắng ${gameName(id)} và nhận +${res.rewardMc} MC.`, `Congratulations! You won ${gameName(id)} and earned +${res.rewardMc} MC.`)
+    matchResult.value = {
+      ...matchResult.value,
+      rewardText:
+        res.bonusMc > 0
+          ? tr(
+              `Thắng đủ ${BOARD_GAME_IDS.length} môn hôm nay: nhận +${total} MC (gồm +${res.bonusMc} MC thưởng thêm).`,
+              `All ${BOARD_GAME_IDS.length} games won today: +${total} MC (including +${res.bonusMc} MC bonus).`
+            )
+          : tr(`Đã cộng thưởng +${res.rewardMc} MC vào tài khoản.`, `Rewarded +${res.rewardMc} MC to your balance.`)
+    }
   } else {
-    winMessage.value = tr(
-      `Bạn thắng! Hôm nay môn ${gameName(id)} đã nhận thưởng rồi nên không có thêm MC.`,
-      `You won! ${gameName(id)} already paid out today, so no extra MC.`
-    )
+    matchResult.value = {
+      ...matchResult.value,
+      rewardText: tr(
+        `Hôm nay môn ${gameName(id)} đã nhận thưởng rồi nên ván này không cộng thêm MC.`,
+        `${gameName(id)} already paid out today, so no extra MC.`
+      )
+    }
   }
 }
 
 // ==========================================
 // 1. CỜ TƯỚNG (XIANGQI)
 // ==========================================
+// Tạo dấu chữ thập định vị (hoa thị) tại 14 vị trí Pháo & Tốt trên lưới 900x1000
+const XQ_STAR_PATHS: string[] = (() => {
+  const pts: Array<[number, number]> = [
+    [2, 1], [2, 7], [7, 1], [7, 7],
+    [3, 0], [3, 2], [3, 4], [3, 6], [3, 8],
+    [6, 0], [6, 2], [6, 4], [6, 6], [6, 8]
+  ]
+  const out: string[] = []
+  const g = 9
+  const len = 18
+  for (const [r, c] of pts) {
+    const cx = 50 + c * 100
+    const cy = 50 + r * 100
+    // Bên trái
+    if (c > 0) {
+      out.push(`M${cx - g - len} ${cy - g}H${cx - g}V${cy - g - len}`)
+      out.push(`M${cx - g - len} ${cy + g}H${cx - g}V${cy + g + len}`)
+    }
+    // Bên phải
+    if (c < 8) {
+      out.push(`M${cx + g + len} ${cy - g}H${cx + g}V${cy - g - len}`)
+      out.push(`M${cx + g + len} ${cy + g}H${cx + g}V${cy + g + len}`)
+    }
+  }
+  return out
+})()
+
 const xqBoard = ref<XiangqiBoard>(createInitialXiangqiBoard())
 const xqTurn = ref<XiangqiSide>('red')
 const xqSelected = ref<XiangqiPos | null>(null)
@@ -838,7 +1129,7 @@ const xqStatusText = computed(() => {
 })
 
 function resetXiangqi() {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun('xiangqi', true)
   xqBoard.value = createInitialXiangqiBoard()
   xqTurn.value = 'red'
@@ -960,7 +1251,7 @@ const oaqStatusText = computed(() => {
 })
 
 function resetOAnQuan() {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun('oanquan', true)
   oaqState.value = createOAnQuanState()
   oaqSelectedCell.value = null
@@ -1070,7 +1361,7 @@ const caroStatusText = computed(() => {
 })
 
 function resetCaro() {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun('caro', true)
   caroBoard.value = createCaroBoard()
   caroTurn.value = 'X'
@@ -1150,7 +1441,7 @@ const chessStatusText = computed(() => {
 })
 
 function resetChess() {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun('chess', true)
   chessState.value = createInitialChessState()
   chessSelected.value = null
@@ -1270,7 +1561,7 @@ const goStatusText = computed(() => {
 })
 
 function resetGo() {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun('go', true)
   goState.value = createGoState()
 }
@@ -1398,23 +1689,42 @@ onMounted(async () => {
 })
 
 watch(activeTab, (id) => {
-  winMessage.value = ''
+  matchResult.value = null
   beginRun(id)
 })
 
 watch(() => xqWinner.value, (w) => {
-  if (w === 'red') void onGameWon('xiangqi')
+  if (w === 'red') showMatchOutcome('xiangqi', 'win', tr('Chiếu bí! Đạo Hữu đã thắng Sư Thầy.', 'Checkmate! You defeated the Abbot.'))
+  else if (w === 'black') showMatchOutcome('xiangqi', 'lose', tr('Chiếu bí! Sư Thầy đã thắng ván này.', 'Checkmate! The Abbot won this match.'))
 })
 watch(() => chessWinner.value, (w) => {
-  if (w === 'w') void onGameWon('chess')
+  if (w === 'w') showMatchOutcome('chess', 'win', tr('Chiếu bí! Đạo Hữu cầm quân Trắng đã thắng.', 'Checkmate! White wins.'))
+  else if (w === 'b') showMatchOutcome('chess', 'lose', tr('Chiếu bí! Sư Thầy cầm quân Đen đã thắng.', 'Checkmate! Black wins.'))
+  else if (w === 'draw') showMatchOutcome('chess', 'draw', tr('Hết nước đi hợp lệ — Ván cờ hòa!', 'Stalemate — The match is a draw!'))
 })
 watch(() => caroWinner.value, (w) => {
-  if (w === 'X') void onGameWon('caro')
+  if (w === 'X') showMatchOutcome('caro', 'win', tr('Đạo Hữu đã nối đủ 5 quân X liên tiếp!', 'You connected 5 Xs in a row!'))
+  else if (w === 'O') showMatchOutcome('caro', 'lose', tr('Tiểu Đồng đã nối đủ 5 quân O trước.', 'Novice Monk connected 5 Os first.'))
+  else if (w === 'draw') showMatchOutcome('caro', 'draw', tr('Bàn cờ đã kín, hai bên hòa nhau!', 'Board is full — Draw!'))
 })
 watch(() => oaqState.value.gameOver, (over) => {
-  if (over && oaqState.value.winner === 'player') void onGameWon('oanquan')
+  if (!over) return
+  const scoreNote = tr(
+    `Tỉ số: Bạn ${oaqState.value.playerScore} — Tiểu Đồng ${oaqState.value.aiScore}.`,
+    `Score: You ${oaqState.value.playerScore} — Novice ${oaqState.value.aiScore}.`
+  )
+  if (oaqState.value.winner === 'player') showMatchOutcome('oanquan', 'win', scoreNote)
+  else if (oaqState.value.winner === 'ai') showMatchOutcome('oanquan', 'lose', scoreNote)
+  else showMatchOutcome('oanquan', 'draw', scoreNote)
 })
 watch(() => goState.value.gameOver, (over) => {
-  if (over && goScore.value.black > goScore.value.white) void onGameWon('go')
+  if (!over) return
+  const scoreNote = tr(
+    `Điểm cuối: Đen ${goScore.value.black} — Trắng ${goScore.value.white} (Komi 6.5).`,
+    `Final score: Black ${goScore.value.black} — White ${goScore.value.white} (Komi 6.5).`
+  )
+  if (goScore.value.black > goScore.value.white) showMatchOutcome('go', 'win', scoreNote)
+  else if (goScore.value.white > goScore.value.black) showMatchOutcome('go', 'lose', scoreNote)
+  else showMatchOutcome('go', 'draw', scoreNote)
 })
 </script>

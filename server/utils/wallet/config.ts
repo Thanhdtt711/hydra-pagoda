@@ -11,9 +11,9 @@ export type CardanoNetworkName = 'preprod' | 'mainnet'
 export const LOVELACE_PER_ADA = 1_000_000
 export const MC_PER_ADA = 1_000
 export const LOVELACE_PER_MC = 1_000
-export const MIN_ORDER_ADA = 2
+export const MIN_ORDER_ADA = 5
 export const MAX_ORDER_ADA = 100_000
-export const MIN_ORDER_LOVELACE = MIN_ORDER_ADA * LOVELACE_PER_ADA // 2.000.000 lovelace
+export const MIN_ORDER_LOVELACE = MIN_ORDER_ADA * LOVELACE_PER_ADA // 5.000.000 lovelace
 export const QUICK_ADA_PACKAGES = [5, 10, 50, 100] as const
 
 /**

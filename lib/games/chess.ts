@@ -56,6 +56,19 @@ export function getChessSymbol(piece: ChessPiece): string {
   return piece.side === 'w' ? whiteMap[piece.type] : blackMap[piece.type]
 }
 
+/** Biểu tượng quân cờ đặc ruột để tô màu Trắng/Đen tương phản cao trên bàn cờ Trắng - Đen */
+export function getSolidChessSymbol(piece: ChessPiece): string {
+  const solidMap: Record<ChessPieceType, string> = {
+    K: '♚',
+    Q: '♛',
+    R: '♜',
+    B: '♝',
+    N: '♞',
+    P: '♟'
+  }
+  return solidMap[piece.type]
+}
+
 export function createInitialChessState(): ChessState {
   const b: ChessBoard = Array.from({ length: 8 }, () => Array<ChessPiece | null>(8).fill(null))
   const back: ChessPieceType[] = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']

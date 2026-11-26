@@ -5,8 +5,8 @@
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { DatabaseSync } from 'node:sqlite'
-import { mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
 import pg from 'pg'
 import { MIGRATIONS, toPostgresSql } from '../../db/migrations.ts'
 import { getWalletConfig } from './config.ts'
@@ -42,7 +42,9 @@ const TABLES_WITH_ID = new Set([
   'hau_dong_attendance',
   'parkour_records',
   'card_inventory',
-  'card_pack_openings'
+  'card_pack_openings',
+  'mc_purchases',
+  'mc_quest_grants'
 ])
 
 /** Chuyển placeholder `?` sang `$1, $2, ...` cho PostgreSQL (bỏ qua `?` trong chuỗi `'...'`). */
@@ -153,13 +155,21 @@ let sqliteRaw: DatabaseSync | null = null
 let sqliteConn: SqliteConn | null = null
 let sqliteTxChain: Promise<void> = Promise.resolve()
 
-function runSqliteMigrations(conn: DatabaseSync) {
+function runSqliteMigrations(conn: DatabaseSync, dbFilePath?: string) {
   conn.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at INTEGER NOT NULL)')
   const applied = new Set(
     (conn.prepare('SELECT version FROM schema_migrations').all() as { version: number }[]).map(r => r.version)
   )
   for (const m of MIGRATIONS) {
     if (applied.has(m.version)) continue
+    // Sao lưu file SQLite trước khi chạy migration xóa số dư MC cũ (version 16).
+    if (m.version === 16 && dbFilePath && existsSync(dbFilePath)) {
+      const backupDir = join(dirname(dbFilePath), 'backups')
+      mkdirSync(backupDir, { recursive: true })
+      const backupFile = join(backupDir, `${basename(dbFilePath, '.sqlite')}-pre-v16-${Date.now()}.sqlite`)
+      copyFileSync(dbFilePath, backupFile)
+      console.log(`[db:sqlite] đã sao lưu trước migration 16 -> ${backupFile}`)
+    }
     conn.exec('BEGIN IMMEDIATE')
     try {
       conn.exec(m.sql)
@@ -245,7 +255,7 @@ export async function getRootDb(): Promise<DbConn> {
   raw.exec('PRAGMA journal_mode = WAL')
   raw.exec('PRAGMA foreign_keys = ON')
   raw.exec('PRAGMA busy_timeout = 5000')
-  runSqliteMigrations(raw)
+  runSqliteMigrations(raw, file)
   sqliteRaw = raw
   sqliteConn = new SqliteConn(raw)
   return sqliteConn

@@ -188,8 +188,8 @@ uniform float uGrassSway;`
       attempts++
       const x = prng.range(-65, 65)
       const z = prng.range(-65, 65)
-      // Loại bỏ hoàn toàn cỏ trong toàn bộ sân lát gạch (sân Đại Hùng Bảo Điện + sân Nhà Hầu Đồng)
-      if (x >= -24.0 && x <= 51.0 && z >= -23.0 && z <= 29.0) continue
+      // Loại bỏ hoàn toàn cỏ trong toàn bộ sân lát gạch cả 3 khu (Bảo Tàng Tây + Đại Hùng Bảo Điện + Nhà Hầu Đồng Đông)
+      if (x >= -51.0 && x <= 51.0 && z >= -23.0 && z <= 29.0) continue
       if (MapLayout.isInExclusionZone(x, z, 0.5)) continue
 
       const elev = TerrainSystem.computeElevation(x, z)
@@ -223,8 +223,8 @@ uniform float uGrassSway;`
       attempts++
       const x = prng.range(-60, 60)
       const z = prng.range(-60, 60)
-      // Loại bỏ hoàn toàn hoa dại trong toàn bộ sân lát gạch (sân Đại Hùng Bảo Điện + sân Nhà Hầu Đồng)
-      if (x >= -24.0 && x <= 51.0 && z >= -23.0 && z <= 29.0) continue
+      // Loại bỏ hoàn toàn hoa dại trong toàn bộ sân lát gạch cả 3 khu (Bảo Tàng Tây + Đại Hùng Bảo Điện + Nhà Hầu Đồng Đông)
+      if (x >= -51.0 && x <= 51.0 && z >= -23.0 && z <= 29.0) continue
       if (MapLayout.isInExclusionZone(x, z, 1.0)) continue
 
       const elev = TerrainSystem.computeElevation(x, z)

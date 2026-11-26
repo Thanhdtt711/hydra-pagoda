@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useWalletStore, KNOWN_WALLETS, type OrderStatus } from '~/stores/wallet'
 import { useHydraStore } from '~/stores/hydra'
 import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
@@ -11,6 +11,8 @@ import UiSelectableCard from '~/components/ui/UiSelectableCard.vue'
 import UiTabs from '~/components/ui/UiTabs.vue'
 import UiInput from '~/components/ui/UiInput.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
+import { quoteByLovelace } from '~/lib/mc/pricing'
+import { LOVELACE_PER_ADA } from '~/lib/mc/tokenomics'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -24,12 +26,34 @@ const isSyncingBridge = ref(false)
 const quickPackages = [5, 10, 50, 100] as const
 const selectedAda = ref<number>(5)
 const customAdaInput = ref<string>('5')
-const activeTab = ref<'buy' | 'history'>('buy')
+const activeTab = ref<'buy' | 'withdraw' | 'history'>('buy')
 
 const walletTabs = computed(() => [
-  { id: 'buy', label: 'Nạp MC Coin' },
-  { id: 'history', label: 'Lịch sử nạp', count: wallet.orders.length }
+  { id: 'buy', label: 'Mua MC (L2)' },
+  { id: 'withdraw', label: 'Rút về ví (L1)' },
+  { id: 'history', label: 'Lịch sử', count: wallet.orders.length }
 ])
+
+const MIN_WITHDRAW_MC = 500
+const withdrawAmountInput = ref<string>('1000')
+const isWithdrawing = ref(false)
+const withdrawResult = ref<{ ok: boolean; txHash?: string; explorerUrl?: string; mcAmount?: number; error?: string } | null>(null)
+
+const parsedWithdrawMc = computed<number>(() => {
+  const n = Math.floor(Number(withdrawAmountInput.value))
+  return Number.isFinite(n) && n >= MIN_WITHDRAW_MC ? n : 0
+})
+
+async function handleWithdrawMc() {
+  if (isWithdrawing.value || parsedWithdrawMc.value < MIN_WITHDRAW_MC || parsedWithdrawMc.value > wallet.mcBalance) return
+  isWithdrawing.value = true
+  withdrawResult.value = null
+  try {
+    withdrawResult.value = await wallet.withdrawMcToL1(parsedWithdrawMc.value)
+  } finally {
+    isWithdrawing.value = false
+  }
+}
 
 const eternlWallet = computed(() => KNOWN_WALLETS.find(w => w.key === 'eternl') || {
   key: 'eternl',
@@ -42,12 +66,60 @@ const isEternlInstalled = computed(() =>
   installedList.value.some(w => w.key === 'eternl' && w.installed)
 )
 
+const MIN_BUY_ADA = 5
+const market = ref<{
+  salePool: string
+  saleSold: string
+  saleRemaining: string
+  salePercent: number
+  tierNumber: number
+  priceLovelace: string
+  remainingInTier: string
+  soldOut: boolean
+} | null>(null)
+
+const questFund = ref<{
+  questPool: string
+  questPaid: string
+  questRecycled: string
+  burnedMc: string
+  opsMc: string
+  questRemaining: string
+  remainingPct: number
+  lowPoolAlert: boolean
+  exhausted: boolean
+} | null>(null)
+
 const parsedAda = computed<number>(() => {
   const n = Math.floor(Number(customAdaInput.value))
-  return Number.isFinite(n) && n >= 2 ? n : 0
+  return Number.isFinite(n) && n >= MIN_BUY_ADA ? n : 0
 })
 
-const previewMc = computed<number>(() => parsedAda.value * 1000)
+const previewQuote = computed(() => {
+  if (parsedAda.value < MIN_BUY_ADA || market.value?.soldOut) return null
+  try {
+    const sold = BigInt(market.value?.saleSold ?? '0')
+    return quoteByLovelace(sold, BigInt(parsedAda.value) * LOVELACE_PER_ADA)
+  } catch {
+    return null
+  }
+})
+
+const previewMc = computed<number>(() => (previewQuote.value ? Number(previewQuote.value.totalMc) : 0))
+
+const currentMcPerAda = computed<number>(() => {
+  const price = BigInt(market.value?.priceLovelace || '1000')
+  return price > 0n ? Number(LOVELACE_PER_ADA / price) : 0
+})
+
+async function loadMarketInfo() {
+  if (!wallet.isAuthenticated) return
+  try {
+    const res = (await $fetch('/api/mc/funds')) as { sale: typeof market.value; quest: typeof questFund.value }
+    if (res?.sale) market.value = res.sale
+    if (res?.quest) questFund.value = res.quest
+  } catch { /* giữ mặc định */ }
+}
 
 const isBuying = computed(() =>
   ['creating_order', 'awaiting_signature', 'submitting_tx'].includes(wallet.purchasePhase)
@@ -80,9 +152,18 @@ onMounted(async () => {
   } catch { hydraStatus.value = null }
   installedList.value = await wallet.detectInstalledWallets()
   if (wallet.isConnected) {
-    await wallet.fetchOrders()
+    await Promise.all([wallet.fetchOrders(), loadMarketInfo()])
   }
 })
+
+watch(
+  () => wallet.purchasePhase,
+  (phase) => {
+    if (phase === 'completed') {
+      void loadMarketInfo()
+    }
+  }
+)
 
 async function handleConnectEternl() {
   isConnectingKey.value = 'eternl'
@@ -124,8 +205,9 @@ async function handleDisconnect() {
 }
 
 async function handleBuyMc() {
-  if (parsedAda.value < 2 || isBuying.value) return
+  if (parsedAda.value < MIN_BUY_ADA || isBuying.value || market.value?.soldOut) return
   await wallet.buyMcWithAda(parsedAda.value)
+  await loadMarketInfo()
 }
 
 function handleResetPurchase() {
@@ -339,9 +421,66 @@ function formatTime(ts: number): string {
 
         <!-- TAB 1: NẠP MC COIN -->
         <div v-if="activeTab === 'buy'" class="space-y-4 pt-1">
+          <!-- Thanh tiến độ quỹ bán & giá bậc hiện tại -->
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-primary">
+                Bậc {{ market?.tierNumber ?? 1 }} / 10 ·
+                <span class="text-gold font-numbers">{{ Number(market?.priceLovelace ?? 1000).toLocaleString() }} lovelace/MC</span>
+              </span>
+              <UiBadge :variant="market?.soldOut ? 'danger' : 'success'">
+                {{ market?.soldOut ? 'Hết MC' : `1 ADA ≈ ${currentMcPerAda.toLocaleString()} MC` }}
+              </UiBadge>
+            </div>
+            <div class="w-full h-2 bg-[#14110e] border border-hairline rounded-[2px] overflow-hidden">
+              <div
+                class="h-full bg-[#c9a24b] transition-all duration-300"
+                :style="{ width: `${market?.salePercent ?? 0}%` }"
+              ></div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-secondary font-numbers">
+              <span>Còn lại: <strong class="text-primary">{{ Number(market?.saleRemaining ?? 850000000).toLocaleString() }} MC</strong></span>
+              <span>Đã bán {{ market?.salePercent ?? 0 }}% / 850M</span>
+            </div>
+          </div>
+
+          <!-- Quỹ Thưởng 150M MC & Phân bổ 3 giỏ chi tiêu minh bạch -->
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-primary">
+                Quỹ Thưởng &amp; Sự Kiện (15%)
+              </span>
+              <UiBadge :variant="questFund?.exhausted ? 'danger' : questFund?.lowPoolAlert ? 'warning' : 'neutral'">
+                {{ questFund?.exhausted ? 'Hết thưởng' : `Còn ${questFund?.remainingPct ?? 100}% / 150M` }}
+              </UiBadge>
+            </div>
+            <div class="flex items-center justify-between text-xs text-secondary font-numbers">
+              <span>Quỹ hiện có: <strong class="text-gold">{{ Number(questFund?.questRemaining ?? 150000000).toLocaleString() }} MC</strong></span>
+              <span>Đã phát: {{ Number(questFund?.questPaid ?? 0).toLocaleString() }} MC</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-hairline text-xs">
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Tái cấp (55%)</div>
+                <div class="font-bold font-numbers text-[#0ecb81]">+{{ Number(questFund?.questRecycled ?? 0).toLocaleString() }}</div>
+              </div>
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Đốt (5%)</div>
+                <div class="font-bold font-numbers text-[#f6465d]">{{ Number(questFund?.burnedMc ?? 0).toLocaleString() }}</div>
+              </div>
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Vận hành (40%)</div>
+                <div class="font-bold font-numbers text-primary">{{ Number(questFund?.opsMc ?? 0).toLocaleString() }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="market?.soldOut" class="p-3 rounded-[2px] bg-[#26221d] border border-[#f6465d]/70 text-xs font-semibold text-[#f6465d]">
+            Quỹ bán 850.000.000 MC đã bán hết. Chức năng mua MC tạm khóa.
+          </div>
+
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-secondary">Chọn gói ADA nạp nhanh</span>
-            <span class="text-xs font-numbers text-secondary">1 ADA = 1.000 MC</span>
+            <span class="text-xs font-numbers text-secondary">Tối thiểu {{ MIN_BUY_ADA }} ADA</span>
           </div>
 
           <!-- Quick Packages -->
@@ -353,20 +492,20 @@ function formatTime(ts: number): string {
               @select="selectQuickAda(pkg)"
             >
               <div class="text-sm font-bold font-numbers text-primary">{{ pkg }} ADA</div>
-              <div class="text-xs font-numbers text-secondary mt-0.5">{{ (pkg * 1000).toLocaleString() }} MC</div>
+              <div class="text-xs font-numbers text-secondary mt-0.5">{{ (pkg * currentMcPerAda).toLocaleString() }} MC</div>
             </UiSelectableCard>
           </div>
 
           <!-- Custom Input -->
           <div>
             <label for="custom-ada-input" class="block text-xs font-semibold text-secondary mb-1.5">
-              Hoặc nhập số ADA tùy ý (tối thiểu 2 ADA):
+              Hoặc nhập số ADA tùy ý (tối thiểu {{ MIN_BUY_ADA }} ADA):
             </label>
             <UiInput
               id="custom-ada-input"
               v-model="customAdaInput"
               type="number"
-              min="2"
+              :min="MIN_BUY_ADA"
               max="100000"
               step="1"
               placeholder="Nhập số ADA..."
@@ -376,17 +515,17 @@ function formatTime(ts: number): string {
                 <span class="text-xs font-bold text-secondary font-numbers">ADA</span>
               </template>
             </UiInput>
-            <div v-if="parsedAda < 2" class="text-xs text-trading-down mt-1">
-              Số ADA nạp tối thiểu là 2 ADA.
+            <div v-if="parsedAda < MIN_BUY_ADA" class="text-xs text-trading-down mt-1">
+              Số ADA mua tối thiểu là {{ MIN_BUY_ADA }} ADA (tránh vướng min UTxO).
             </div>
           </div>
 
           <!-- Summary card -->
           <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline">
             <div class="text-sm text-primary leading-normal">
-              Bạn trả <strong class="font-numbers">{{ parsedAda >= 2 ? parsedAda.toLocaleString() : '0' }} ADA</strong>
+              Bạn trả <strong class="font-numbers">{{ parsedAda >= MIN_BUY_ADA ? parsedAda.toLocaleString() : '0' }} ADA</strong>
               <span class="text-xs text-secondary"> (chưa gồm phí mạng ~0.2 ADA)</span>
-              để nhận <strong class="text-gold font-numbers">{{ parsedAda >= 2 ? previewMc.toLocaleString() : '0' }} MC</strong>
+              để nhận <strong class="text-gold font-numbers">{{ parsedAda >= MIN_BUY_ADA ? previewMc.toLocaleString() : '0' }} MC</strong>
             </div>
             <p class="text-xs text-secondary mt-1 leading-normal m-0">
               {{ t('desc.walletTopup') }} ({{ wallet.isTestnet ? 'Preprod' : 'Mainnet' }})
@@ -444,30 +583,76 @@ function formatTime(ts: number): string {
               <span class="truncate">{{ wallet.purchaseStatusText }}</span>
             </div>
           </div>
-
-          <!-- Single Primary Yellow CTA button (Ẩn khi đang đợi nạp / đang xử lý giao dịch) -->
-          <UiButton
-            v-if="wallet.purchasePhase === 'idle' || wallet.purchasePhase === 'error'"
-            variant="primary"
-            block
-            :disabled="parsedAda < 2"
-            @click="handleBuyMc"
-          >
-            {{ t('btn.topupConfirm', { mc: parsedAda >= 2 ? previewMc.toLocaleString() : 0 }) }}
-            <span class="font-numbers ml-1">{{ parsedAda >= 2 ? parsedAda : 0 }} ADA</span>
-          </UiButton>
-
-          <UiButton
-            v-else-if="wallet.purchasePhase === 'completed'"
-            variant="secondary"
-            block
-            @click="handleResetPurchase"
-          >
-            {{ t('btn.newTopup') }}
-          </UiButton>
         </div>
 
-        <!-- TAB 2: LỊCH SỬ NẠP -->
+        <!-- TAB 2: RÚT MC VỀ VÍ L1 (CO-SIGN eUTxO) -->
+        <div v-if="activeTab === 'withdraw'" class="space-y-4 pt-1">
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-secondary">Số dư MC trên Hydra L2:</span>
+              <span class="font-bold font-numbers text-gold">{{ wallet.mcBalance.toLocaleString() }} MC</span>
+            </div>
+            <p class="text-xs text-secondary leading-normal m-0">
+              Giao dịch ký 2 bên (Co-sign eUTxO): MC thật chuyển thẳng từ Ví Quỹ về ví Eternl của bạn. Bạn chỉ trả ~0,18 ADA phí mạng — phần ~1,2 ADA min-UTxO vẫn nằm trong ví bạn, Chùa tốn 0 ADA.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2">
+            <UiButton variant="secondary" size="sm" @click="withdrawAmountInput = '1000'">1.000</UiButton>
+            <UiButton variant="secondary" size="sm" @click="withdrawAmountInput = '5000'">5.000</UiButton>
+            <UiButton variant="secondary" size="sm" @click="withdrawAmountInput = '10000'">10.000</UiButton>
+            <UiButton variant="secondary" size="sm" @click="withdrawAmountInput = String(wallet.mcBalance)">Tất cả</UiButton>
+          </div>
+
+          <div>
+            <label for="withdraw-mc-input" class="block text-xs font-semibold text-secondary mb-1.5">
+              Số MC muốn rút về ví Eternl (tối thiểu {{ MIN_WITHDRAW_MC }} MC):
+            </label>
+            <UiInput
+              id="withdraw-mc-input"
+              v-model="withdrawAmountInput"
+              type="number"
+              :min="MIN_WITHDRAW_MC"
+              :max="wallet.mcBalance"
+              step="100"
+              placeholder="Nhập số MC..."
+            >
+              <template #suffix>
+                <span class="text-xs font-bold text-gold font-numbers">MC</span>
+              </template>
+            </UiInput>
+            <div v-if="parsedWithdrawMc > wallet.mcBalance" class="text-xs text-trading-down mt-1">
+              Vượt quá số dư MC trên L2 hiện có ({{ wallet.mcBalance.toLocaleString() }} MC).
+            </div>
+          </div>
+
+          <div
+            v-if="withdrawResult"
+            class="p-3 rounded-[2px] border text-xs space-y-1"
+            :class="withdrawResult.ok ? 'bg-surface-elevated border-[#0ecb81]/70 text-primary' : 'bg-[#26221d] border-[#f6465d]/70 text-[#f6465d]'"
+          >
+            <template v-if="withdrawResult.ok">
+              <div class="font-bold text-[#0ecb81]">
+                Đã gửi lệnh rút {{ withdrawResult.mcAmount?.toLocaleString() }} MC về ví Eternl!
+              </div>
+              <div class="font-numbers text-secondary truncate">Tx: {{ withdrawResult.txHash }}</div>
+              <a
+                v-if="withdrawResult.explorerUrl"
+                :href="withdrawResult.explorerUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-block text-gold font-semibold hover:underline"
+              >
+                Xem giao dịch trên Cardanoscan
+              </a>
+            </template>
+            <template v-else>
+              <div class="font-semibold">{{ withdrawResult.error }}</div>
+            </template>
+          </div>
+        </div>
+
+        <!-- TAB 3: LỊCH SỬ NẠP -->
         <div v-if="activeTab === 'history'" class="space-y-3 pt-1">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-secondary">Đơn nạp gần đây</span>
@@ -518,9 +703,53 @@ function formatTime(ts: number): string {
     </div>
 
     <template #footer>
-      <div class="flex items-center justify-between text-xs text-secondary">
-        <span>Non-Custodial — Không lưu khóa riêng</span>
-        <span class="font-numbers">1 ADA = 1.000 MC</span>
+      <div class="space-y-2.5">
+        <!-- Nút hành động chính ghim cố định ở đáy (không bị trôi khi scroll nội dung) -->
+        <template v-if="wallet.isConnected && activeTab === 'buy'">
+          <UiButton
+            v-if="wallet.purchasePhase === 'idle' || wallet.purchasePhase === 'error'"
+            variant="primary"
+            block
+            :disabled="parsedAda < MIN_BUY_ADA || Boolean(market?.soldOut)"
+            @click="handleBuyMc"
+          >
+            {{ t('btn.topupConfirm', { mc: parsedAda >= MIN_BUY_ADA ? previewMc.toLocaleString() : 0 }) }}
+            <span class="font-numbers ml-1">{{ parsedAda >= MIN_BUY_ADA ? parsedAda : 0 }} ADA</span>
+          </UiButton>
+          <UiButton
+            v-else-if="wallet.purchasePhase === 'awaiting_confirmation'"
+            variant="secondary"
+            block
+            @click="handleResetPurchase"
+          >
+            Tạo đơn mới (đơn cũ vẫn tự xác nhận ngầm)
+          </UiButton>
+          <UiButton
+            v-else-if="wallet.purchasePhase === 'completed'"
+            variant="secondary"
+            block
+            @click="handleResetPurchase"
+          >
+            {{ t('btn.newTopup') }}
+          </UiButton>
+        </template>
+
+        <template v-else-if="wallet.isConnected && activeTab === 'withdraw'">
+          <UiButton
+            variant="primary"
+            block
+            :loading="isWithdrawing"
+            :disabled="isWithdrawing || parsedWithdrawMc < MIN_WITHDRAW_MC || parsedWithdrawMc > wallet.mcBalance"
+            @click="handleWithdrawMc"
+          >
+            {{ isWithdrawing ? 'Đang ký Co-sign & gửi L1...' : `Rút ${parsedWithdrawMc ? parsedWithdrawMc.toLocaleString() : '0'} MC về ví Eternl` }}
+          </UiButton>
+        </template>
+
+        <div class="flex items-center justify-between text-xs text-secondary">
+          <span>Non-Custodial — Không lưu khóa riêng</span>
+          <span class="font-numbers">1 ADA ≈ {{ currentMcPerAda.toLocaleString() }} MC</span>
+        </div>
       </div>
     </template>
   </UiModal>

@@ -6,6 +6,15 @@ import {
   WALLET_ERROR_TEXT, type Cip30Api, type WalletErrorCode
 } from '~/lib/cardano/cip30'
 import { useEconomyStore } from '~/stores/economy'
+import { useCardsStore } from '~/stores/cards'
+import { useDeedsStore } from '~/stores/deeds'
+import { useHauDongStore } from '~/stores/hauDong'
+import { useKoiGardenStore } from '~/stores/koiGarden'
+import { useMeditationStore } from '~/stores/meditation'
+import { useOnboardingStore } from '~/stores/onboarding'
+import { useParkourStore } from '~/stores/parkour'
+import { useStreakStore } from '~/stores/streak'
+import { useBoardGamesStore } from '~/stores/boardGames'
 import { useHydraOneWallet } from '~/composables/useHydraOneWallet'
 
 export interface WalletMeta {
@@ -157,8 +166,12 @@ export const useWalletStore = defineStore('wallet', {
     isConnected(state): boolean {
       return state.status === 'connected' && !!state.address
     },
+    /**
+     * Wallet Gate: CHỈ true khi server đã xác nhận phiên (có `accountId` từ chữ ký CIP-8 được verify).
+     * Ví mới "kết nối" ở thanh HydraOne nhưng chưa ký xác thực thì vẫn chưa được vào.
+     */
     isAuthenticated(state): boolean {
-      return state.status === 'connected' && !!state.address
+      return state.status === 'connected' && !!state.address && state.accountId !== null
     },
     isTestnet(state): boolean {
       return state.network !== 'mainnet'
@@ -290,6 +303,7 @@ export const useWalletStore = defineStore('wallet', {
 
     /**
      * Đồng bộ session tài khoản server ngầm khi có địa chỉ từ HydraOne Bridge.
+     * Nếu phiên cookie hiện tại thuộc về một địa chỉ ví KHÁC -> hủy ngay phiên cũ để không bao giờ rò rỉ số dư MC của ví trước!
      */
     async syncServerAccount(targetAddress: string) {
       if (!targetAddress) return
@@ -299,6 +313,15 @@ export const useWalletStore = defineStore('wallet', {
           this.applyAccount(me.account)
           await this.fetchOrders()
           await useEconomyStore().loadCatalog()
+        } else if (me.authenticated && me.account && me.account.address !== targetAddress) {
+          // Cookie đang thuộc ví khác -> thu hồi phiên server & xóa sạch state cũ
+          try { await $fetch('/api/auth/logout', { method: 'POST' }) } catch { /* bỏ qua */ }
+          this.accountId = null
+          this.displayName = null
+          this.mcBalance = 0
+          this.orders = []
+          this.activeOrder = null
+          resetWalletScopedStores()
         }
       } catch {
         // Bỏ qua lỗi mạng
@@ -966,6 +989,124 @@ export const useWalletStore = defineStore('wallet', {
       }
     },
 
+    /**
+     * Rút MC từ số dư Hydra L2 về ví Eternl L1 bằng giao dịch ký 2 bên (Co-sign).
+     * Người chơi không mất 1,2 ADA tiền cọc min-UTxO (chỉ trả ~0,18 ADA phí mạng); Chùa tốn 0 ADA.
+     */
+    async withdrawMcToL1(mcAmount: number): Promise<{
+      ok: boolean
+      txHash?: string
+      explorerUrl?: string
+      mcAmount?: number
+      error?: string
+    }> {
+      if (!this.accountId) {
+        return { ok: false, error: 'Vui lòng kết nối ví Cardano trước khi rút MC.' }
+      }
+      const cleanAmount = Math.floor(Number(mcAmount))
+      if (!Number.isSafeInteger(cleanAmount) || cleanAmount < 500) {
+        return { ok: false, error: 'Số MC rút tối thiểu là 500 MC.' }
+      }
+
+      let utxos: any[] = []
+      let changeAddress = this.address || ''
+      const useBridge = Boolean(this.isIframeMode && !walletApi)
+
+      try {
+        if (useBridge) {
+          const bridge = useHydraOneWallet()
+          if (!bridge.isWalletConnected.value) {
+            return { ok: false, error: 'Vui lòng kết nối ví trên thanh Header HydraOne trước.' }
+          }
+          utxos = (await bridge.client.getUtxos()) ?? []
+          changeAddress = bridge.address.value || changeAddress
+        } else {
+          if (!walletApi) {
+            const injected = getInjected(this.walletKey || 'eternl')
+            if (injected) {
+              try { walletApi = await injected.enable() } catch { /* xử lý bên dưới */ }
+            }
+          }
+          if (!walletApi) {
+            return { ok: false, error: 'Ví trình duyệt đang bị khóa. Vui lòng mở ví và thử lại.' }
+          }
+          utxos = (await walletApi.getUtxos?.()) ?? []
+          changeAddress = (await walletApi.getChangeAddress?.()) || changeAddress
+        }
+
+        if (!utxos.length) {
+          return { ok: false, error: 'Ví của bạn cần có ít nhất ~2 ADA để trả phí mạng (~0,18 ADA) và giữ min-UTxO.' }
+        }
+
+        // 1. Dựng tx Co-sign (tạm trừ số dư L2)
+        const built = await $fetch<{
+          withdrawId: string
+          unsignedTxCbor: string
+          txHash: string
+          mcAmount: number
+          newBalance: number
+        }>('/api/mc/withdraw/build', {
+          method: 'POST',
+          body: { mcAmount: cleanAmount, utxos, changeAddress }
+        })
+        this.mcBalance = built.newBalance
+        useEconomyStore().meritCoins = built.newBalance
+
+        // 2. Người chơi ký 1 phần (partialSign = true)
+        let userWitnessSetCbor = ''
+        try {
+          if (useBridge) {
+            const bridge = useHydraOneWallet()
+            userWitnessSetCbor = await bridge.signTx(built.unsignedTxCbor, true)
+          } else {
+            userWitnessSetCbor = await walletApi!.signTx(built.unsignedTxCbor, true)
+          }
+        } catch (signErr: any) {
+          // Hủy ký => tự động hoàn MC lại L2 ngay lập tức!
+          const refunded = await $fetch<{ newBalance: number }>('/api/mc/withdraw/cancel', {
+            method: 'POST',
+            body: { withdrawId: built.withdrawId }
+          }).catch(() => null)
+          if (refunded) {
+            this.mcBalance = refunded.newBalance
+            useEconomyStore().meritCoins = refunded.newBalance
+          }
+          const code = classifyCip30Error(signErr, 'sign_failed')
+          return { ok: false, error: WALLET_ERROR_TEXT[code] || 'Bạn đã hủy ký. Số dư MC trên L2 đã được hoàn lại.' }
+        }
+
+        // 3. Server ghép chữ ký Ví Quỹ Nóng
+        const cosigned = await $fetch<{
+          signedTxCbor: string
+          txHash: string
+          mcAmount: number
+          explorerUrl: string
+        }>('/api/mc/withdraw/cosign', {
+          method: 'POST',
+          body: { withdrawId: built.withdrawId, userWitnessSetCbor }
+        })
+
+        // 4. Phát giao dịch lên Cardano L1 qua ví
+        if (useBridge) {
+          const bridge = useHydraOneWallet()
+          await bridge.submitTx(cosigned.signedTxCbor)
+        } else {
+          await walletApi!.submitTx(cosigned.signedTxCbor)
+        }
+
+        void this.refreshAdaBalance()
+        return {
+          ok: true,
+          txHash: cosigned.txHash,
+          explorerUrl: cosigned.explorerUrl,
+          mcAmount: cosigned.mcAmount
+        }
+      } catch (e: any) {
+        const msg = e?.data?.data?.message || e?.data?.message || e?.message || 'Không thể rút MC về ví lúc này.'
+        return { ok: false, error: msg }
+      }
+    },
+
     /** Theo dõi đơn hàng đang chờ xác nhận mỗi 5 giây cho tới khi hoàn tất hoặc lỗi. */
     startOrderPolling(orderId: string) {
       this.stopOrderPolling()
@@ -1105,7 +1246,32 @@ export const useWalletStore = defineStore('wallet', {
       this.purchasePhase = 'idle'
       this.purchaseStatusText = ''
       useEconomyStore().meritCoins = 0
-      void useEconomyStore().loadCatalog()
+      // Xóa toàn bộ dữ liệu gắn với ví cũ (tiến độ nhiệm vụ, kho đồ, thẻ bài...) để không rò rỉ sang ví khác.
+      resetWalletScopedStores()
     }
   }
 })
+
+/**
+ * Reset mọi store có dữ liệu theo tài khoản. Dùng khi ngắt kết nối / đổi ví / hết phiên.
+ * (Không reset `user` vì chỉ chứa tùy chọn giao diện như giới tính avatar, không thuộc tài khoản.)
+ */
+function resetWalletScopedStores() {
+  const resets: Array<() => void> = [
+    () => useEconomyStore().$reset(),
+    () => useCardsStore().$reset(),
+    () => useDeedsStore().$reset(),
+    () => useHauDongStore().$reset(),
+    () => useKoiGardenStore().$reset(),
+    () => useMeditationStore().$reset(),
+    () => useOnboardingStore().$reset(),
+    () => useParkourStore().$reset(),
+    () => useStreakStore().$reset(),
+    () => useBoardGamesStore().$reset()
+  ]
+  for (const reset of resets) {
+    try { reset() } catch { /* store chưa khởi tạo hoặc không hỗ trợ reset: bỏ qua */ }
+  }
+  // Xóa token phiên và cache cục bộ gắn với ví cũ
+  try { sessionStorage.removeItem('pagoda_session_token') } catch { /* bỏ qua */ }
+}

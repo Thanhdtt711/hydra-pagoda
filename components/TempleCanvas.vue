@@ -247,7 +247,23 @@ function cancelNavigation() {
   }
 }
 
+function requireWalletForFeature(): boolean {
+  if (wallet.isAuthenticated) return true
+  if (stage) stage.exitPointerLock()
+  closeAllDropups()
+  drawerOpen.value = false
+  showAbbotDrawer.value = false
+  showWalletModal.value = true
+  showToast(
+    tr('Cần kết nối ví Cardano', 'Cardano Wallet Required'),
+    tr('Bạn đang ở chế độ tham quan 3D. Kết nối ví để sử dụng tính năng này.', 'You are in 3D sightseeing mode. Connect your wallet to use this feature.'),
+    'pagoda'
+  )
+  return false
+}
+
 function openDrawer(tab: DrawerTab) {
+  if (!requireWalletForFeature()) return
   if (stage) {
     stage.exitPointerLock()
     isNearFortune.value = stage.isNearFortune()
@@ -266,6 +282,7 @@ function closeDrawer() {
 }
 
 function openAbbotChat() {
+  if (!requireWalletForFeature()) return
   if (stage) {
     stage.exitPointerLock()
     stage.setAbbotEmotion('smile')
@@ -439,35 +456,60 @@ onMounted(() => {
       stage?.removeRemotePilgrim(id)
     }
 
-    multiplayer.connect()
-    // Dữ liệu join luôn lấy mới: có phiên ví thì kèm vé WS một lần để server gắn danh tính đã xác thực.
-    multiplayer.joinProvider = async () => ({
-      name: user.name,
-      fortuneName: loadSavedProfile()?.fullName?.trim() || null,
-      title: user.title,
-      country: user.currentCountry,
-      gender: user.gender,
-      position: stage ? [stage.playerPos.x, stage.playerPos.y, stage.playerPos.z] : [0, 0, 10],
-      yaw: stage ? stage.yaw : 0,
-      ticket: await wallet.fetchWsTicket()
-    })
-    void multiplayer.rejoin()
+    const hydrateAuthenticatedSession = () => {
+      if (!wallet.isAuthenticated) return
+      hydra.startPolling()
+      if (multiplayer) {
+        multiplayer.connect()
+        multiplayer.joinProvider = async () => ({
+          name: user.name,
+          fortuneName: loadSavedProfile()?.fullName?.trim() || null,
+          title: user.title,
+          country: user.currentCountry,
+          gender: user.gender,
+          position: stage ? [stage.playerPos.x, stage.playerPos.y, stage.playerPos.z] : [0, 0, 10],
+          yaw: stage ? stage.yaw : 0,
+          ticket: await wallet.fetchWsTicket()
+        })
+        void multiplayer.rejoin()
+      }
+      void economy.loadCatalog()
+      void meditation.refreshStatus()
+      void parkour.fetchStatus()
+      void streak.refreshStatus()
+      void useDeedsStore().refreshStatus()
+      void koiGarden.refreshAll()
+      void hauDong.refreshStatus().then(() => {
+        syncHauDongToStage()
+      })
+    }
 
-    // Tự kết nối lại ví nếu phiên còn hạn và ví vẫn bật cùng tài khoản, đồng thời tải danh mục MC từ server.
-    void economy.loadCatalog()
-    void wallet.restore()
-    void meditation.refreshStatus()
-    void parkour.fetchStatus()
-    void streak.refreshStatus()
-    void useDeedsStore().refreshStatus()
-    void hauDong.refreshStatus().then(() => {
-      syncHauDongToStage()
-    })
+    // Chỉ kết nối WebSocket & gọi API khi đã xác thực ví (Wallet Gate).
+    if (wallet.isAuthenticated) {
+      hydrateAuthenticatedSession()
+    }
 
-    // Chống chồng yêu cầu (mạng chậm > 2s) và tạm dừng khi tab bị ẩn để không gửi heartbeat vô ích.
+    watch(
+      () => [wallet.isAuthenticated, wallet.address] as const,
+      ([authed]) => {
+        if (authed) {
+          hydrateAuthenticatedSession()
+        } else {
+          hydra.stopPolling()
+          multiplayer?.disconnect()
+          drawerOpen.value = false
+          showAbbotDrawer.value = false
+          showBodhiGamesModal.value = false
+          showEmoteWheel.value = false
+          closeAllDropups()
+        }
+      }
+    )
+
+    // Chống chồng yêu cầu (mạng chậm > 2s) và tạm dừng khi chưa kết nối ví hoặc tab bị ẩn.
     let hauDongSyncBusy = false
     hauDongSyncTimer = setInterval(async () => {
-      if (hauDongSyncBusy || document.hidden) return
+      if (!wallet.isAuthenticated || hauDongSyncBusy || document.hidden) return
       hauDongSyncBusy = true
       try {
         if (stage) {
@@ -509,8 +551,6 @@ onMounted(() => {
       stage.spawnDebugBots(botCount)
     }
 
-    void koiGarden.refreshAll()
-
     if (typeof window !== 'undefined') {
       ;(window as any).__STAGE__ = stage
     }
@@ -524,7 +564,9 @@ onMounted(() => {
 })
 
 onMounted(() => {
-  hydra.startPolling()
+  if (wallet.isAuthenticated) {
+    hydra.startPolling()
+  }
 })
 
 onUnmounted(() => {
@@ -797,6 +839,26 @@ function handleGuideToMerit() {
       activeNavTargetName.value = null
       isNearMerit.value = true
       showToast('Đã đến hòm công đức', '', 'coin')
+    },
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Bị cản, hãy tự bước', '', 'info')
+    }
+  )
+}
+
+function handleGuideToHeritageMuseum() {
+  if (!stage) return
+  drawerOpen.value = false
+  isAutoWalking.value = true
+  activeNavTargetName.value = 'Bảo Tàng Di Sản Cổ Tự'
+  showToast('Đang tới Bảo Tàng Di Sản Cổ Tự', '', 'cards')
+  stage.walkToHeritageMuseum(
+    () => {
+      isAutoWalking.value = false
+      activeNavTargetName.value = null
+      showToast('Đã tới Bảo Tàng Di Sản Cổ Tự', 'Bấm [E] để mở bộ sưu tập & đúc NFT CIP-68', 'sparkles')
     },
     () => {
       isAutoWalking.value = false
@@ -1287,9 +1349,20 @@ function handleRingBell() {
 }
 
 function handleRightClickAction(target: InteractionTarget) {
+  // Cho phép mở/đóng cửa Chánh Điện để tham quan 3D kể cả khi chưa kết nối ví.
+  if (target === 'door') {
+    const isOpen = stage?.toggleSanctuaryDoor()
+    zenAudio.playWoodenFish()
+    showToast(isOpen ? 'Mở cửa' : 'Đóng cửa', '', 'pagoda')
+    return
+  }
+  if (!wallet.isAuthenticated) {
+    if (target) requireWalletForFeature()
+    return
+  }
   if (target === 'incense') {
     void handleIncenseOffering()
-  } else if (target === 'merit_box') {
+  } else if (target === 'merit_box' || target === 'merit_stele') {
     openDrawer('merit')
   } else if (target === 'fortune') {
     openDrawer('fortune')
@@ -1297,6 +1370,8 @@ function handleRightClickAction(target: InteractionTarget) {
     openDrawer('meditation')
   } else if (target === 'hau_dong') {
     openDrawer('hau_dong')
+  } else if (target === 'heritage_museum') {
+    openDrawer('cards')
   } else if (target === 'abbot') {
     openAbbotChat()
   } else if (target === 'love_tree') {
@@ -1340,12 +1415,17 @@ function handleAction() {
 }
 
 function getInteractionPrompt(target: InteractionTarget): string {
+  if (target === 'door') return tr('Mở / Đóng Cửa Bức Bàn', 'Open / Close Sanctuary Doors')
+  if (!wallet.isAuthenticated && target) {
+    return tr('Kết nối ví Cardano để tương tác', 'Connect Cardano Wallet to Interact')
+  }
   if (target === 'incense') {
     return stage?.currentIncenseLocation === 'hall'
       ? tr('Dâng Hương Tam Bảo (Chánh Điện)', 'Offer Incense at Main Altar')
       : tr('Dâng Hương Đại Đỉnh (Sân Chùa)', 'Offer Incense at Courtyard Burner')
   }
   if (target === 'merit_box') return tr('Mở Hòm Công Đức (ADA / Cúng Dường)', 'Open Merit Box (ADA / Donate)')
+  if (target === 'merit_stele') return tr('Xem Bia Công Đức On-Chain (Sổ Cái & Hydra L2)', 'Inspect On-Chain Merit Stele (Ledger & Hydra L2)')
   if (target === 'fortune') return tr('Rút Quẻ Xăm Linh Tự', 'Draw Sacred Fortune Stick')
   if (target === 'love_tree') return tr('Thỉnh Quẻ Tơ Duyên (Nguyệt Lão Thắt Chỉ Hồng)', 'Consult Red Thread Love Altar')
   if (target === 'zen_garden') return tr('Chăm Sóc Vườn Thiền (Trồng Cây & Tưới Nước)', 'Tend Zen Garden (Plant & Water)')
@@ -1354,6 +1434,7 @@ function getInteractionPrompt(target: InteractionTarget): string {
   if (target === 'meditation') return tr('Tọa Thiền Tĩnh Tâm', 'Sit in Mindful Meditation')
   if (target === 'abbot') return tr('Thưa chuyện với Thầy Trụ Trì', 'Speak with the Abbot')
   if (target === 'hau_dong') return tr('Mở Đàn & Thỉnh Lộc Nhà Hầu Đồng (Tứ Phủ)', 'Enter Four Palaces Ritual Shrine')
+  if (target === 'heritage_museum') return tr('Mở Bảo Tàng Di Sản Cổ Tự (Sưu Tầm & Đúc NFT CIP-68)', 'Open Heritage Museum (Collect & Mint CIP-68 NFT)')
   if (target === 'lantern') {
     const qty = economy.getItemQuantity('lotus_lantern')
     return qty > 0
@@ -1534,49 +1615,59 @@ function simulateLoading() {
 
       <!-- Right: Stats & Utilities -->
       <div class="hud-top-bar__right">
-        <!-- Daily Streak Stat -->
-        <UiStatCell
-          :label="tr('Ngày Tu', 'Streak')"
-          :value="streak.status?.currentStreak ?? 0"
-          size="sm"
-          class="hud-stat-cell hud-hide-sm"
-        />
+        <!-- Chỉ hiện Ngày Tu & Số dư MC khi đã đăng nhập ví (Wallet Gate: ẩn hoàn toàn MC khi chưa kết nối) -->
+        <template v-if="wallet.isAuthenticated">
+          <UiStatCell
+            :label="tr('Ngày Tu', 'Streak')"
+            :value="streak.status?.currentStreak ?? 0"
+            size="sm"
+            class="hud-stat-cell hud-hide-sm"
+          />
 
-        <div class="hud-v-divider" />
+          <div class="hud-v-divider" />
 
-        <!-- Merit Coins Stat + Top-up -->
-        <UiStatCell
-          :label="tr('Hành Trang', 'Balance')"
-          :value="economy.meritCoins.toLocaleString()"
-          unit="MC"
-          highlight
-          size="sm"
-          class="hud-stat-cell"
-        >
-          <template #action>
-            <UiButton variant="primary" size="sm" class="ml-2 hud-topup" @click="openWalletModal()">
-              {{ tr('+ Nạp', '+ Top Up') }}
-            </UiButton>
-          </template>
-        </UiStatCell>
+          <!-- Merit Coins Stat + Top-up -->
+          <UiStatCell
+            :label="tr('Hành Trang', 'Balance')"
+            :value="economy.meritCoins.toLocaleString()"
+            unit="MC"
+            highlight
+            size="sm"
+            class="hud-stat-cell"
+          >
+            <template #action>
+              <UiButton variant="primary" size="sm" class="ml-2 hud-topup" @click="openWalletModal()">
+                {{ tr('+ Nạp', '+ Top Up') }}
+              </UiButton>
+            </template>
+          </UiStatCell>
 
-        <div class="hud-v-divider" />
+          <div class="hud-v-divider" />
+        </template>
 
         <!-- Cardano Wallet Status Button -->
+        <UiButton
+          v-if="!wallet.isAuthenticated"
+          variant="primary"
+          size="sm"
+          @click="openWalletModal()"
+        >
+          {{ tr('Kết nối ví', 'Connect Wallet') }}
+        </UiButton>
         <button
+          v-else
           type="button"
           @click="openWalletModal()"
           class="hud-wallet-btn ui-focus-ring"
           :title="wallet.isIframeMode ? tr('Đồng bộ ví từ HydraOne Header', 'Sync wallet from HydraOne Header') : tr('Kết nối ví Cardano (Eternl)', 'Connect Cardano Wallet (Eternl)')"
         >
           <span
-            class="hud-status-dot"
-            :class="wallet.isConnected ? 'hud-status-dot--success' : 'hud-status-dot--warning'"
+            class="hud-status-dot hud-status-dot--success"
             aria-hidden="true"
           />
           <ZenIcon name="wallet" :size="20" class="hud-show-sm" :label="tr('Ví Cardano', 'Cardano Wallet')" />
-          <span class="text-sm font-semibold hud-hide-sm" :class="wallet.isConnected && !wallet.isIframeMode ? 'font-numbers' : ''">
-            {{ wallet.isConnected ? (wallet.isIframeMode ? 'HydraOne' : wallet.shortAddress) : (wallet.isIframeMode ? tr('Kết nối trên HydraOne', 'Connect on HydraOne') : tr('Ví Cardano', 'Cardano Wallet')) }}
+          <span class="text-sm font-semibold hud-hide-sm" :class="!wallet.isIframeMode ? 'font-numbers' : ''">
+            {{ wallet.isIframeMode ? 'HydraOne' : wallet.shortAddress }}
           </span>
           <UiBadge v-if="wallet.isTestnet && !wallet.isIframeMode" variant="warning" class="hud-hide-sm">TESTNET</UiBadge>
         </button>
@@ -2018,13 +2109,22 @@ function simulateLoading() {
 
           <!-- Bản đồ SVG 2D, tỉ lệ đều 6 px/m, Bắc ở trên (tọa độ lấy từ MapLayout.LANDMARKS) -->
           <div class="relative w-full rounded-md bg-canvas-dark border border-hairline overflow-hidden select-none">
-            <svg viewBox="0 0 438 424" class="block w-full h-auto font-sans" role="img" :aria-label="tr('Sơ đồ Thiền Tự, hướng Bắc ở trên', 'Sanctuary Map, North up')">
-              <!-- Mặt bằng: sân gạch, ngự đạo, đường sang Nhà Hầu Đồng, đường vòng lên núi -->
+            <svg viewBox="-120 0 558 424" class="block w-full h-auto font-sans" role="img" :aria-label="tr('Sơ đồ Thiền Tự, hướng Bắc ở trên', 'Sanctuary Map, North up')">
+              <!-- Mặt bằng: sân gạch, ngự đạo, đường sang Nhà Hầu Đồng, đường sang Bảo Tàng Di Sản, đường vòng lên núi -->
               <rect x="36" y="261" width="240" height="126" fill="#1a1714" stroke="#332d26" />
               <rect x="144" y="261" width="24" height="126" fill="#26221d" />
               <rect x="156" y="266" width="210" height="8" fill="#26221d" />
               <rect x="362" y="243" width="8" height="27" fill="#26221d" />
+              <rect x="-58" y="266" width="102" height="8" fill="#26221d" />
+              <rect x="-58" y="237" width="8" height="33" fill="#26221d" />
               <polyline points="48,270 48,120 96,72 156,51" fill="none" stroke="#332d26" stroke-width="6" stroke-dasharray="10,8" stroke-linejoin="round" />
+
+              <!-- Bảo Tàng Di Sản Cổ Tự (Tây — đối xứng Nhà Hầu Đồng) -->
+              <g class="cursor-pointer" @click="handleGuideToHeritageMuseum(); showMiniMap = false">
+                <rect x="-108" y="129" width="108" height="108" fill="#1f1c18" stroke="#0ecb81" stroke-width="1.6" />
+                <text x="-54" y="178" font-size="16" font-weight="700" fill="#0ecb81" text-anchor="middle">{{ tr('Bảo Tàng', 'Museum') }}</text>
+                <text x="-54" y="198" font-size="14" font-weight="600" fill="#c9a24b" text-anchor="middle">CIP-68 NFT</text>
+              </g>
 
               <!-- Hồ Sen -->
               <circle cx="51" cy="321" r="39" fill="#17242a" stroke="#5f7f86" />
@@ -2119,6 +2219,9 @@ function simulateLoading() {
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToHauDong(); showMiniMap = false">
                 {{ tr('Nhà Hầu Đồng', 'Four Palaces') }}
               </UiButton>
+              <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToHeritageMuseum(); showMiniMap = false">
+                {{ tr('Bảo Tàng Di Sản', 'Heritage Museum') }}
+              </UiButton>
               <UiButton variant="secondary" size="sm" class="justify-center text-xs h-[40px]! px-1.5 whitespace-normal leading-tight text-center" @click="handleGuideToParkour(); showMiniMap = false">
                 {{ tr('Leo Núi Parkour', 'Mountain Climb') }}
               </UiButton>
@@ -2169,8 +2272,16 @@ function simulateLoading() {
         </div>
       </div>
 
-      <!-- Right: 3 Cụm Drop-up Island -->
-      <div class="hud-dock flex items-center gap-2 pointer-events-auto select-none">
+      <!-- Right: 3 Cụm Drop-up Island (chỉ mở khi đã kết nối ví; chưa kết nối hiện chip tham quan 3D) -->
+      <div v-if="!wallet.isAuthenticated" class="pointer-events-auto select-none flex items-center gap-2.5 bg-[#1a1714] border border-[#332d26] rounded-[2px] px-3 py-2 shadow-2xl">
+        <span class="text-xs text-[#f0e6d2]">
+          {{ tr('Chế độ tham quan 3D · Kết nối ví để dùng tính năng', '3D Sightseeing Mode · Connect wallet for features') }}
+        </span>
+        <UiButton variant="primary" size="sm" @click="openWalletModal()">
+          {{ tr('Kết nối ví', 'Connect Wallet') }}
+        </UiButton>
+      </div>
+      <div v-else class="hud-dock flex items-center gap-2 pointer-events-auto select-none">
         <!-- Cụm 1: Bói Quẻ & Cầu An (Popup Phím 1) -->
         <div class="relative">
           <div
@@ -2453,12 +2564,14 @@ function simulateLoading() {
     />
 
     <!-- Overlays & Modals for specific operations -->
-    <HydraHeadWidget v-if="!drawerOpen && !showAbbotDrawer && !showBodhiGamesModal && !showPhotoMode" />
-    <BodhiGamesModal v-if="showBodhiGamesModal" :open="showBodhiGamesModal" @close="closeBodhiGamesModal" />
+    <HydraHeadWidget
+      v-if="wallet.isAuthenticated && !drawerOpen && !showAbbotDrawer && !showBodhiGamesModal && !showPhotoMode && !showDivinationMenu && !showMeditationMenu && !showHeritageMenu && !showDisplayMenu"
+    />
+    <BodhiGamesModal v-if="wallet.isAuthenticated && showBodhiGamesModal" :open="showBodhiGamesModal" @close="closeBodhiGamesModal" />
     <WalletConnectModal v-if="showWalletModal" @close="showWalletModal = false" />
-    <EmoteWheel v-if="showEmoteWheel" @close="showEmoteWheel = false" @select-emote="handleSelectEmote" />
+    <EmoteWheel v-if="wallet.isAuthenticated && showEmoteWheel" @close="showEmoteWheel = false" @select-emote="handleSelectEmote" />
     <DisclaimerBanner v-if="showDisclaimer" @close="showDisclaimer = false" />
-    <OnboardingGuide />
+    <OnboardingGuide v-if="wallet.isAuthenticated" />
     </div>
 
     <PhotoModeOverlay

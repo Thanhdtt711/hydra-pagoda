@@ -21,6 +21,8 @@ import { apiError } from './auth.ts'
 import { getWalletConfig } from './config.ts'
 import { getDb, withTransaction, type DbConn } from './db.ts'
 import { scheduleHydraRecord } from '../hydra/hydraQueue.ts'
+import { grantQuestReward } from '../mc/questRewards.ts'
+import { splitSpentMc } from '../../../lib/mc/tokenomics.ts'
 import { getCardPackById, rollCardGacha, type BuddhistCardItem } from '../cards/catalog.ts'
 
 export type SpendReason =
@@ -813,6 +815,11 @@ export async function spend<TExtra = Record<string, unknown>>(
     const afterRow = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
     const balanceAfter = afterRow.mc_balance
     const now = Date.now()
+    // Phân bổ MC tiêu trong chùa vào 3 giỏ minh bạch: 50% tái cấp Quỹ Thưởng, 20% đốt khan hiếm, 30% vận hành (không ảnh hưởng bậc giá Quỹ Bán).
+    const { toQuest, toBurn, toOps } = splitSpentMc(amount)
+    await conn
+      .prepare('UPDATE mc_fund_state SET quest_recycled = quest_recycled + ?, burned_mc = burned_mc + ?, ops_mc = ops_mc + ?, updated_at = ? WHERE id = 1')
+      .run(toQuest, toBurn, toOps, now)
 
     // 3. Ghi bút toán âm (-amount) vào sổ cái bất biến mc_ledger
     const ins = await conn
@@ -866,8 +873,8 @@ export interface CreditResult {
 }
 
 /**
- * Cộng MC nguyên tử (ví dụ `meditation_reward`): cập nhật `accounts.mc_balance` + ghi `mc_ledger` dương trong
- * CÙNG một transaction, idempotent theo UNIQUE(reason, ref_id). Sau commit, bút toán được phản chiếu lên Hydra L2.
+ * Cộng MC thưởng nhiệm vụ nguyên tử: định tuyến qua cổng duy nhất `grantQuestReward` để đảm bảo
+ * áp trần tổng 1.000 MC/ví/ngày và trừ trực tiếp vào Quỹ Nhiệm Vụ 150.000.000 MC (không ảnh hưởng bậc giá quỹ bán).
  */
 export async function credit(
   accountId: number,
@@ -882,48 +889,23 @@ export async function credit(
     apiError(400, 'invalid_amount', 'Số lượng MC cần cộng phải là số nguyên dương')
   }
   const refId = normalizeRequestId(opts.refId)
-  const result = await withTransaction(async (conn): Promise<CreditResult> => {
-    const existing = await conn
-      .prepare('SELECT id, account_id, delta_mc, balance_after, created_at FROM mc_ledger WHERE reason = ? AND ref_id = ?')
-      .get(reason, refId) as { id: number; account_id: number; delta_mc: number; balance_after: number; created_at: number } | undefined
-    if (existing) {
-      if (existing.account_id !== accountId) {
-        apiError(409, 'request_id_conflict', 'Mã tham chiếu đã được sử dụng bởi một giao dịch khác')
-      }
-      return {
-        ledgerId: existing.id,
-        accountId,
-        creditedMc: Math.abs(existing.delta_mc),
-        balanceAfter: existing.balance_after,
-        reason,
-        refId,
-        idempotentReplay: true,
-        createdAt: existing.created_at
-      }
-    }
-    const upd = await conn.prepare('UPDATE accounts SET mc_balance = mc_balance + ? WHERE id = ?').run(amount, accountId)
-    if (Number(upd.changes) === 0) apiError(404, 'account_not_found', 'Không tìm thấy tài khoản người chơi')
-    const row = await conn.prepare('SELECT mc_balance FROM accounts WHERE id = ?').get(accountId) as { mc_balance: number }
-    const now = Date.now()
-    const ins = await conn
-      .prepare(
-        `INSERT INTO mc_ledger (account_id, delta_mc, balance_after, reason, ref_type, ref_id, tx_hash, metadata_json, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`
-      )
-      .run(accountId, amount, row.mc_balance, reason, opts.refType || reason, refId, opts.metadata ? JSON.stringify(opts.metadata) : null, now)
-    return {
-      ledgerId: Number(ins.lastInsertRowid),
-      accountId,
-      creditedMc: amount,
-      balanceAfter: row.mc_balance,
-      reason,
-      refId,
-      idempotentReplay: false,
-      createdAt: now
-    }
+  const res = await grantQuestReward(accountId, amount, {
+    questKey: reason,
+    periodKey: refId,
+    reason,
+    refId,
+    metadata: opts.metadata
   })
-  if (!result.idempotentReplay) void scheduleHydraRecord(result.ledgerId)
-  return result
+  return {
+    ledgerId: res.ledgerId ?? 0,
+    accountId,
+    creditedMc: res.grantedMc,
+    balanceAfter: res.balanceAfter,
+    reason,
+    refId,
+    idempotentReplay: res.duplicate,
+    createdAt: Date.now()
+  }
 }
 
 /* ============================================================================

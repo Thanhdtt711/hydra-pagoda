@@ -6,7 +6,7 @@
  * - Thắng đủ cả 5 môn trong ngày: nhận thêm +10 MC, tổng cả ngày là 60 MC.
  * - Ngày tính theo giờ Việt Nam. Tối đa 60 MC mỗi tài khoản mỗi ngày.
  */
-export const BOARD_GAME_IDS = ['xiangqi', 'oanquan', 'caro', 'chess', 'go'] as const
+export const BOARD_GAME_IDS = ['xiangqi', 'chess', 'caro', 'go', 'oanquan'] as const
 export type BoardGameId = (typeof BOARD_GAME_IDS)[number]
 
 export const BOARD_GAME_REWARD_PER_GAME = 10

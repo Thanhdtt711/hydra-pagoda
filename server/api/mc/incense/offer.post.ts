@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody } from 'h3'
-import { assertSameOrigin, getSessionAccount } from '../../../utils/wallet/auth'
+import { assertSameOrigin, requireSession } from '../../../utils/wallet/auth'
 import { credit } from '../../../utils/wallet/mcService'
 import { getDb } from '../../../utils/wallet/db'
 import { getHydraProof } from '../../../utils/hydra/hydraQueue'
@@ -27,19 +27,8 @@ export default defineEventHandler(async (event) => {
   const randomIndex = Math.floor(Math.random() * DHAMMAPADA_VERSES.length)
   const verse = DHAMMAPADA_VERSES[randomIndex]
 
-  const account = await getSessionAccount(event)
-  if (!account) {
-    // Khách vãng lai (chưa kết nối ví): Vẫn được dâng hương thành tâm
-    return {
-      success: true,
-      authenticated: false,
-      firstToday: true,
-      rewardMc: 15,
-      verse,
-      location,
-      message: 'Lòng thành dâng Phật, nguyện thân tâm an lạc.'
-    }
-  }
+  // Cần phiên ví hợp lệ: không còn nhánh "khách vãng lai" trả thưởng giả (đã có thêm cổng Wallet Gate ở middleware).
+  const account = await requireSession(event)
 
   const todayStr = getVietnamDayKey()
   const refId = `incense_${account.id}_${todayStr}`

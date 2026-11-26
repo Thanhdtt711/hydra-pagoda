@@ -506,7 +506,7 @@ function shortAddress(addr: string): string {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 28;
+  z-index: 20;
 }
 
 /* Thanh dọc thu gọn mép phải */

@@ -48,25 +48,15 @@ export interface UserCardRecord {
   nft_asset_id?: string | null
 }
 
-const STORAGE_KEY_OFFLINE_CARDS = 'van_canh_offline_cards_v1'
+// 3 thẻ khởi đầu đồng bộ 100% với backend `mint/build.post.ts` (không đọc cache localStorage cũ để tránh lệch sở hữu khi đúc NFT CIP-68)
+const STARTER_CARD_IDS = ['card_vn_motcot', 'card_vn_truclam', 'card_jp_ichigo'] as const
 
 function loadOfflineUnlocked(): Set<string> {
-  if (typeof window === 'undefined') return new Set(['card_vn_motcot', 'card_vn_truclam', 'card_jp_ichigo'])
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_OFFLINE_CARDS)
-    if (raw) {
-      const arr = JSON.parse(raw)
-      return new Set(Array.isArray(arr) ? arr : [])
-    }
-  } catch (_) {}
-  return new Set(['card_vn_motcot', 'card_vn_truclam', 'card_jp_ichigo'])
+  return new Set(STARTER_CARD_IDS)
 }
 
-function saveOfflineUnlocked(set: Set<string>) {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY_OFFLINE_CARDS, JSON.stringify(Array.from(set)))
-  } catch (_) {}
+function saveOfflineUnlocked(_set: Set<string>) {
+  // Không lưu sở hữu thẻ bài vào localStorage; mọi quyền sở hữu phải lấy từ `card_inventory` theo địa chỉ ví ở server.
 }
 
 export const useCardsStore = defineStore('cards', {
