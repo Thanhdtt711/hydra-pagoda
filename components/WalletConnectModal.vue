@@ -192,8 +192,15 @@ async function handleSyncHydraBridge() {
       if (bridge.balanceLovelace.value !== null) {
         wallet.balanceLovelace = bridge.balanceLovelace.value
       }
-      void wallet.syncServerAccount(addr)
-      activeTab.value = 'buy'
+      // Xác thực chữ ký CIP-8 qua HydraOne Bridge để mở phiên server (isAuthenticated = true)
+      const ok = await wallet.loginWithHydraBridge(addr)
+      if (ok) {
+        await Promise.all([wallet.fetchOrders(), loadMarketInfo()])
+        try {
+          hydraStatus.value = (await $fetch<unknown>('/api/hydra/status' as string)) as typeof hydraStatus.value
+        } catch { /* bỏ qua */ }
+        activeTab.value = 'buy'
+      }
     }
   } finally {
     isSyncingBridge.value = false
@@ -249,8 +256,8 @@ function formatTime(ts: number): string {
 
 <template>
   <UiModal
-    :title="wallet.isConnected ? 'Ví Cardano & Nạp MC' : 'Kết Nối Ví Cardano'"
-    :subtitle="wallet.isConnected ? 'Quản lý số dư và nạp điểm chiêm nghiệm' : 'Mạng yêu cầu: PREPROD (TESTNET)'"
+    :title="wallet.isAuthenticated ? 'Ví Cardano & Nạp MC' : 'Kết Nối & Xác Thực Ví Cardano'"
+    :subtitle="wallet.isAuthenticated ? 'Quản lý số dư và nạp điểm chiêm nghiệm' : 'Mạng yêu cầu: PREPROD (TESTNET)'"
     @close="emit('close')"
   >
     <template #header-badge>
@@ -260,34 +267,43 @@ function formatTime(ts: number): string {
     </template>
 
     <div class="space-y-4 font-sans text-primary">
-      <!-- TRẠNG THÁI 1: CHƯA KẾT NỐI VÍ -->
-      <div v-if="!wallet.isConnected" class="space-y-4">
-        <!-- Khi chạy trong Iframe HydraOne: Hướng dẫn kết nối từ Header cha -->
-        <div v-if="wallet.isIframeMode" class="p-4 rounded-lg bg-surface-elevated border border-hairline space-y-3">
+      <!-- TRẠNG THÁI 1: CHƯA XÁC THỰC PHIÊN VÍ -->
+      <div v-if="!wallet.isAuthenticated" class="space-y-4">
+        <!-- Khi chạy trong Iframe HydraOne: Ví đã nối ở Header cha, chỉ cần ký xác thực CIP-8 để mở khóa toàn bộ chùa -->
+        <div v-if="wallet.isIframeMode" class="p-4 rounded-[2px] bg-surface-elevated border border-hairline space-y-3">
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0 mt-0.5">
+            <div class="w-10 h-10 rounded-[2px] bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0 mt-0.5">
               <ZenIcon name="wallet" :size="20" class="text-binance-yellow" />
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-bold text-primary">Ví HydraOne</span>
-                <UiBadge variant="warning">Iframe Host</UiBadge>
+                <UiBadge :variant="wallet.address ? 'success' : 'warning'">
+                  {{ wallet.address ? 'Đã nhận địa chỉ' : 'Chưa nối ở Header' }}
+                </UiBadge>
               </div>
               <p class="text-xs text-secondary mt-1 leading-normal">
-                {{ t('desc.walletIframe') }}
+                {{
+                  wallet.address
+                    ? 'Ví HydraOne đã kết nối ở thanh trên. Bấm xác thực chữ ký (miễn phí, không gửi giao dịch) để mở khóa số dư MC và toàn bộ tính năng.'
+                    : t('desc.walletIframe')
+                }}
               </p>
+              <div v-if="wallet.address" class="text-xs text-muted font-numbers truncate mt-1">
+                {{ wallet.address }}
+              </div>
             </div>
           </div>
 
-          <div class="flex items-center justify-between pt-2 border-t border-hairline">
-            <span class="text-xs text-muted font-numbers">Tự động đồng bộ số dư L1/L2</span>
+          <div class="flex items-center justify-between pt-2 border-t border-hairline gap-2">
+            <span class="text-xs text-muted font-numbers">Xác thực CIP-8 · 0 phí gas</span>
             <UiButton
-              variant="secondary"
+              variant="primary"
               size="sm"
               :loading="isSyncingBridge"
               @click="handleSyncHydraBridge"
             >
-              {{ t('btn.refreshWallet') }}
+              {{ wallet.address ? 'Ký xác thực ví' : t('btn.refreshWallet') }}
             </UiButton>
           </div>
         </div>
@@ -705,7 +721,7 @@ function formatTime(ts: number): string {
     <template #footer>
       <div class="space-y-2.5">
         <!-- Nút hành động chính ghim cố định ở đáy (không bị trôi khi scroll nội dung) -->
-        <template v-if="wallet.isConnected && activeTab === 'buy'">
+        <template v-if="wallet.isAuthenticated && activeTab === 'buy'">
           <UiButton
             v-if="wallet.purchasePhase === 'idle' || wallet.purchasePhase === 'error'"
             variant="primary"
@@ -734,7 +750,7 @@ function formatTime(ts: number): string {
           </UiButton>
         </template>
 
-        <template v-else-if="wallet.isConnected && activeTab === 'withdraw'">
+        <template v-else-if="wallet.isAuthenticated && activeTab === 'withdraw'">
           <UiButton
             variant="primary"
             block
