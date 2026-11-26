@@ -1,6 +1,6 @@
 # Hướng Dẫn Kỹ Thuật Triển Khai Dedicated Hydra Node L2 Cho Đội Ngũ DevOps
 
-Tài liệu này cung cấp toàn bộ quy trình thiết lập, cấu hình bảo mật, vận hành và giám sát **Hydra Node (Cardano Layer 2 Head)** độc lập dành riêng cho dự án **Vạn Cảnh Thiền Tự** (`hydra-pagoda`). Tài liệu được biên soạn để đội ngũ DevOps có thể triển khai nhanh chóng lên máy chủ Cloud (VPS/Dedicated Server) và tích hợp an toàn với backend của game đang chạy trên Render.
+Tài liệu này cung cấp toàn bộ quy trình thiết lập, cấu hình bảo mật, vận hành và giám sát **Hydra Node (Cardano Layer 2 Head)** độc lập dành riêng cho dự án **Vạn Cảnh Thiền Tự** (`hydra-pagoda`). Tài liệu được biên soạn để đội ngũ DevOps có thể triển khai nhanh chóng lên máy chủ Cloud (VPS/Dedicated Server) hoặc kết nối trực tiếp tới hạ tầng **Hexcore Managed Hydra** (xem thêm `docs/HYDRA-L2.md`) và tích hợp an toàn với backend của game đang chạy trên Render.
 
 ---
 
@@ -15,7 +15,7 @@ Tài liệu này cung cấp toàn bộ quy trình thiết lập, cấu hình b�
                  ▼
 ┌────────────────────────────────────────────────────────┐
 │         Backend Game (Render Node.js Service)          │
-│  - Lưu SQLite: Sổ cái tức thì                          │
+│  - Lưu PostgreSQL (Supabase) / SQLite: Sổ cái tức thì  │
 │  - Tạo giao dịch L2 Notary qua WebSocket WSS           │
 └────────────────┬───────────────────────────────────────┘
                  │ Secure WebSocket (wss://hydra.your-domain.com)
@@ -86,12 +86,11 @@ chmod 600 /opt/hydra-node/.hydra-offline/hydra.sk
 ```
 
 ### Bước 4: Tạo File UTxO Ban Đầu (`utxo.json`)
-Head L2 khi khởi động cần có một lượng tiền khởi tạo (Initial Fuel UTxO) để thực hiện các giao dịch phân phối coin.
-Tạo file `/opt/hydra-node/.hydra-offline/utxo.json`:
+Head L2 khi khởi động cần có một lượng tiền khởi tạo (Initial Fuel UTxO) nằm tại **đúng địa chỉ Fuel (`fuelAddress`)** được dẫn xuất từ `NUXT_HYDRA_SESSION_SECRET` (nhãn `hydra-pagoda:l2-fuel:v1`). Bạn có thể lấy đúng địa chỉ Fuel của server bằng lệnh `npm run hydra:commit` hoặc gọi `GET /api/hydra/status` (trường `fuelAddress`), sau đó điền vào trường `"address"` của `/opt/hydra-node/.hydra-offline/utxo.json`:
 ```json
 {
   "0000000000000000000000000000000000000000000000000000000000000001#0": {
-    "address": "addr_test1vqg9j47wqefh67yxf76v00x9s9a52l27s2r28d3m8f3k2qsf3qf4a",
+    "address": "<DIEN_DIA_CHI_FUEL_ADDRESS_TU_NUXT_HYDRA_SESSION_SECRET>",
     "value": {
       "lovelace": 1000000000000
     },
@@ -103,6 +102,7 @@ Tạo file `/opt/hydra-node/.hydra-offline/utxo.json`:
   }
 }
 ```
+> **Quan trọng:** Nếu địa chỉ trong `utxo.json` không khớp với `fuelAddress` dẫn xuất từ `NUXT_HYDRA_SESSION_SECRET` trên Render, backend sẽ báo cảnh báo `l2_no_fuel` và không thể ký giao dịch L2.
 
 ### Bước 5: Cấu Hình Docker Compose
 Tạo file `/opt/hydra-node/docker-compose.yml`:
@@ -257,5 +257,7 @@ docker compose down
 sudo rm -rf state/*
 docker compose up -d
 ```
-Backend của game được lập trình với cơ chế tự phục hồi: ngay khi Hydra Node mở lại hoặc gặp sự cố mất mạng, backend sẽ tự động chuyển sang chế độ dự phòng SQLite (Fallback Mode) để người chơi trong chùa không bao giờ bị gián đoạn trải nghiệm.
+Backend của game được lập trình với cơ chế tự phục hồi: ngay khi Hydra Node mở lại hoặc gặp sự cố mất mạng, backend sẽ tự động chuyển sang chế độ dự phòng cơ sở dữ liệu (PostgreSQL Supabase / SQLite Fallback Mode) để người chơi trong chùa không bao giờ bị gián đoạn trải nghiệm.
+
+> **Lựa chọn thay thế (Managed Hydra trên Hexcore):** Nếu không tự vận hành VPS Docker offline-mode, đội ngũ có thể trỏ trực tiếp `HYDRA_NODE_WS_URL` tới node managed trên **Hexcore** (`wss://.../api/heads/<id>/nodes/0/socket?X-Api-Key=<token>`) và nạp Fuel UTxO từ Cardano Preprod L1 bằng `npm run hydra:commit` (chi tiết tại `docs/HYDRA-L2.md`).
 

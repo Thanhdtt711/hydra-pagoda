@@ -821,6 +821,151 @@ export const useWalletStore = defineStore('wallet', {
       }
     },
 
+    /**
+     * Đúc Thẻ Bài Di Sản Cổ Tự thành NFT chuẩn CIP-68 thật trên Cardano L1 (Preprod/Mainnet).
+     * Hỗ trợ cả ví CIP-30 trực tiếp (Eternl, Lace...) lẫn HydraOne Wallet Bridge trong iframe.
+     */
+    async mintHeritageCardNft(cardId: string): Promise<{
+      ok: boolean
+      txHash?: string
+      userAssetId?: string
+      refAssetId?: string
+      policyId?: string
+      txUrl?: string
+      tokenUrl?: string
+      userCardInventory?: any[]
+      error?: string
+    }> {
+      if (!this.accountId && this.isIframeMode && this.address) {
+        const loggedIn = await this.loginWithHydraBridge(this.address)
+        if (!loggedIn) {
+          return { ok: false, error: 'Vui lòng xác thực chữ ký ví HydraOne để đúc NFT CIP-68.' }
+        }
+      }
+      if (!this.accountId) {
+        return { ok: false, error: 'Vui lòng kết nối ví Cardano (Eternl / Lace...) trước khi đúc NFT CIP-68.' }
+      }
+
+      // 1. Lấy UTxO và địa chỉ nhận change từ ví (HydraOne Bridge hoặc CIP-30 Extension)
+      let utxos: any[] = []
+      let changeAddress = this.address || ''
+      const useBridge = Boolean(this.isIframeMode && !walletApi)
+
+      try {
+        if (useBridge) {
+          const bridge = useHydraOneWallet()
+          if (!bridge.isWalletConnected.value) {
+            return { ok: false, error: 'Vui lòng kết nối ví trên thanh Header HydraOne trước.' }
+          }
+          utxos = (await bridge.client.getUtxos()) ?? []
+          changeAddress = bridge.address.value || changeAddress
+        } else {
+          if (!walletApi) {
+            const injected = getInjected(this.walletKey || 'eternl')
+            if (injected) {
+              try { walletApi = await injected.enable() } catch { /* xử lý bên dưới */ }
+            }
+          }
+          if (!walletApi) {
+            return { ok: false, error: 'Ví trình duyệt đang bị khóa. Vui lòng mở ví và thử lại.' }
+          }
+          utxos = (await walletApi.getUtxos?.()) ?? []
+          changeAddress = (await walletApi.getChangeAddress?.()) || changeAddress
+        }
+
+        if (!utxos.length) {
+          return { ok: false, error: 'Ví của bạn chưa có UTxO (tADA/ADA) để trả phí đúc NFT CIP-68 (cần khoảng 5 tADA).' }
+        }
+
+        // 2. Dựng giao dịch Mint CIP-68 (Reference Token 100 + User Token 222) phía server
+        const built = await $fetch<{
+          ok: boolean
+          mintId: string
+          unsignedTxCbor: string
+          txHash: string
+          feeLovelace: number
+          policyId: string
+          refAssetId: string
+          userAssetId: string
+        }>('/api/mc/cards/mint/build', {
+          method: 'POST',
+          body: { cardId, utxos, changeAddress }
+        })
+
+        // 3. Người chơi ký giao dịch (partialSign = true vì cần đồng ký thêm Policy Key của server)
+        let witnessHex = ''
+        try {
+          if (useBridge) {
+            const bridge = useHydraOneWallet()
+            witnessHex = await bridge.signTx(built.unsignedTxCbor, true)
+          } else {
+            witnessHex = await walletApi!.signTx(built.unsignedTxCbor, true)
+          }
+        } catch (signErr: any) {
+          const code = classifyCip30Error(signErr, 'tx_submit_failed')
+          return { ok: false, error: WALLET_ERROR_TEXT[code] || 'Bạn đã hủy ký giao dịch đúc NFT.' }
+        }
+
+        // 4. Server đồng ký Policy Key + ghép NativeScript thành signedTxCbor hoàn chỉnh
+        const cosigned = await $fetch<{
+          ok: boolean
+          signedTxCbor: string
+          txHash: string
+        }>('/api/mc/cards/mint/cosign', {
+          method: 'POST',
+          body: { mintId: built.mintId, witnessHex }
+        })
+
+        // 5. Phát tán giao dịch lên Cardano L1 qua ví người chơi
+        let submittedHash = ''
+        try {
+          if (useBridge) {
+            const bridge = useHydraOneWallet()
+            submittedHash = await bridge.submitTx(cosigned.signedTxCbor)
+          } else {
+            submittedHash = await walletApi!.submitTx(cosigned.signedTxCbor)
+          }
+        } catch (subErr: any) {
+          return {
+            ok: false,
+            error: `Phát tán giao dịch lên Cardano thất bại: ${subErr?.info || subErr?.message || 'Lỗi mạng'}`
+          }
+        }
+
+        const finalHash = (submittedHash || cosigned.txHash).trim().toLowerCase()
+
+        // 6. Xác nhận với server để cập nhật card_inventory (is_nft_minted = 1, nft_asset_id)
+        const confirmed = await $fetch<{
+          ok: boolean
+          txHash: string
+          policyId: string
+          refAssetId: string
+          userAssetId: string
+          txUrl: string
+          tokenUrl: string
+          userCardInventory: any[]
+        }>('/api/mc/cards/mint/confirm', {
+          method: 'POST',
+          body: { mintId: built.mintId, txHash: finalHash }
+        })
+
+        void this.refreshAdaBalance()
+        return {
+          ok: true,
+          txHash: confirmed.txHash,
+          policyId: confirmed.policyId,
+          refAssetId: confirmed.refAssetId,
+          userAssetId: confirmed.userAssetId,
+          txUrl: confirmed.txUrl,
+          tokenUrl: confirmed.tokenUrl,
+          userCardInventory: confirmed.userCardInventory
+        }
+      } catch (e: any) {
+        const msg = e?.data?.data?.message || e?.data?.message || e?.message || 'Không thể đúc NFT CIP-68 lúc này.'
+        return { ok: false, error: msg }
+      }
+    },
+
     /** Theo dõi đơn hàng đang chờ xác nhận mỗi 5 giây cho tới khi hoàn tất hoặc lỗi. */
     startOrderPolling(orderId: string) {
       this.stopOrderPolling()

@@ -22,6 +22,7 @@
     "hydra:mock": "node scripts/hydra-mock-server.mjs",
     "hydra:prepare": "node scripts/hydra-prepare.mjs",
     "hydra:commit": "node scripts/hydra-commit-fuel.mjs",
+    "cards:upload-ipfs": "node scripts/cards-upload-ipfs.mjs",
     "hydra:up": "docker compose -f docker-compose.hydra.yml up -d",
     "hydra:down": "docker compose -f docker-compose.hydra.yml down",
     "hydra:logs": "docker compose -f docker-compose.hydra.yml logs -f --tail=50",

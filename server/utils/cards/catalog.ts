@@ -16,6 +16,7 @@ export interface BuddhistCardItem {
   scriptureText?: string
   audioNarrator?: string
   tags?: string[]
+  ipfsImage?: string
 }
 
 export interface CardPackItem {

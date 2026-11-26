@@ -37,7 +37,7 @@
     }
   ],
   "rarityRates": {
-    "common": 0.60,
+    "common": 0.6,
     "rare": 0.25,
     "epic": 0.12,
     "legendary": 0.03
@@ -55,7 +55,13 @@
       "lore": "Xây dựng năm 1049 dưới triều vua Lý Thái Tông theo giấc chiêm bao Phật Bà Quan Âm ngự trên tòa sen dắt vua lên tòa sen.",
       "scriptureText": "Liên hoa xuất thủy, bất nhiễm trần ai.",
       "audioNarrator": "Thuyết minh di tích ngàn năm Thăng Long Hà Nội.",
-      "tags": ["Thăng Long", "Lý Thái Tông", "Quan Âm", "Hoa Sen"]
+      "tags": [
+        "Thăng Long",
+        "Lý Thái Tông",
+        "Quan Âm",
+        "Hoa Sen"
+      ],
+      "ipfsImage": "ipfs://QmPqvWQ7szt7dZZcJPcZWGHngoj2WpyjwxUQrnFEgXZDng"
     },
     {
       "id": "card_vn_truclam",
@@ -69,7 +75,13 @@
       "lore": "Tác phẩm thiền học kinh điển của Đức Vua - Phật Hoàng Trần Nhân Tông sau khi ngài đắc đạo trên non thiêng Yên Tử.",
       "scriptureText": "Cư trần lạc đạo thả tùy duyên / Cơ tắc xan hề khốn tắc miên / Gia trung hữu bảo hưu tầm mịch / Đối cảnh vô tâm mạc vấn thiền.",
       "audioNarrator": "Triết lý nhập thế tự do tự tại của Trúc Lâm Yên Tử.",
-      "tags": ["Trần Nhân Tông", "Yên Tử", "Trúc Lâm", "Thiền"]
+      "tags": [
+        "Trần Nhân Tông",
+        "Yên Tử",
+        "Trúc Lâm",
+        "Thiền"
+      ],
+      "ipfsImage": "ipfs://QmQGxL4JSFBEvM9kGLuaX1kudoP6hG1F3YyTuns7z6S4qN"
     },
     {
       "id": "card_vn_keo",
@@ -83,7 +95,13 @@
       "lore": "Ngôi đại tự cổ kính bậc nhất vùng châu thổ sông Hồng thờ Quốc sư Không Lộ, lưu giữ kỹ nghệ kiến trúc mộng gỗ đỉnh cao thế kỷ 17.",
       "scriptureText": "Mộng mị tương liên, thiên niên bất dịch.",
       "audioNarrator": "Huyền thoại kiến trúc gác chuông Chùa Keo Thái Bình.",
-      "tags": ["Thái Bình", "Gác Chuông", "Quốc Sư Không Lộ", "Gỗ Cổ"]
+      "tags": [
+        "Thái Bình",
+        "Gác Chuông",
+        "Quốc Sư Không Lộ",
+        "Gỗ Cổ"
+      ],
+      "ipfsImage": "ipfs://QmaRRLkTEzNJfhHh86KmcLfHKktqDZ6gWwUX42j82DF3FG"
     },
     {
       "id": "card_vn_batnha",
@@ -97,7 +115,13 @@
       "lore": "Kinh điển tụng niệm mỗi sớm tối tại chốn thiền môn Việt Nam, cô đọng tinh hoa giáo lý Bát Nhã Ba La Mật Đa.",
       "scriptureText": "Sắc tức thị không, không tức thị sắc, thọ tưởng hành thức diệc phục như thị.",
       "audioNarrator": "Tụng kinh Bát Nhã trầm hùng thanh tịnh tâm can.",
-      "tags": ["Kinh Bát Nhã", "Tâm Kinh", "Trí Tuệ", "Vô Thường"]
+      "tags": [
+        "Kinh Bát Nhã",
+        "Tâm Kinh",
+        "Trí Tuệ",
+        "Vô Thường"
+      ],
+      "ipfsImage": "ipfs://QmWWuWsJb6zZU4ysUfMfdSjdQDdKhEPNJU1VBY8eygWcXY"
     },
     {
       "id": "card_vn_huong",
@@ -111,7 +135,13 @@
       "lore": "Quần thể tâm linh Hương Sơn tại Mỹ Đức Hà Nội, nơi hàng triệu phật tử trẩy hội đầu xuân tìm về nguồn cội tâm linh.",
       "scriptureText": "Nam mô Hương Tích Cực Lạc Quan Thế Âm Bồ Tát.",
       "audioNarrator": "Hành trình trẩy hội Chùa Hương linh thiêng non nước.",
-      "tags": ["Chùa Hương", "Suối Yến", "Hương Tích", "Cầu An"]
+      "tags": [
+        "Chùa Hương",
+        "Suối Yến",
+        "Hương Tích",
+        "Cầu An"
+      ],
+      "ipfsImage": "ipfs://QmYWdfsuKiNEAQEu9KZ4JgwpS5YK4dBunCwCDJUT3aHC7D"
     },
     {
       "id": "card_jp_todaiji",
@@ -125,7 +155,13 @@
       "lore": "Công trình bằng gỗ lớn nhất hành tinh được Thiên hoàng Shomu khởi dựng vào thế kỷ thứ 8 nhằm hộ quốc an dân.",
       "scriptureText": "Tỳ Lô Giá Na Phật quang phổ chiếu, bình đẳng đại từ.",
       "audioNarrator": "Thuyết minh Đại Tự Todai-ji và Đại Phật Nara cổ kính.",
-      "tags": ["Todaiji", "Nara", "Tỳ Lô Giá Na", "UNESCO"]
+      "tags": [
+        "Todaiji",
+        "Nara",
+        "Tỳ Lô Giá Na",
+        "UNESCO"
+      ],
+      "ipfsImage": "ipfs://QmRtnoZMJABNCH1hDTWpxEirdHeW5x336rMr4f5riq6dn2"
     },
     {
       "id": "card_jp_kinkaku",
@@ -139,7 +175,13 @@
       "lore": "Di sản thế giới UNESCO tại Kyoto, xây dựng từ thời Mạc Phủ Ashikaga Yoshimitsu kết hợp kiến trúc quý tộc Shinden và thiền viện Bukke.",
       "scriptureText": "Hoàng kim chiếu ảnh, tịnh độ hiện tiền.",
       "audioNarrator": "Vẻ đẹp vượt thời gian của Chùa Vàng Kinkakuji Kyoto.",
-      "tags": ["Kyoto", "Kinkakuji", "Mạc Phủ", "Hồ Sen"]
+      "tags": [
+        "Kyoto",
+        "Kinkakuji",
+        "Mạc Phủ",
+        "Hồ Sen"
+      ],
+      "ipfsImage": "ipfs://QmcCPR1FdSK2EzSWbWNWgo17yJAJEnbxYje1roEcQVS74Y"
     },
     {
       "id": "card_jp_ichigo",
@@ -153,7 +195,13 @@
       "lore": "Triết lý cốt lõi của Trà Đạo khởi xướng bởi Thiền sư Sen no Rikyu, nhắc nhở con người trân quý từng phút giây tri ngộ.",
       "scriptureText": "Nhất kỳ nhất hội, đương hạ tức thị, mạc đãi lai sinh.",
       "audioNarrator": "Tiếng nước sôi reo và bài học chánh niệm trong chén thiền trà.",
-      "tags": ["Ichigo Ichie", "Trà Đạo", "Sen no Rikyu", "Hiện Tại"]
+      "tags": [
+        "Ichigo Ichie",
+        "Trà Đạo",
+        "Sen no Rikyu",
+        "Hiện Tại"
+      ],
+      "ipfsImage": "ipfs://Qma9v9gvGQb8dV6cPTTnYe7nyvGHiX3hMMQahPfyTmSm6Z"
     },
     {
       "id": "card_jp_enso",
@@ -167,7 +215,13 @@
       "lore": "Thư pháp thiền tông Nhật Bản được vẽ bằng một hơi thở duy nhất, phản ánh trung thực tâm thái buông xả của thiền giả.",
       "scriptureText": "Viên đồng thái hư, vô khiếm vô dư.",
       "audioNarrator": "Hơi thở chánh niệm tạo tác vòng tròn Enso tối thượng.",
-      "tags": ["Enso", "Thiền Tông", "Vô Ngã", "Thư Pháp"]
+      "tags": [
+        "Enso",
+        "Thiền Tông",
+        "Vô Ngã",
+        "Thư Pháp"
+      ],
+      "ipfsImage": "ipfs://QmQEdfqyUHkyu5qpJT4aMwGXjetF9L42YFkRLQhU1uof8q"
     },
     {
       "id": "card_jp_ryoanji",
@@ -181,7 +235,13 @@
       "lore": "Kiệt tác vườn khô thiền viện Kyoto thế kỷ 15, mời gọi người ngắm tự lắng đọng tâm tư để nhận diện chính mình.",
       "scriptureText": "Tri túc thường lạc, bất cầu thập toàn.",
       "audioNarrator": "Tiếng sỏi cào tĩnh lặng trong sân thiền viện Ryoan-ji.",
-      "tags": ["Ryoanji", "Vườn Đá", "Kyoto", "Tĩnh Lặng"]
+      "tags": [
+        "Ryoanji",
+        "Vườn Đá",
+        "Kyoto",
+        "Tĩnh Lặng"
+      ],
+      "ipfsImage": "ipfs://QmTn2axUAML79pB1KisYx16S6P6N53yTckcwtLeZVfTjhM"
     },
     {
       "id": "card_th_watphra",
@@ -195,7 +255,13 @@
       "lore": "Tọa lạc bên trong Hoàng Cung Bangkok, nơi Quốc Vương Thái Lan đích thân thay áo ngọc cho tượng 3 lần mỗi năm theo 3 mùa.",
       "scriptureText": "Phật ngọc an trụ, quốc thái dân an, vạn linh bảo bọc.",
       "audioNarrator": "Lễ thay y Phật Ngọc linh thiêng tại Hoàng Cung Bangkok.",
-      "tags": ["Wat Phra Kaew", "Bangkok", "Phật Ngọc", "Hoàng Gia"]
+      "tags": [
+        "Wat Phra Kaew",
+        "Bangkok",
+        "Phật Ngọc",
+        "Hoàng Gia"
+      ],
+      "ipfsImage": "ipfs://QmUTma5Jm7zzDvtjYX2gSfb71rhEV2vjve3ibcYjduBpZi"
     },
     {
       "id": "card_th_watarun",
@@ -209,7 +275,13 @@
       "lore": "Ngôi chùa biểu tượng bên dòng sông Mẹ Chao Phraya, đặt theo tên thần Aruna - vị thần bình minh của Ấn Độ giáo và Phật giáo.",
       "scriptureText": "Bình minh phá hiểu, tuệ nhật quang minh.",
       "audioNarrator": "Chuông chiều ngân vang bên bảo tháp Chùa Bình Minh.",
-      "tags": ["Wat Arun", "Chao Phraya", "Bình Minh", "Gốm Sứ"]
+      "tags": [
+        "Wat Arun",
+        "Chao Phraya",
+        "Bình Minh",
+        "Gốm Sứ"
+      ],
+      "ipfsImage": "ipfs://QmafEvyZTSKm8P7pSkw11dhEdpQnucUmRE3WC9DtfG6cY4"
     },
     {
       "id": "card_th_metta",
@@ -223,7 +295,13 @@
       "lore": "Pháp môn thiền định căn bản của truyền thống Phật giáo Nam truyền, xua tan sân hận và kiến tạo an lạc đích thực.",
       "scriptureText": "Nguyện cho tất cả chúng sinh không hận thù, không khổ đau, thân tâm an lạc.",
       "audioNarrator": "Lời kinh rải tâm từ bằng tiếng Pali truyền cảm ấm áp.",
-      "tags": ["Metta", "Theravada", "Từ Bi", "An Lạc"]
+      "tags": [
+        "Metta",
+        "Theravada",
+        "Từ Bi",
+        "An Lạc"
+      ],
+      "ipfsImage": "ipfs://QmbSLm42f4DEZGFMZeSW93v1Ub6DT2mY2V4QZtCNucF4dX"
     },
     {
       "id": "card_th_dhamma",
@@ -237,7 +315,13 @@
       "lore": "Ghi dấu bài pháp thoại đầu tiên của Đức Phật tại Vườn Lộc Uyển chuyển bánh xe chánh pháp khai mở kỷ nguyên giác ngộ.",
       "scriptureText": "Pháp luân thường chuyển, bát chánh đạo thông.",
       "audioNarrator": "Ý nghĩa biểu tượng Bánh Xe Pháp Luân linh thánh.",
-      "tags": ["Pháp Luân", "Bát Chánh Đạo", "Lộc Uyển", "Niết Bàn"]
+      "tags": [
+        "Pháp Luân",
+        "Bát Chánh Đạo",
+        "Lộc Uyển",
+        "Niết Bàn"
+      ],
+      "ipfsImage": "ipfs://QmUUMXss1QhGFg1dxwcdu6TiTUtA6Be2XVSTaZRk1ny53h"
     },
     {
       "id": "card_kr_haeinsa",
@@ -251,7 +335,13 @@
       "lore": "Ngôi Tam Bảo Tự lưu giữ hơn 80.000 mộc bản Đại Tạng Kinh Triều Tiên nguyên vẹn suốt 750 năm, di sản ký ức thế giới UNESCO.",
       "scriptureText": "Hải ấn tam muội, ba lãng bất sinh, vạn tượng tề hiện.",
       "audioNarrator": "Bí mật kỹ thuật thông gió tự nhiên bảo tồn mộc bản Chùa Hải Ấn.",
-      "tags": ["Haeinsa", "Tripitaka Koreana", "Mộc Bản", "Hải Ấn"]
+      "tags": [
+        "Haeinsa",
+        "Tripitaka Koreana",
+        "Mộc Bản",
+        "Hải Ấn"
+      ],
+      "ipfsImage": "ipfs://QmYx3PPUNqq9R4o7vx6Wams99CKNvhYTaDj3io942JPxKy"
     },
     {
       "id": "card_kr_bulguk",
@@ -265,7 +355,13 @@
       "lore": "Quần thể cổ tự trên núi Tohamsan xây dựng từ triều đại Silla thế kỷ thứ 8, biểu tượng cho lòng mộ đạo thuần thành của nhân dân Hàn Quốc.",
       "scriptureText": "Phật quốc trang nghiêm, kim cang thạch trụ.",
       "audioNarrator": "Huyền thoại đôi tháp đá Đa Bảo và Thích Ca tại Phật Quốc Tự.",
-      "tags": ["Bulguksa", "Gyeongju", "Silla", "Tháp Đá"]
+      "tags": [
+        "Bulguksa",
+        "Gyeongju",
+        "Silla",
+        "Tháp Đá"
+      ],
+      "ipfsImage": "ipfs://QmUR4AQCVQ1DdqvhkHowkbKmmUu8f2sfFA54nZgHqHQps7"
     },
     {
       "id": "card_kr_wonhyo",
@@ -279,7 +375,13 @@
       "lore": "Giác ngộ huyền thoại của Thiền sư Wonhyo trong đêm tối tại ngôi mộ hoang, đặt nền móng cho Phật giáo hòa hợp của bán đảo Triều Tiên.",
       "scriptureText": "Tâm sinh tắc chủng chủng pháp sinh, tâm diệt tắc chủng chủng pháp diệt.",
       "audioNarrator": "Điển tích ngộ đạo uống nước sọ dừa của Đại sư Wonhyo.",
-      "tags": ["Wonhyo", "Nhất Tâm", "Chân Như", "Giác Ngộ"]
+      "tags": [
+        "Wonhyo",
+        "Nhất Tâm",
+        "Chân Như",
+        "Giác Ngộ"
+      ],
+      "ipfsImage": "ipfs://QmXgEDjjgLtxn7eFZ45uwjmmRu9PopR2RNS7FUymoJ9ULy"
     },
     {
       "id": "card_kr_jogyesa",
@@ -293,8 +395,13 @@
       "lore": "Trụ sở trung ương của Thiền phái Tào Khê Hàn Quốc, ngập tràn lồng đèn hoa sen lung linh muôn màu mỗi mùa Phật Đản.",
       "scriptureText": "Bạch tùng cổ thụ, đô thị thiền tâm.",
       "audioNarrator": "Không gian thiền định bình yên giữa lòng thủ đô Seoul hiện đại.",
-      "tags": ["Jogyesa", "Seoul", "Tào Khê", "Hoa Sen"]
+      "tags": [
+        "Jogyesa",
+        "Seoul",
+        "Tào Khê",
+        "Hoa Sen"
+      ],
+      "ipfsImage": "ipfs://QmZ2mUWaAWv4cpJ88GYaSbbphHFQkbaHi2bbxzMvo1PTQB"
     }
   ]
 }
-

@@ -5,7 +5,7 @@ import { tr } from '~/lib/ui/copy'
 import ZenIcon from '~/components/ZenIcon.vue'
 
 const hydra = useHydraStore()
-const isOpen = ref(false)
+const isOpen = ref(true)
 const selectedTx = ref<HydraActivityDto | null>(null)
 const copiedField = ref<string | null>(null)
 

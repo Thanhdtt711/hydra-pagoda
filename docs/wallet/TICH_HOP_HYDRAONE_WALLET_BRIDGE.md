@@ -43,7 +43,7 @@ Vì vậy, hệ thống áp dụng **Kiến Trúc Ví Chế Độ Kép (Dual-Mod
 Hệ thống sử dụng `@hydraone-sdk/core` để quản lý bắt tay (handshake) và truyền thông điệp hai chiều an toàn:
 - **Handshake ban đầu (`CLIENT_READY`):** Ngay khi `app.vue` mount xong trong iframe, client bắt buộc phải gọi `bridge.init()` để gửi thông điệp `CLIENT_READY` lên `window.parent` và chờ `HOST_ACK`. Nếu thiếu bước này, trang cha sẽ không gửi dữ liệu ví xuống iframe.
 - **Cập nhật trạng thái ví:** Khi người chơi kết nối ví, đổi tài khoản hoặc ngắt kết nối trên Header của HydraOne, trang cha bắn sự kiện `WALLET_STATE_CHANGED` vào iframe kèm theo địa chỉ ví Bech32 (`address`) và số dư ADA (`balanceADA` / `balanceLovelace`).
-- **Yêu cầu ký dữ liệu (`signData`):** Dùng để ký chuỗi nonce xác thực phiên đăng nhập (JWT) khi người chơi chủ động đăng nhập/xác thực.
+- **Yêu cầu ký dữ liệu (`signData`):** Dùng để ký chuỗi nonce xác thực phiên đăng nhập (cookie phiên `pagoda_session` `HttpOnly; SameSite=Strict`, lưu băm SHA-256 trong DB) khi người chơi chủ động đăng nhập/xác thực.
 - **Yêu cầu đọc UTxO & ký giao dịch (`getUtxos`, `signTx`, `submitTx`):** Chuyển giao dịch CBOR lên cho ví trang cha ký và phát tán giao dịch lên mạng Cardano.
 
 ---
@@ -56,7 +56,7 @@ Khác với luồng Standalone CIP-30 (yêu cầu ký xong CIP-8 mới báo đã
 1. Ngay khi `app.vue` chạy `onMounted`, hệ thống gọi `bridge.init()` và tiếp tục gọi `wallet.restore()`.
 2. Trong `stores/wallet.ts`, hàm `initHydraBridgeWatcher()` đồng bộ ngay `address`, `balanceLovelace` và đặt ngay `status = 'connected'`, `walletKey = 'hydraone'`, `walletName = 'HydraOne'` ngay khi nhận được địa chỉ từ Header cha.
 3. Hệ thống **không chặn hiển thị trạng thái kết nối chỉ vì chờ người dùng ký `signData`**, bởi vì trình duyệt thường chặn pop-up ký tự động nếu không xuất phát từ cú nhấp chuột trực tiếp của người dùng (`user gesture`).
-4. Việc đồng bộ tài khoản server (`/api/auth/me`) chạy ngầm qua `syncServerAccount(address)`. Nếu người dùng chưa có phiên JWT hợp lệ hoặc đổi ví trên Header, người dùng có thể xác thực qua `loginWithHydraBridge(address)` khi bấm nút làm mới hoặc khi thực hiện giao dịch nạp MC.
+4. Việc đồng bộ tài khoản server (`/api/auth/me`) chạy ngầm qua `syncServerAccount(address)`. Nếu người dùng chưa có phiên `pagoda_session` hợp lệ hoặc đổi ví trên Header, người dùng có thể xác thực qua `loginWithHydraBridge(address)` khi bấm nút làm mới hoặc khi thực hiện giao dịch nạp MC.
 
 ### 3.2. Luồng Nạp Merit Coin (`buyMcWithAda`) Qua Bridge
 

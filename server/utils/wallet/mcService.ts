@@ -2002,12 +2002,18 @@ export async function buyAndOpenCardPack(accountId: number, packId: string, requ
 }
 
 /**
- * Lấy danh sách thẻ bài đã sở hữu của người dùng kèm thống kê số lượng bản sao.
+ * Lấy danh sách thẻ bài đã sở hữu của người dùng kèm thống kê số lượng bản sao và trạng thái Mint NFT CIP-68.
  */
 export async function getUserCardInventory(accountId: number) {
   const db = await getDb()
   const rows = await db.prepare(`
-    SELECT card_id, rarity, COUNT(*) as count, MIN(unlocked_at) as first_unlocked_at, MAX(unlocked_at) as last_unlocked_at
+    SELECT card_id,
+           rarity,
+           COUNT(*) as count,
+           MIN(unlocked_at) as first_unlocked_at,
+           MAX(unlocked_at) as last_unlocked_at,
+           MAX(is_nft_minted) as is_nft_minted,
+           MAX(nft_asset_id) as nft_asset_id
     FROM card_inventory
     WHERE account_id = ?
     GROUP BY card_id, rarity
@@ -2017,6 +2023,8 @@ export async function getUserCardInventory(accountId: number) {
     count: number
     first_unlocked_at: number
     last_unlocked_at: number
+    is_nft_minted: number
+    nft_asset_id: string | null
   }>
 
   return rows

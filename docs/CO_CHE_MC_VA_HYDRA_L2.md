@@ -2,21 +2,13 @@
 
 Tài liệu này giải thích chi tiết:
 1. **Bản chất của MC Coin & Cơ chế Mua / Tiêu MC hiện tại** trong dự án **Vạn Cảnh Thiền Tự (`hydra-pagoda`)**.
-2. **Tính năng "Tọa Thiền 432Hz Nhận Thưởng MC Coin" (Đã Triển Khai)** (chống AFK/gian lận, giới hạn trần mỗi ngày) và **Cơ chế Nhận Lộc MC (Hầu đồng, Thắp hương, Leo núi) trên Cardano Hydra L2**.
-3. **Cơ chế Dự phòng Kép: Đưa MC Coin lên Cardano Hydra L2 + SQLite Fallback (Đã Triển Khai)**: giá trị của Hydra L2, kiến trúc Hybrid thực tế đã code, mô hình khóa server HMAC-SHA256, State UTxO với Inline Datum, hàng đợi tuần tự, giao diện hiển thị và bộ kiểm thử 11/11 ca.
+2. **Tính năng "Tọa Thiền 432Hz Nhận Thưởng MC Coin" (Đã Triển Khai)** (chống AFK/gian lận, giới hạn trần mỗi ngày) và **Cơ chế Nhận Lộc MC (Hầu đồng, Thắp hương, Leo núi, Kỳ Đài 5 môn cờ) trên Cardano Hydra L2**.
+3. **Cơ chế Dự phòng Kép: Đưa MC Coin lên Cardano Hydra L2 + PostgreSQL/SQLite Fallback (Đã Triển Khai)**: giá trị của Hydra L2, kiến trúc Hybrid thực tế đã code, mô hình khóa server HMAC-SHA256, State UTxO với Inline Datum, hàng đợi tuần tự, bảng theo dõi `HydraHeadWidget`, tương thích Hexcore (`hydra-node v2.x`) và bộ kiểm thử 11/11 ca.
 4. **Lớp Giữ Chân Không Dùng MC: Sổ Tu Tập & Ba Việc Lành (Đã Triển Khai)**: chuỗi ngày an lạc, cột mốc, ba việc lành mỗi ngày, quà là vật phẩm (không cộng MC, không qua Hydra L2), các bảng, endpoint và giới hạn đã biết.
-
-5. **Hey Sumale, hiện tại game chưa dùng hợp đồng thông minh (Smart Contract / Plutus / Aiken script) nào cả.**
-
-Cơ chế blockchain hiện nay của game đang chạy theo mô hình Sổ cái DB + Giao dịch thường (Key-based) trên Cardano L1 & Hydra L2:
-
-Xác thực ví (CIP-30 / CIP-8): Người chơi ký thông điệp bằng ví Cardano để chứng minh quyền sở hữu địa chỉ ví (chỉ kiểm tra chữ ký mật mã, không qua smart contract).
-Nạp ADA trên L1: Người chơi chuyển ADA trực tiếp tới địa chỉ ví kho bạc (NUXT_TREASURY_ADDRESS) như giao dịch chuyển tiền bình thường, không khóa tiền vào script/contract; backend kiểm tra giao dịch qua Blockfrost/Koios rồi cộng MC vào DB.
-Hydra L2 (Notary Mode — l2TxBuilder.ts):
-Dùng các địa chỉ khóa công khai thông thường (EnterpriseAddress từ keyhash, không phải địa chỉ script).
-Có đính kèm inline Plutus datum (Constr 0 [balanceAfter, ledgerId, deltaMc, accountId]) và metadata CIP-20 (nhãn 674) vào UTxO trong Hydra Head để ghi nhận / công chứng biến động số dư (phí 0), nhưng không có validator/smart contract on-chain nào đứng ra khóa hay kiểm duyệt logic giao dịch.
-
-Nói ngắn gọn: DB (PostgreSQL / SQLite) vẫn là nguồn sự thật chính, còn Cardano L1 dùng để nạp ADA và Hydra L2 đóng vai trò sổ công chứng tức thì (không dùng smart contract). Nếu sau này muốn mint NFT Thẻ Di Sản (CIP-68) hoặc khóa quỹ công đức minh bạch on-chain thì mới cần viết thêm smart contract (ví dụ bằng Aiken).
+5. **Lưu ý về Smart Contract (Hợp đồng thông minh):** Hiện tại game **chưa sử dụng hợp đồng thông minh (Plutus / Aiken validator script)** on-chain. Cơ chế blockchain vận hành theo mô hình **Sổ cái DB (PostgreSQL Supabase / SQLite) + Giao dịch Key-based trên Cardano L1 & Hydra L2**:
+   - **Xác thực ví (CIP-30 / CIP-8):** Kiểm tra chữ ký mật mã Ed25519 trên `COSE_Sign1`, không qua smart contract.
+   - **Nạp ADA trên L1:** Chuyển ADA trực tiếp tới ví kho bạc (`NUXT_TREASURY_ADDRESS`) kèm Metadata `#8181`, backend đối chiếu qua Blockfrost/Koios rồi cộng MC vào DB.
+   - **Hydra L2 (Notary Mode — `l2TxBuilder.ts`):** Dùng địa chỉ Enterprise khóa công khai, đính kèm Inline Plutus Datum (`Constr 0 [balanceAfter, ledgerId, deltaMc, accountId]`) và Metadata CIP-20 (nhãn `674`) trong Hydra Head để công chứng biến động số dư với phí bằng `0`, chưa có validator script kiểm duyệt logic. Nếu sau này mint NFT Thẻ Di Sản (CIP-68) hoặc khóa quỹ công đức on-chain thì mới cần bổ sung smart contract (Aiken).
 
 > Nội dung tài liệu được đối chiếu lại với mã nguồn hiện tại (`server/utils/wallet/*`, `server/utils/hydra/*`, `server/api/*`, `stores/*`, `components/*`). Các tính năng chưa có trong code được ghi rõ là "Dự kiến".
 
@@ -25,14 +17,14 @@ Nói ngắn gọn: DB (PostgreSQL / SQLite) vẫn là nguồn sự thật chính
 ## Phần 1. Giải thích Bản chất MC Coin & Cơ chế Mua / Tiêu MC Hiện tại
 
 ### 1.1. MC Coin là gì?
-- **MC Coin (Merit Coin / Điểm Tâm Duyên)** là **đơn vị điểm nội bộ trong game (Off-chain In-Game Currency)** được lưu trữ và bảo chứng bởi Sổ cái Máy chủ (`mc_ledger` trong SQLite WAL). Số dư hiện tại nằm ở `accounts.mc_balance`.
+- **MC Coin (Merit Coin / Điểm Tâm Duyên)** là **đơn vị điểm nội bộ trong game (Off-chain In-Game Currency)** được lưu trữ và bảo chứng bởi Sổ cái Máy chủ (`mc_ledger` trên **PostgreSQL Supabase** khi cấu hình `DATABASE_URL`, hoặc fallback **SQLite WAL** khi chạy cục bộ). Số dư hiện tại nằm ở `accounts.mc_balance`.
 - **Tỷ lệ quy đổi chuẩn**:
   - `1 ADA = 1.000.000 lovelace = 1.000 MC`
   - `1 MC = 1.000 lovelace`
-  - Toàn bộ hệ thống chỉ dùng **số nguyên (`INTEGER`)**, không dùng số thực để tránh sai số làm tròn.
+  - Toàn bộ hệ thống chỉ dùng **số nguyên (`INTEGER` / `BIGINT`)**, không dùng số thực để tránh sai số làm tròn.
 - **Tính chất một chiều**:
-  - Người chơi có thể dùng **ADA trên chuỗi Cardano L1** để mua **MC Coin** (hoặc nhận thưởng MC qua hoạt động tu tập như **Tọa Thiền**, **Hầu Đồng**, **Thắp Hương**, **Leo núi Parkour**).
-  - MC Coin chỉ dùng để tiêu dùng bên trong chùa (*Bói Quẻ 6 Môn, Cửa Hàng Cổ Phục & Lễ Phẩm, Khai Quang Thẻ Bài Di Sản 3D, Hòm Công Đức, Bảo trợ Hầu Đồng, phí Parkour*), **không đổi ngược ra ADA**.
+  - Người chơi có thể dùng **ADA trên chuỗi Cardano L1** để mua **MC Coin** (hoặc nhận thưởng MC qua hoạt động tu tập như **Tọa Thiền**, **Hầu Đồng**, **Thắp Hương**, **Leo núi Parkour**, **Kỳ Đài 5 môn cờ**).
+  - MC Coin chỉ dùng để tiêu dùng bên trong chùa (*Bói Quẻ 6 Môn & Tơ Duyên Cặp Đôi, Cửa Hàng Cổ Phục & Lễ Phẩm, Khai Quang Thẻ Bài Di Sản 3D & Gacha Pack, Hòm Công Đức, Bảo trợ Hầu Đồng, phí Parkour, cho cá Koi ăn & trồng cây Vườn Thiền*), **không đổi ngược ra ADA**.
 
 ---
 
@@ -174,6 +166,7 @@ Cả 3 hoạt động nhận lộc đều gọi hàm trung tâm `credit(accountI
 | **Hầu Đồng Tứ Phủ** (`hauDongService.ts`) | `hau_dong_blessing` | `hau_dong_blessing` / `hd_loc_{sessionId}_gia{giaIndex}_u{accountId}` | Mỗi giá nhận `25 MC` cơ bản, `+5 MC` nếu đang cúi lạy (bowing), `+15 MC` nếu là người bảo trợ (tối đa `45 MC/giá`). Trần `250 MC/ngày` (`dailyMaxClaimMc`). Số thực nhận là `min(thưởng, còn lại trong ngày, max(10, quỹ lộc còn lại của phiên))`. Mỗi giá chỉ nhận 1 lần |
 | **Thắp Hương Đầu Ngày** (`server/api/mc/incense/offer.post.ts`) | `incense_daily` | `incense` / `incense_{accountId}_{YYYY-MM-DD}` | `+15 MC` mỗi ngày (ngày tính theo giờ Việt Nam qua `getVietnamDayKey`), kèm Pháp Cú chúc phúc |
 | **Leo núi Parkour** (`parkourService.ts`) | `custom_service` | `parkour_summit_reward` / `pk_win_{runToken}` | `+50 MC` khi lên đỉnh. Thời gian tối thiểu `6 giây` (nhanh hơn bị từ chối `too_fast`) |
+| **Kỳ Đài Dưới Bóng Cây Đa** (`boardGameService.ts`) | `board_game_win`, `board_game_all_clear` | `board_game` / `bg_{gameId}_{accountId}_{dayKey}` | `+10 MC` cho lần thắng đầu tiên mỗi ngày ở mỗi môn cờ (Cờ Tướng, Ô Ăn Quan, Cờ Caro, Cờ Vua, Cờ Vây) + `+10 MC` thưởng thắng đủ cả 5 môn (tối đa `60 MC/ngày`) |
 
 Chi tiết từng hoạt động:
 - **Hầu Đồng**: một phiên diễn ra `480 giây` gồm `5 giá`, mỗi giá `96 giây`. Lộc chỉ nhận được ở bước chúc phúc (bước 5) hoặc bước 6 nếu đã xem tối thiểu `15 giây` (`minWatchSecToClaim`). Có phiên theo lịch hằng ngày lúc `11:00 (GMT+7)` với quỹ `900 MC` (`scheduled_lunar`), hoặc phiên bảo trợ khi người chơi dâng công đức (`hau_dong_donation`, ngưỡng cộng đồng `2.500 MC`, tối thiểu `50 MC` mỗi đóng góp). Hàm `claimHauDongBlessing` gọi `credit()` rồi mới cập nhật `hau_dong_attendance` và quỹ phiên trong một transaction riêng, nên hai bước này không nguyên tử với nhau.
@@ -261,13 +254,16 @@ Các điểm kết nối nghiệp vụ trong mã nguồn:
 - `server/api/auth/verify.post.ts`: Sau khi xác thực chữ ký CIP-8, nếu Hydra L2 bật thì gọi `ensureAccountSession` để cấp khóa L2 cho tài khoản (lỗi chỉ ghi cảnh báo và tiếp tục dùng SQLite). Phản hồi có thêm trường `l2`.
 - Các endpoint chờ tối đa 1.500ms qua `getHydraProof` để trả kèm bằng chứng `hydra` cho client hiển thị ngay:
   - `server/api/mc/fortune/draw.post.ts` (chỉ khi lượt rút có tiêu MC)
+  - `server/api/mc/fortune/draw-couple.post.ts`
   - `server/api/mc/merit/donate.post.ts`
   - `server/api/mc/shop/buy.post.ts`
-  - `server/api/mc/meditation/complete.post.ts`
+  - `server/api/mc/cards/pack-buy.post.ts`
+  - `server/api/mc/meditation/complete.post.ts`, `server/api/mc/meditation/group-bonus.post.ts`
   - `server/api/mc/incense/offer.post.ts`
-  - `server/api/mc/hau-dong/claim.post.ts`
-  - `server/api/mc/parkour/complete.post.ts`
-- Hàm `getHydraProof` trả `{ enabled, status, txHash, snapshotNo }`; khi Hydra tắt trả `{ enabled: false, status: 'offchain', ... }`.
+  - `server/api/mc/hau-dong/donate.post.ts`, `server/api/mc/hau-dong/claim.post.ts`
+  - `server/api/mc/parkour/start.post.ts`, `server/api/mc/parkour/complete.post.ts`
+  - `server/api/mc/games/win.post.ts`
+- Hàm `getHydraProof` trả `{ enabled, status, txHash, snapshotNo, dbEngine }`; khi Hydra tắt trả `{ enabled: false, status: 'offchain', dbEngine, ... }`.
 
 ---
 
@@ -354,32 +350,35 @@ Ngoài ra `getHydraStats()` trả `{ byStatus, fuelPoolSize, inFlight }` phục 
 ### 3.7. Endpoint Kiểm tra Trạng Thái Hệ thống (`GET /api/hydra/status`)
 
 Endpoint công khai, luôn gắn `Cache-Control: no-store`, cung cấp thông tin giám sát cho giao diện:
-- `enabled`: Trạng thái bật/tắt Hydra L2 trong cấu hình.
-- `connected`: Trạng thái kết nối WebSocket tới hydra-node.
-- `mode`: Chế độ hiện tại (`hydra_l2` khi Head đang Open, hoặc `local_ledger` khi chạy dự phòng).
-- `headStatus`: Trạng thái kênh (`Open`, `Disconnected`, v.v.).
+- `enabled`: Trạng thái bật/tắt Hydra L2 trong cấu hình (đọc nóng từ `.env` qua `readLiveDotEnv()`).
+- `connected`: Trạng thái kết nối WebSocket tới `hydra-node` / Hexcore.
+- `mode`: Chế độ hiện tại (`hydra_l2` khi Head đang `Open`, hoặc `local_ledger` khi chạy dự phòng).
+- `dbEngine` & `network`: Động cơ CSDL đang chạy (`postgres` hoặc `sqlite`) và mạng Cardano (`preprod` hoặc `mainnet`).
+- `headStatus` & `headId`: Trạng thái kênh (`Open`, `Initializing`, `Closed`, `FanoutPossible`, `Disconnected`...) và mã Head.
 - `latestSnapshotNo`: Số thứ tự snapshot mới nhất đã được xác nhận.
-- `totalL2Txs` / `confirmedL2Txs`: Tổng số giao dịch L2 đã gửi và số đã chốt snapshot.
-- `avgConfirmMs`: Thời gian xác nhận trung bình.
-- `fuelAddress`: Địa chỉ ví nhiên liệu, **chỉ có khi Hydra bật**.
-- `ledger`: Thống kê hàng đợi `{ byStatus, fuelPoolSize, inFlight }`, **chỉ có khi Hydra bật**.
+- `totalL2Txs` / `confirmedL2Txs` / `avgConfirmMs`: Tổng giao dịch L2, số đã xác nhận và độ trễ trung bình.
+- `fuelAddress`, `headUtxoCount`, `fuelUtxoCount`, `adaLockedLovelace`, `adaLocked`: Thông tin địa chỉ Fuel, số UTxO và lượng ADA khóa trong Head (chỉ có khi Hydra bật).
+- `recentTxs`: Danh sách 25 giao dịch L2 gần nhất kèm `txHash`, `deltaMc`, `balanceAfter`, `snapshotNo`, `latencyMs`, `l1Address`, `stateUtxoRef` và `cip20Lines` phục vụ bảng theo dõi trực tiếp.
+- `ledger`: Thống kê hàng đợi `{ byStatus, fuelPoolSize, inFlight }` (chỉ có khi Hydra bật).
 
-Khi Hydra tắt, endpoint trả về dạng rút gọn: `{ enabled: false, connected: false, mode: 'local_ledger', headStatus: 'Disconnected', latestSnapshotNo: 0, totalL2Txs: 0, confirmedL2Txs: 0, avgConfirmMs: null, ledger: null }` (không có `fuelAddress`).
+Khi Hydra tắt, endpoint tự động đóng WebSocket nền (`stopHydraClient()`) và trả về dạng rút gọn (`enabled: false`, `mode: 'local_ledger'`, `headStatus: 'Disconnected'`, `recentTxs: []`, `ledger: null`).
 
 ---
 
 ### 3.8. Hiển thị Trực Quan trên Giao Diện Người Dùng
 
-1. **Chỉ báo Chế độ Sổ cái trên HUD (`data-testid="hud-ledger-mode"`)** (`stores/hydra.ts`, thăm dò `GET /api/hydra/status` mỗi 15 giây khi có component theo dõi):
-   - Nhãn `Hydra L2` chỉ khi `enabled && connected && mode === 'hydra_l2'`.
-   - Nhãn `SQLite` trong mọi trường hợp còn lại (Hydra tắt hoặc chưa kết nối được hydra-node).
+1. **Chỉ báo Chế độ Sổ cái trên HUD (`data-testid="hud-ledger-mode"`)** (`stores/hydra.ts`, thăm dò `GET /api/hydra/status` mỗi **8 giây** và làm mới tức thời ngay khi có giao dịch MC mới):
+   - Nhãn `Hydra L2` khi `enabled && connected && mode === 'hydra_l2'`.
+   - Nhãn `PostgreSQL` hoặc `SQLite` (tương ứng `dbEngine`) khi Hydra tắt hoặc chưa kết nối được `hydra-node`.
 2. **Huy hiệu Chứng thực Giao dịch `components/HydraBadge.vue`**:
-   - `Hydra L2 · Snapshot #N · Tx abcd…wxyz` (khi `snapshot_confirmed`).
+   - `Hydra L2 · Snapshot #N · Tx abcd…wxyz` (khi `snapshot_confirmed`, tự đồng bộ chéo từ `useHydraStore()`).
    - `Hydra L2 · Đã xác thực` (khi `valid`).
    - `Hydra L2 · Đang xác nhận` (khi `submitted`).
-   - `SQLite · Ghi ở sổ cái cục bộ` (khi `offchain` hoặc `enabled === false`).
-   - Không hiển thị gì nếu chưa có dữ liệu bằng chứng.
-   - Tích hợp tại: kết quả bói quẻ và lịch sử quẻ, biên lai công đức, mua vật phẩm / thẻ bài, kết quả tọa thiền, lộc hầu đồng (`HauDongPanel.vue`) và thông báo thắp hương (`TempleCanvas.vue`).
+   - `PostgreSQL · Sổ cái Supabase` hoặc `SQLite · Sổ cái cục bộ` (khi `offchain` hoặc `enabled === false`).
+   - Tích hợp tại: kết quả bói quẻ & tơ duyên, biên lai công đức, mua vật phẩm / thẻ bài, kết quả tọa thiền, lộc hầu đồng (`HauDongPanel.vue`), thắng cờ (`BodhiGamesModal.vue`) và thông báo thắp hương (`TempleCanvas.vue`).
+3. **Bảng Theo Dõi Trực Tiếp `components/HydraHeadWidget.vue`:**
+   - Thanh dọc `HYDRA HEAD` bám mép phải màn hình 3D (sáng xanh ngọc khi `OPEN`, tối mờ khi `OFF`/`OFFLINE`).
+   - Khi mở ra hiển thị số `UTxO`, lượng `ADA` đang khóa trong Head, dải `Fee 0 | Layer-2 | ~ms/tx`, danh sách `Hoạt động trong Head` và hộp kiểm chứng **Chứng thực L2** (bấm vào từng dòng để xem `TxHash`, `State UTxO`, `Inline Datum`, `CIP-20 Metadata (674)` và mở link **Xem Cardanoscan Fuel L1**).
 
 ---
 
@@ -395,7 +394,7 @@ npm run hydra:mock
 npm run wallet:test:hydra
 ```
 
-Các script liên quan trong `package.json`: `hydra:mock`, `hydra:prepare`, `hydra:up`, `hydra:down`, `hydra:logs`, `wallet:test:hydra`, `wallet:test:meditation`.
+Các script liên quan trong `package.json`: `hydra:mock`, `hydra:prepare`, `hydra:commit`, `hydra:up`, `hydra:down`, `hydra:logs`, `wallet:test:hydra`, `wallet:test:meditation`.
 
 **11 ca kiểm thử bắt buộc luôn đạt 100% PASS**:
 1. `GET /api/hydra/status`: Kiểm tra kết nối và trạng thái Head = Open.

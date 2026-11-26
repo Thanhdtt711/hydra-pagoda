@@ -10,24 +10,24 @@ Dự án **Hydra Pagoda** sử dụng mô hình **Sổ cái kép (Hybrid Ledger)
 
 1. **Lớp Cơ sở dữ liệu (PostgreSQL Supabase / SQLite):** Lưu trữ tức thời mọi biến động số dư Merit Coins (`mc_balance`), lịch sử giao dịch (`mc_ledger`), quẻ bói (`fortune_records`), chuỗi tu tập và phần thưởng.
 2. **Lớp Chứng thực Hydra L2 (`hydra-node` trên Hexcore):** Khi `HYDRA_L2_ENABLED=true` và Head đang ở trạng thái **`Open`** kèm quỹ mồi (**Fuel UTxO**), mỗi bút toán trong `mc_ledger` sẽ được đóng gói thành một giao dịch **Cardano Conway-era (`NewTx`)** thực thụ với:
-   - **State UTxO + Inline Datum (CIP-68 style):** Chứa `accountId`, `mcBalance`, `lastLedgerId`, `updatedAt`.
-   - **Metadata nhãn `8182`:** Đính kèm chi tiết bút toán (`ledgerId`, `type`, `deltaMc`, `balanceAfter`, `refType`, `refId`).
-   - **Chứng thực Snapshot (`SnapshotConfirmed`):** Giao dịch được các node trong Hydra Head ký xác nhận tức thì với phí gas bằng `0`, cập nhật `hydra_status = 'snapshot_confirmed'`, `hydra_tx_id`, và `hydra_snapshot_no` vào bảng `mc_ledger`.
+   - **State UTxO + Inline Datum:** Khóa `NUXT_HYDRA_STATE_LOVELACE` (mặc định 2 ADA) tại `l2_address`, mang Plutus Inline Datum `Constr 0 [balanceAfter, ledgerId, deltaMc, accountId]`.
+   - **Metadata CIP-20 nhãn `674`:** Đính kèm 4 dòng chứng thực (`Van Canh Thien Tu - Hydra L2 MC Ledger`, `Action: <reason> (<+/-delta> MC)`, `Account: <l1Address>`, `Receipt: mc_<reason>_<refId>`).
+   - **Chứng thực Snapshot (`SnapshotConfirmed`):** Giao dịch được các node trong Hydra Head ký xác nhận tức thì với phí gas bằng `0`, cập nhật `hydra_status = 'snapshot_confirmed'`, `hydra_tx_hash`, và `hydra_snapshot_no` vào bảng `mc_ledger`.
 
-### 12 Luồng Giao Dịch Trong Game Được Chứng Thực Trên Hydra L2
-Khi Hydra L2 hoạt động đầy đủ, tất cả 12 luồng giao dịch MC trong game đều hiển thị huy hiệu xanh ngọc **`Hydra L2 · Snapshot #...`**:
-1. **Xin Quẻ Cầu An (6 môn đơn):** `POST /api/mc/fortune/draw`
+### Các Luồng Giao Dịch MC Trong Game Được Chứng Thực Trên Hydra L2
+Khi Hydra L2 hoạt động đầy đủ, mọi luồng giao dịch MC trong game đều được phản chiếu lên Hydra Head và trả về bằng chứng **`hydra`** (`Hydra L2 · Snapshot #...`):
+1. **Xin Quẻ Cầu An (6 môn đơn):** `POST /api/mc/fortune/draw` (lượt dùng MC)
 2. **Chiêm Tinh Tơ Duyên Cặp Đôi:** `POST /api/mc/fortune/draw-couple`
-3. **Gieo Quẻ Tức Thời:** `POST /api/mc/spend-fortune`
-4. **Hòm Công Đức (Merit Box):** `POST /api/mc/merit-box`
-5. **Cửa Hàng Pháp Khí & Vật Phẩm:** `POST /api/shop/buy`
-6. **Thỉnh Thẻ Bài Di Sản & Mở Gói Gacha:** `POST /api/cards/buy`, `POST /api/cards/open-pack`
-7. **Hội Thiền 432Hz (Meditate-to-Earn):** `POST /api/mc/meditation/claim`
-8. **Dâng Hương Tam Bảo:** `POST /api/mc/incense/offer`
-9. **Thưởng Thức Hầu Đồng / Tán Lộc:** `POST /api/mc/hau-dong/donate`
-10. **Hành Hương Tháp Cổ (Parkour):** `POST /api/mc/parkour/start`
-11. **Kỳ Đài Dưới Bóng Cây Đa (5 trò cờ dân gian):** `POST /api/mc/games/win`
-12. **Nạp ADA -> MC trên Cardano L1:** `POST /api/mc/verify-deposit`
+3. **Hòm Công Đức (Merit Box):** `POST /api/mc/merit/donate`
+4. **Cửa Hàng Pháp Bảo & Cổ Phục:** `POST /api/mc/shop/buy`
+5. **Mở Gói Thẻ Bài Di Sản (Gacha Pack):** `POST /api/mc/cards/pack-buy`
+6. **Hội Thiền 432Hz (Meditate-to-Earn):** `POST /api/mc/meditation/complete`, `POST /api/mc/meditation/group-bonus`
+7. **Dâng Hương Tam Bảo:** `POST /api/mc/incense/offer`
+8. **Nhà Hầu Đồng (Công đức mở đàn & Nhận lộc):** `POST /api/mc/hau-dong/donate`, `POST /api/mc/hau-dong/claim`
+9. **Hành Hương Leo Núi Parkour:** `POST /api/mc/parkour/start`, `POST /api/mc/parkour/complete`
+10. **Kỳ Đài Dưới Bóng Cây Đa (5 trò cờ dân gian):** `POST /api/mc/games/win`
+11. **Hồ Sen Cá Koi & Vườn Thiền (lượt dùng MC):** `POST /api/mc/koi/feed`, `POST /api/mc/garden/plant`
+12. **Nạp ADA -> MC trên Cardano L1:** `POST /api/shop/orders/:id/submit` / `POST /api/shop/webhook/blockfrost` (tự gọi `scheduleHydraRecordByRef('deposit_ada', orderId)`)
 
 ---
 
@@ -51,7 +51,7 @@ HYDRA_NODE_WS_URL=wss://vtech.hexcore.io.vn/api/heads/<HEAD_ID>/nodes/0/socket?X
 
 # 5. Khóa bí mật 32-byte (64 ký tự hex) dùng để dẫn xuất ví Fuel L1/L2 và khóa phiên (Session Key)
 # LƯU Ý QUAN TRỌNG: Giữ cố định chuỗi này để địa chỉ ví Fuel không bị thay đổi giữa các lần chạy!
-NUXT_HYDRA_SESSION_SECRET=5de5b2b4cb6bd276b70355c2ef5371a3194705bbbcd294262b02ee061c39ed40
+NUXT_HYDRA_SESSION_SECRET=<64_KY_TU_HEX_BI_MAT_CUA_SERVER>
 
 # 6. Thông số vận hành UTxO trong Head
 NUXT_HYDRA_STATE_LOVELACE=2000000
@@ -117,21 +117,29 @@ Khi thành công, terminal sẽ hiển thị:
 🔗 L1 Commit TxHash: 225f0182a312685ef8623979c57146fe8c03289b39919154342bfb5a3204b62f
 ```
 
-### Bước 4: Chờ Chuỗi Sự Kiện Xác Nhận Trên Hexcore (1 – 3 Phút)
+### Bước 4: Chờ Chuỗi Sự Kiện Xác Nhận Trên Hexcore
 Sau khi giao dịch Commit được gửi lên L1:
-- **Trường hợp 1 (Commit khi Head đang `Initializing`):** Sau khoảng 20–40 giây khi L1 xác nhận giao dịch Commit, các node trong Head sẽ tự động gom chữ ký (`CollectCom`) và phát sự kiện **`HeadIsOpen`** kèm theo UTxO 100 ADA bên trong!
-- **Trường hợp 2 (Incremental Deposit khi Head đã `Open` sẵn):** `hydra-node` trên Hexcore sẽ lần lượt xử lý 3 sự kiện trên chuỗi L1:
+- **Trường hợp 1 (Commit khi Head đang `Initializing`):** Sau khoảng 20–40 giây khi L1 xác nhận giao dịch Commit, các node trong Head tự động gom chữ ký (`CollectCom`) và phát sự kiện **`HeadIsOpen`** kèm luôn UTxO 100 ADA bên trong.
+- **Trường hợp 2 (Incremental Deposit khi Head đã `Open` sẵn trên `hydra-node v2.4.2`):** Vì bản v2 mở Head theo kiểu commit-less, khoản nạp bổ sung phải chờ hết thời gian **`--deposit-period`** chống rollback L1 (trên Hexcore mặc định hiển thị biểu tượng đồng hồ cát **`720s` = 12 phút**), sau đó `hydra-node` lần lượt phát các sự kiện:
   1. `CommitRecorded` / `DepositRecorded` (L1 ghi nhận giao dịch Deposit).
-  2. `CommitApproved` (Head ký xác nhận khoản nạp).
-  3. `CommitFinalized` / `DepositFinalized` (Khoản 100 ADA chính thức đi vào Snapshot UTxO của Head).
+  2. `DepositActivated` (đủ thời gian ủ `deposit-period`).
+  3. `CommitApproved` (Head ký xác nhận khoản nạp).
+  4. `CommitFinalized` / `DepositFinalized` (Khoản 100 ADA chính thức đi vào Snapshot UTxO của Head).
 
 ---
 
 ## 4. Cách Kiểm Tra Hệ Thống Đã Chạy Hydra L2 Hay Chưa
 
-Bạn có **3 cách trực quan** để kiểm tra ngay lập tức:
+Bạn có **4 cách trực quan** để kiểm tra ngay lập tức:
 
-### Cách 1: Kiểm tra qua API `/api/hydra/status`
+### Cách 1: Bảng Theo Dõi `HYDRA HEAD` Trực Tiếp Trên Màn Hình 3D (`HydraHeadWidget.vue`)
+- Ở mép phải màn hình 3D luôn có thanh dọc **`HYDRA HEAD`**:
+  - **Sáng xanh ngọc (`OPEN`):** Head đang kết nối và hoạt động.
+  - **Tối xám (`OFF` / `OFFLINE` / `IDLE`):** Hydra L2 đang tắt hoặc Head chưa mở.
+- Bấm vào thanh dọc để mở bảng chi tiết hiển thị **Mã Head / Ví mồi**, số **UTxO**, tổng **ADA đang khóa L2** (ví dụ `100 ADA`), độ trễ trung bình (`~ms/tx`) và danh sách **Hoạt động trong Head**.
+- **Nhấp vào bất kỳ dòng giao dịch nào** để mở hộp **Chứng thực L2**: xem và sao chép `TxHash`, `State UTxO`, `Inline Datum` (biến động MC và số dư sau giao dịch), `CIP-20 Metadata (674)` và mở link **Xem Cardanoscan Fuel L1** / **Ví L1 neo**.
+
+### Cách 2: Kiểm tra qua API `/api/hydra/status`
 Mở trình duyệt truy cập: `http://localhost:3012/api/hydra/status`
 
 Khi Hydra L2 đã sẵn sàng 100%, JSON trả về sẽ có:
@@ -141,11 +149,13 @@ Khi Hydra L2 đã sẵn sàng 100%, JSON trả về sẽ có:
   "connected": true,
   "mode": "hydra_l2",
   "dbEngine": "postgres",
+  "network": "preprod",
   "headStatus": "Open",
   "latestSnapshotNo": 1,
   "fuelAddress": "addr_test1vp05c04jd9hcnvynjsjqrlt5t3d5krxysc2ucvtwlqsh0csrwqk29",
-  "headUtxoCount": 10,
+  "headUtxoCount": 11,
   "fuelUtxoCount": 10,
+  "adaLocked": 100,
   "ledger": {
     "fuelPoolSize": 10,
     "inFlight": 0
@@ -153,16 +163,18 @@ Khi Hydra L2 đã sẵn sàng 100%, JSON trả về sẽ có:
 }
 ```
 - **`headStatus: "Open"`**: Kết nối WebSocket tới Hexcore thông suốt và Head đang mở.
-- **`fuelUtxoCount > 0`** (và `fuelPoolSize > 0`): Trong Head đã có UTxO mồi thuộc về địa chỉ Fuel. Ngay ở giao dịch đầu tiên, `hydraQueue.ts` sẽ tự động tách (fan-out) 1 UTxO 100 ADA thành **10 UTxO mồi** (`fuelPoolSize: 10`) để có thể xử lý song song 10 giao dịch L2 cùng lúc mà không cần chờ nhau!
+- **`fuelUtxoCount > 0`** (và `fuelPoolSize > 0`): Trong Head đã có UTxO mồi thuộc về địa chỉ Fuel. Ngay ở giao dịch đầu tiên, `hydraQueue.ts` tự động tách 1 UTxO 100 ADA thành **10 UTxO mồi** (`fuelPoolSize: 10`) để xử lý song song 10 giao dịch L2 cùng lúc.
 
-### Cách 2: Quan sát Huy Hiệu (Badge) Trên Giao Diện Game
+### Cách 3: Quan sát Huy Hiệu (`HydraBadge.vue`) Trên Giao Diện Game
 - Khi thực hiện **Xin Xăm, Bói Quẻ, Tơ Duyên, Công Đức, Mua Vật Phẩm, Thỉnh Thẻ Bài, Thắng Cờ...**:
-  - Nếu hiển thị huy hiệu xanh ngọc **`● Hydra L2 · Snapshot #12 · 4ae91c8b...`**: Giao dịch đã được chứng thực trên Hydra Head L2!
-  - Nếu hiển thị huy hiệu xanh dương **`● PostgreSQL · Sổ cái Supabase`**: Giao dịch hiện mới được lưu ở cơ sở dữ liệu (do Head chưa Open hoặc `fuelUtxoCount === 0`).
+  - Huy hiệu xanh ngọc **`Hydra L2 · Snapshot #12 · Tx 4ae9…1c8b`**: Giao dịch đã được chứng thực trên Hydra Head L2.
+  - Huy hiệu xanh dương **`PostgreSQL · Sổ cái Supabase`** (hoặc `SQLite · Sổ cái cục bộ`): Giao dịch hiện mới lưu ở cơ sở dữ liệu (do Head chưa Open hoặc `fuelUtxoCount === 0`).
 
-### Cách 3: Quan sát Bảng Ví Cardano & Nạp MC
+### Cách 4: Quan sát Bảng Ví Cardano & Nạp MC
 - Mở ngăn kéo **Ví Cardano & Nạp MC**, dòng trạng thái bên dưới tab `Nạp MC Coin` sẽ hiển thị:
   `CSDL: PostgreSQL (Supabase) · Hydra L2 - Head Open - Snapshot #... - ... tx xác nhận`
+
+> **Mẹo vận hành nóng (Live Reload `.env`):** `server/utils/hydra/config.ts` tự động theo dõi thời gian chỉnh sửa (`mtime`) của file `.env`. Khi bạn đổi `HYDRA_L2_ENABLED=false` hoặc đổi `HYDRA_NODE_WS_URL` trong `.env`, backend tự động đóng/mở lại kết nối WebSocket ngay lập tức mà không cần khởi động lại server.
 
 ---
 
@@ -180,7 +192,7 @@ Khi làm việc với node trên **Hexcore**, cần lưu ý đường dẫn HTTP
 
 ---
 
-## 6. Bảng Chẩn Đoán & Xử Lý Sự Cố Thườngặp (Troubleshooting)
+## 6. Bảng Chẩn Đoán & Xử Lý Sự Cố Thường Gặp (Troubleshooting)
 
 | Mã cảnh báo trong Terminal | Nguyên nhân | Cách khắc phục |
 | :--- | :--- | :--- |

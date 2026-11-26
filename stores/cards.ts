@@ -44,6 +44,8 @@ export interface UserCardRecord {
   count: number
   first_unlocked_at: number
   last_unlocked_at: number
+  is_nft_minted?: number
+  nft_asset_id?: string | null
 }
 
 const STORAGE_KEY_OFFLINE_CARDS = 'van_canh_offline_cards_v1'
@@ -118,6 +120,19 @@ export const useCardsStore = defineStore('cards', {
       const item = state.userInventory.find(i => i.card_id === id)
       if (item) return item.count
       return state.offlineUnlockedIds.has(id) ? 1 : 0
+    },
+
+    getCardMintInfo: (state) => (id: string): { isMinted: boolean; assetId: string | null; txHash: string | null } => {
+      const item = state.userInventory.find(i => i.card_id === id)
+      if (!item || !item.is_nft_minted || !item.nft_asset_id) {
+        return { isMinted: false, assetId: null, txHash: null }
+      }
+      const [assetId, txHash] = String(item.nft_asset_id).split('|')
+      return {
+        isMinted: true,
+        assetId: assetId || null,
+        txHash: txHash || null
+      }
     },
 
     unlockedList(): BuddhistCard[] {
@@ -268,6 +283,12 @@ export const useCardsStore = defineStore('cards', {
         })
       }
       return true
+    },
+
+    applyInventory(items: UserCardRecord[]) {
+      if (Array.isArray(items)) {
+        this.userInventory = items
+      }
     },
 
     setSelectedCard(card: BuddhistCard | null) {
