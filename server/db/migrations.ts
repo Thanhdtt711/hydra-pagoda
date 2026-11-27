@@ -655,5 +655,44 @@ CREATE INDEX mc_withdrawals_account_idx ON mc_withdrawals (account_id, created_a
 ALTER TABLE mc_fund_state ADD COLUMN burned_mc INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE mc_fund_state ADD COLUMN ops_mc INTEGER NOT NULL DEFAULT 0;
 `
+  },
+  {
+    version: 20,
+    name: 'pvp_board_matches',
+    sql: `
+-- Đấu Cờ PvP Cược MC (Cờ Tướng, Cờ Vua, Cờ Caro, Cờ Vây): lưu trạng thái ván đấu và escrow MC an toàn trong CSDL.
+CREATE TABLE pvp_board_matches (
+  match_id         TEXT    PRIMARY KEY,
+  room_code        TEXT    NOT NULL,
+  game_id          TEXT    NOT NULL,
+  wager_mc         INTEGER NOT NULL CHECK (wager_mc > 0),
+  rake_bps         INTEGER NOT NULL DEFAULT 500,
+  status           TEXT    NOT NULL DEFAULT 'waiting',
+  host_account_id  INTEGER NOT NULL REFERENCES accounts(id),
+  host_address     TEXT    NOT NULL,
+  host_name        TEXT    NOT NULL,
+  guest_account_id INTEGER REFERENCES accounts(id),
+  guest_address    TEXT,
+  guest_name       TEXT,
+  turn_side        TEXT    NOT NULL,
+  state_json       TEXT    NOT NULL,
+  move_count       INTEGER NOT NULL DEFAULT 0,
+  last_move_json   TEXT,
+  winner_side      TEXT,
+  end_reason       TEXT,
+  draw_offer_by    TEXT,
+  payout_mc        INTEGER NOT NULL DEFAULT 0,
+  rake_mc          INTEGER NOT NULL DEFAULT 0,
+  turn_deadline_at INTEGER,
+  created_at       INTEGER NOT NULL,
+  started_at       INTEGER,
+  finished_at      INTEGER,
+  updated_at       INTEGER NOT NULL
+);
+CREATE INDEX pvp_board_matches_status_idx ON pvp_board_matches (status, created_at DESC);
+CREATE INDEX pvp_board_matches_host_idx ON pvp_board_matches (host_account_id, created_at DESC);
+CREATE INDEX pvp_board_matches_guest_idx ON pvp_board_matches (guest_account_id, created_at DESC);
+CREATE INDEX pvp_board_matches_room_idx ON pvp_board_matches (room_code);
+`
   }
 ]

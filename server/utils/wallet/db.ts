@@ -147,9 +147,17 @@ interface TxContext {
 
 const txStorage = new AsyncLocalStorage<TxContext>()
 
-let pgPool: pg.Pool | null = null
-let pgReadyPromise: Promise<DbConn> | null = null
-let pgUrlCache = ''
+// Lưu pgPool trên globalThis để tránh rò rỉ pool mỗi lần Nitro HMR reload ở chế độ dev
+interface PgGlobalState {
+  pool: pg.Pool | null
+  readyPromise: Promise<DbConn> | null
+  urlCache: string
+}
+const pgGlobal = ((globalThis as any).__pagodaPgState ??= {
+  pool: null,
+  readyPromise: null,
+  urlCache: ''
+} as PgGlobalState) as PgGlobalState
 
 let sqliteRaw: DatabaseSync | null = null
 let sqliteConn: SqliteConn | null = null
@@ -216,26 +224,40 @@ async function runPgMigrations(pool: pg.Pool) {
 }
 
 async function ensurePgPool(databaseUrl: string): Promise<DbConn> {
-  if (pgReadyPromise && pgUrlCache === databaseUrl) {
-    return pgReadyPromise
+  if (pgGlobal.readyPromise && pgGlobal.urlCache === databaseUrl) {
+    return pgGlobal.readyPromise
   }
-  pgUrlCache = databaseUrl
-  pgReadyPromise = (async () => {
+  // Đóng pool cũ nếu đổi DATABASE_URL
+  if (pgGlobal.pool && pgGlobal.urlCache !== databaseUrl) {
+    const oldPool = pgGlobal.pool
+    pgGlobal.pool = null
+    oldPool.end().catch(() => {})
+  }
+  pgGlobal.urlCache = databaseUrl
+  pgGlobal.readyPromise = (async () => {
     const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/i.test(databaseUrl) || /sslmode=disable/i.test(databaseUrl)
-    pgPool = new pg.Pool({
+    // Supabase Session Pooler (port 5432) giới hạn tổng 15 kết nối cho toàn bộ client (local + production).
+    // Giữ max mặc định = 4 và giải phóng sớm sau 10s rảnh để nhiều môi trường dùng chung không bao giờ chạm trần.
+    const poolMax = Math.max(1, Math.min(10, Number(process.env.NUXT_PG_POOL_MAX) || 4))
+    const pool = new pg.Pool({
       connectionString: databaseUrl,
       ssl: isLocal ? false : { rejectUnauthorized: false },
-      max: 10,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 15_000
+      max: poolMax,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 15_000,
+      allowExitOnIdle: true
     })
-    await runPgMigrations(pgPool)
-    return new PgConn(pgPool)
+    pool.on('error', (err) => {
+      console.warn('[db:pg] pool idle client error:', err?.message || err)
+    })
+    pgGlobal.pool = pool
+    await runPgMigrations(pool)
+    return new PgConn(pool)
   })().catch((err) => {
-    pgReadyPromise = null
+    pgGlobal.readyPromise = null
     throw err
   })
-  return pgReadyPromise
+  return pgGlobal.readyPromise
 }
 
 /** Lấy kết nối CSDL gốc ngoài transaction (dùng cho các tác vụ nền như Hydra L2 queue sau khi transaction đã commit). */
@@ -292,7 +314,7 @@ export async function withTransaction<T>(fn: (conn: DbConn) => Promise<T> | T): 
   const cfg = getWalletConfig()
   if (cfg.databaseUrl) {
     await ensurePgPool(cfg.databaseUrl)
-    const client = await pgPool!.connect()
+    const client = await pgGlobal.pool!.connect()
     const conn = new PgConn(client)
     const ctx: TxContext = { conn, afterCommit: [] }
     let committed = false

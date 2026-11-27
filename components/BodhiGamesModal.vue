@@ -7,6 +7,29 @@
     @close="emit('close')"
   >
     <div class="space-y-4">
+      <!-- Chuyển chế độ: Đấu với Sư Thầy (AI) <-> Đấu PvP Cược MC (4 Môn) -->
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          class="px-3 py-2 rounded-[2px] border text-xs font-bold transition-colors cursor-pointer"
+          :class="arenaMode === 'ai' ? 'bg-[#26221d] border-[#c9a24b] text-[#c9a24b]' : 'bg-[#1a1714] border-[#332d26] text-[#9c9283] hover:text-[#f0e6d2]'"
+          @click="arenaMode = 'ai'"
+        >
+          {{ tr('Đấu với Sư Thầy (AI · 5 Môn)', 'Play vs Master (AI)') }}
+        </button>
+        <button
+          type="button"
+          class="px-3 py-2 rounded-[2px] border text-xs font-bold transition-colors cursor-pointer"
+          :class="arenaMode === 'pvp' ? 'bg-[#26221d] border-[#0ecb81] text-[#0ecb81]' : 'bg-[#1a1714] border-[#332d26] text-[#9c9283] hover:text-[#f0e6d2]'"
+          @click="arenaMode = 'pvp'"
+        >
+          {{ tr('Đấu PvP Cược MC (4 Môn · Hydra L2)', 'PvP MC Wager (4 Games)') }}
+        </button>
+      </div>
+
+      <BodhiPvpArena v-if="arenaMode === 'pvp'" />
+
+      <template v-else>
       <UiTabs
         :model-value="activeTab"
         :tabs="gameTabs"
@@ -818,6 +841,7 @@
           </div>
         </div>
       </div>
+      </template>
     </div>
   </UiModal>
 </template>
@@ -828,6 +852,7 @@ import UiModal from '~/components/ui/UiModal.vue'
 import UiTabs from '~/components/ui/UiTabs.vue'
 import UiButton from '~/components/ui/UiButton.vue'
 import UiBadge from '~/components/ui/UiBadge.vue'
+import BodhiPvpArena from '~/components/BodhiPvpArena.vue'
 import ChessPieceSvg from '~/components/ui/ChessPieceSvg.vue'
 import ZenIcon from '~/components/ZenIcon.vue'
 import { tr } from '~/lib/ui/copy'
@@ -906,6 +931,8 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
+// Chế độ Đấu AI hoặc Đấu PvP Cược MC (4 môn)
+const arenaMode = ref<'ai' | 'pvp'>('ai')
 // Cờ Tướng hiện lên trước theo yêu cầu
 const activeTab = ref<'xiangqi' | 'oanquan' | 'caro' | 'chess' | 'go'>('xiangqi')
 const gameTabs = computed(() => [
