@@ -606,7 +606,7 @@ function isUnauthorizedError(err: any): boolean {
   if (status === 401) return true
   const code = err?.data?.data?.code || err?.data?.code || ''
   if (code === 'unauthorized') return true
-  const msg = String(err?.data?.statusMessage || err?.data?.message || err?.message || '')
+  const msg = String(err?.data?.data?.message || err?.data?.message || err?.data?.statusMessage || err?.message || '')
   return /chưa đăng nhập|hết hạn|unauthorized/i.test(msg)
 }
 
@@ -692,7 +692,7 @@ async function executeDirectFortuneRoll(payload: {
       }
     }
     isRolling.value = false
-    fortuneNotice.value = e?.data?.statusMessage || e?.data?.message || e?.message || 'Không thể gieo quẻ lúc này.'
+    fortuneNotice.value = e?.data?.data?.message || e?.data?.message || e?.data?.statusMessage || e?.message || 'Không thể gieo quẻ lúc này.'
   }
 }
 
@@ -800,7 +800,7 @@ async function performConfirmedFortune(c: PendingSpendConfirm) {
     zenAudio.playTempleBell()
   } catch (e: any) {
     isRolling.value = false
-    fortuneNotice.value = e?.data?.statusMessage || e?.data?.message || e?.message || 'Không thể gieo quẻ lúc này.'
+    fortuneNotice.value = e?.data?.data?.message || e?.data?.message || e?.data?.statusMessage || e?.message || 'Không thể gieo quẻ lúc này.'
   }
 }
 
@@ -1068,7 +1068,7 @@ async function performConfirmedShopPurchase(c: PendingSpendConfirm) {
     shopSuccess.value = `Đã thỉnh thành công "${res.item.name}" (-${res.spentMc.toLocaleString()} MC)!`
   } catch (e: any) {
     pendingConfirm.value = null
-    shopNotice.value = e?.data?.statusMessage || e?.message || 'Không thể mua vật phẩm.'
+    shopNotice.value = e?.data?.data?.message || e?.data?.message || e?.data?.statusMessage || e?.message || 'Không thể mua vật phẩm.'
   }
 }
 
@@ -1120,7 +1120,7 @@ async function performConfirmedMeritDonation(c: PendingSpendConfirm) {
     meritBlessing.value = res.donation.blessing
   } catch (e: any) {
     pendingConfirm.value = null
-    meritError.value = e?.data?.statusMessage || e?.message || 'Không thể thực hiện công đức.'
+    meritError.value = e?.data?.data?.message || e?.data?.message || e?.data?.statusMessage || e?.message || 'Không thể thực hiện công đức.'
   }
 }
 
@@ -1161,7 +1161,7 @@ async function handleOpenPack(packId: string) {
     zenAudio.playCoinDrop()
     cardSuccess.value = `Khai mở thành công "${pack.name}" (-${pack.priceMc.toLocaleString('vi-VN')} MC)!`
   } catch (err: any) {
-    cardNotice.value = err?.data?.message || err?.message || 'Không thể mở gói thẻ lúc này.'
+    cardNotice.value = err?.data?.data?.message || err?.data?.message || err?.message || 'Không thể mở gói thẻ lúc này.'
   }
 }
 
@@ -1192,7 +1192,7 @@ async function performConfirmedCardUnlock(c: PendingSpendConfirm) {
     cardSuccess.value = `Đã khai quang "${res.item.name}" (-${res.spentMc.toLocaleString()} MC)!`
   } catch (e: any) {
     pendingConfirm.value = null
-    cardNotice.value = e?.data?.statusMessage || e?.message || 'Không thể mở khóa thẻ di sản.'
+    cardNotice.value = e?.data?.data?.message || e?.data?.message || e?.data?.statusMessage || e?.message || 'Không thể mở khóa thẻ di sản.'
   }
 }
 

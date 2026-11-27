@@ -8,6 +8,8 @@ import path from 'node:path'
 export interface HydraConfig {
     /** Công tắc tổng. false => không mở WebSocket, không dựng tx, toàn bộ luồng chạy SQLite như cũ. */
     enabled: boolean
+    /** Chế độ nghiêm ngặt: true => BẮT BUỘC Hydra Head đang Open mới cho phép trừ/cộng MC (tắt Hydra = khóa giao dịch MC, không fallback DB). */
+    strict: boolean
     /** WebSocket API của hydra-node, mặc định ws://127.0.0.1:4001 */
     wsUrl: string
     /** Bí mật máy chủ để dẫn xuất Session Key / Fuel Key (để trống => tự sinh và lưu trong bảng hydra_kv). */
@@ -79,6 +81,15 @@ export function getHydraConfig(): HydraConfig {
             process.env.NUXT_HYDRA_L2_ENABLED,
             rc.hydraL2Enabled
         ),
+        strict: process.env.MC_TEST_MODE === '1'
+            ? false
+            : envBool(
+                live.HYDRA_L2_STRICT,
+                live.NUXT_HYDRA_L2_STRICT,
+                process.env.HYDRA_L2_STRICT,
+                process.env.NUXT_HYDRA_L2_STRICT,
+                rc.hydraL2Strict
+            ),
         wsUrl: firstString(
             live.HYDRA_NODE_WS_URL,
             live.NUXT_HYDRA_NODE_WS_URL,

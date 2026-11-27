@@ -13,7 +13,7 @@ import {
 import { getVietnamDayKey } from '../../../lib/time/vietnamDay'
 import { apiError } from '../wallet/auth'
 import { getDb, onAfterCommit, withTransaction } from '../wallet/db'
-import { scheduleHydraRecord } from '../hydra/hydraQueue'
+import { assertHydraReadyIfStrict, scheduleHydraRecord } from '../hydra/hydraQueue'
 
 export interface QuestRewardOptions {
   questKey: string
@@ -88,6 +88,7 @@ export async function grantQuestReward(
   if (!Number.isSafeInteger(requestedMc) || requestedMc <= 0) {
     apiError(400, 'invalid_amount', 'Số MC thưởng phải là số nguyên dương')
   }
+  assertHydraReadyIfStrict()
 
   const now = opts.now ?? Date.now()
   const dayKey = getVietnamDayKey(new Date(now))

@@ -20,7 +20,7 @@ import { getStartOfVietnamDayMs, getVietnamDayKey } from '../../../lib/time/viet
 import { apiError } from './auth.ts'
 import { getWalletConfig } from './config.ts'
 import { getDb, withTransaction, type DbConn } from './db.ts'
-import { scheduleHydraRecord } from '../hydra/hydraQueue.ts'
+import { assertHydraReadyIfStrict, scheduleHydraRecord } from '../hydra/hydraQueue.ts'
 import { grantQuestReward } from '../mc/questRewards.ts'
 import { splitSpentMc } from '../../../lib/mc/tokenomics.ts'
 import { getCardPackById, rollCardGacha, type BuddhistCardItem } from '../cards/catalog.ts'
@@ -740,6 +740,7 @@ export async function spend<TExtra = Record<string, unknown>>(
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     apiError(400, 'invalid_amount', 'Số lượng MC cần tiêu phải là số nguyên dương')
   }
+  assertHydraReadyIfStrict()
   const cleanRefId = normalizeRequestId(refId)
   const refType = opts?.refType || reason
 

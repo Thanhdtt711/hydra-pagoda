@@ -42,6 +42,7 @@ process.env.NUXT_DB_PATH = join(tmpDir, 'quest.sqlite')
 process.env.DATABASE_URL = ''
 process.env.NUXT_DATABASE_URL = ''
 process.env.NUXT_HYDRA_L2_ENABLED = 'false'
+process.env.MC_TEST_MODE = '1'
 
 const { getRootDb } = await import('../../server/utils/wallet/db.ts')
 const { grantQuestReward, getQuestFundStatus } = await import('../../server/utils/mc/questRewards.ts')

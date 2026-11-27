@@ -8,6 +8,7 @@
  *  - Mọi lỗi chỉ để `hydra_status = 'offchain'`; KHÔNG BAO GIỜ ném lỗi ra ngoài luồng gameplay.
  */
 import { getRootDb, onAfterCommit } from '../wallet/db'
+import { apiError } from '../wallet/auth'
 import { getWalletConfig } from '../wallet/config'
 import { getHydraConfig, type HydraConfig } from './config'
 import { getHydraClient, type HydraClient, type HydraUtxoMap } from './hydraClient'
@@ -68,6 +69,31 @@ const OFFCHAIN: HydraProof = {
     snapshotNo: null,
     get dbEngine() {
         return currentDbEngine()
+    }
+}
+
+/**
+ * Chế độ Strict Hydra L2 (`HYDRA_L2_STRICT=true`):
+ * Bắt buộc Hydra Head L2 phải đang bật và ở trạng thái `Open` trước khi cho phép trừ/cộng MC.
+ * Nếu tắt Hydra hoặc mất kết nối Head -> chặn 503, KHÔNG fallback về ghi chay DB.
+ */
+export function assertHydraReadyIfStrict(): void {
+    const cfg = getHydraConfig()
+    if (!cfg.strict) return
+    if (!cfg.enabled) {
+        apiError(
+            503,
+            'hydra_l2_disabled',
+            'Hydra Head L2 đang tắt (chế độ Strict L2). Không thể trừ/cộng MC khi Hydra L2 chưa bật.'
+        )
+    }
+    const status = getHydraClient().getStatus()
+    if (!status.connected || status.headStatus !== 'Open') {
+        apiError(
+            503,
+            'hydra_l2_unavailable',
+            `Hydra Head L2 chưa sẵn sàng (${status.headStatus || 'Disconnected'}). Tạm khóa giao dịch MC ở chế độ Strict L2.`
+        )
     }
 }
 
