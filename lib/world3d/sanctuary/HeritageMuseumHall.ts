@@ -54,6 +54,7 @@ export class HeritageMuseumHall {
   private ownedMaterials: THREE.Material[] = []
   private ownedTextures: THREE.Texture[] = []
   private ownedGeometries: THREE.BufferGeometry[] = []
+  private exhibitNftNodes = new Map<string, { glow: THREE.Mesh; badge: THREE.Mesh }>()
 
   constructor(collisionWorld?: CollisionWorld) {
     this.group = new THREE.Group()
@@ -242,6 +243,30 @@ export class HeritageMuseumHall {
     const labelGeo = new THREE.PlaneGeometry(1.9, 0.34)
     this.ownedGeometries.push(backGeo, trimTopGeo, trimSideGeo, artGeo, pedestalGeo, labelGeo)
 
+    // Tài nguyên dùng chung cho hiệu ứng NFT ON-CHAIN
+    const glowGeo = new THREE.BoxGeometry(2.92, 2.08, 0.05)
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xf6cf74,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false
+    })
+    const badgeTex = createPlaqueTexture({
+      text: 'NFT ON-CHAIN',
+      background: '#100e0c',
+      border: '#0ecb81',
+      textColor: '#6ee7b7',
+      width: 512,
+      height: 96,
+      resolutionScale: 1.5,
+      maxAnisotropy: 8
+    })
+    this.ownedTextures.push(badgeTex)
+    const badgeMat = new THREE.MeshBasicMaterial({ map: badgeTex })
+    const badgeGeo = new THREE.PlaneGeometry(1.5, 0.28)
+    this.ownedGeometries.push(glowGeo, badgeGeo)
+    this.ownedMaterials.push(glowMat, badgeMat)
+
     for (const ex of EXHIBITS) {
       const stand = new THREE.Group()
       stand.position.set(ex.pos[0], FLOOR_Y, ex.pos[1])
@@ -301,7 +326,31 @@ export class HeritageMuseumHall {
       labelMesh.position.set(0, 0.56, 0.29)
       stand.add(labelMesh)
 
+      // Viền sáng vàng kim + huy hiệu "NFT ON-CHAIN" (mặc định ẩn, chỉ bật khi ví đang đăng nhập đã đúc thẻ này thành NFT CIP-68 thật)
+      const glow = new THREE.Mesh(glowGeo, glowMat.clone())
+      this.ownedMaterials.push(glow.material as THREE.Material)
+      glow.position.set(0, 1.95, -0.02)
+      glow.visible = false
+      stand.add(glow)
+
+      const badge = new THREE.Mesh(badgeGeo, badgeMat)
+      badge.position.set(0, 3.12, 0.1)
+      badge.visible = false
+      stand.add(badge)
+
+      this.exhibitNftNodes.set(ex.id, { glow, badge })
+
       this.group.add(stand)
+    }
+  }
+
+  /** Bật viền sáng + huy hiệu NFT cho các khung tranh mà ví đang đăng nhập đã đúc thành NFT CIP-68 thật trên Cardano. */
+  public setMintedExhibits(mintedCardIds: Iterable<string>) {
+    const minted = new Set(mintedCardIds)
+    for (const [cardId, nodes] of this.exhibitNftNodes.entries()) {
+      const on = minted.has(cardId)
+      nodes.glow.visible = on
+      nodes.badge.visible = on
     }
   }
 
@@ -503,6 +552,14 @@ export class HeritageMuseumHall {
     // Nhịp thở vòng sáng CIP-68 quanh bệ
     const pulse = 1 + Math.sin(elapsedSec * 2.4) * 0.04
     this.haloRingMesh.scale.set(pulse, pulse, 1)
+
+    // Nhịp thở viền vàng kim của các tác phẩm đã đúc NFT CIP-68
+    const glowOpacity = 0.4 + Math.sin(elapsedSec * 3.0) * 0.18
+    for (const nodes of this.exhibitNftNodes.values()) {
+      if (nodes.glow.visible) {
+        ;(nodes.glow.material as THREE.MeshBasicMaterial).opacity = glowOpacity
+      }
+    }
   }
 
   public dispose() {

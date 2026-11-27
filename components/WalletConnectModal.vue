@@ -31,13 +31,67 @@ const activeTab = ref<'buy' | 'withdraw' | 'history'>('buy')
 const walletTabs = computed(() => [
   { id: 'buy', label: 'Mua MC (L2)' },
   { id: 'withdraw', label: 'Rút về ví (L1)' },
-  { id: 'history', label: 'Lịch sử', count: wallet.orders.length }
+  { id: 'history', label: 'Lịch sử', count: wallet.orders.length + withdrawals.value.length }
 ])
 
 const MIN_WITHDRAW_MC = 500
 const withdrawAmountInput = ref<string>('1000')
 const isWithdrawing = ref(false)
 const withdrawResult = ref<{ ok: boolean; txHash?: string; explorerUrl?: string; mcAmount?: number; error?: string } | null>(null)
+
+const reserve = ref<{
+  ok: boolean
+  configured: boolean
+  assetUnit: string
+  onChainSupply: string
+  expectedSupply: string
+  supplyMatches: boolean
+  policyLocked: boolean | null
+  expirySlot: number | null
+  currentSlot: number | null
+  l1ReserveMc: string
+  l2TotalMc: string
+  coverageOk: boolean
+  surplusMc: string
+  vaults: Array<{ label: string; address: string; mc: string }>
+  explorerTokenUrl: string
+  error?: string
+} | null>(null)
+
+const withdrawals = ref<Array<{
+  withdrawId: string
+  mcAmount: number
+  status: string
+  txHash: string | null
+  failureReason: string | null
+  createdAt: number
+  explorerUrl: string | null
+}>>([])
+
+async function loadReserveProof() {
+  if (!wallet.isAuthenticated) return
+  try {
+    reserve.value = (await $fetch('/api/mc/reserve')) as typeof reserve.value
+  } catch { /* giữ trạng thái cũ */ }
+}
+
+async function loadWithdrawals() {
+  if (!wallet.isAuthenticated) return
+  try {
+    const res = (await $fetch('/api/mc/withdraw/list')) as { withdrawals: typeof withdrawals.value }
+    withdrawals.value = res?.withdrawals ?? []
+  } catch { /* giữ trạng thái cũ */ }
+}
+
+function withdrawBadge(status: string): { label: string; variant: 'success' | 'warning' | 'info' | 'neutral' | 'danger' } {
+  switch (status) {
+    case 'completed': return { label: 'Đã vào ví', variant: 'success' }
+    case 'submitted': return { label: 'Đang xác nhận', variant: 'warning' }
+    case 'pending': return { label: 'Chờ ký', variant: 'neutral' }
+    case 'refunded': return { label: 'Đã hoàn L2', variant: 'info' }
+    default: return { label: 'Lỗi', variant: 'danger' }
+  }
+}
 
 const parsedWithdrawMc = computed<number>(() => {
   const n = Math.floor(Number(withdrawAmountInput.value))
@@ -52,6 +106,8 @@ async function handleWithdrawMc() {
     withdrawResult.value = await wallet.withdrawMcToL1(parsedWithdrawMc.value)
   } finally {
     isWithdrawing.value = false
+    void loadWithdrawals()
+    void loadReserveProof()
   }
 }
 
@@ -137,6 +193,7 @@ function onCustomAdaChange() {
 
 const hydra = useHydraStore()
 const hydraStatus = ref<{ enabled: boolean; connected: boolean; headStatus: string; latestSnapshotNo: number; confirmedL2Txs: number; mode: string; dbEngine?: 'postgres' | 'sqlite' } | null>(null)
+
 const hydraLabel = computed(() => {
   const s = hydraStatus.value
   const isPg = s?.dbEngine ? s.dbEngine === 'postgres' : hydra.isPostgres
@@ -151,9 +208,17 @@ onMounted(async () => {
     hydraStatus.value = (await $fetch<unknown>('/api/hydra/status' as string)) as typeof hydraStatus.value
   } catch { hydraStatus.value = null }
   installedList.value = await wallet.detectInstalledWallets()
-  if (wallet.isConnected) {
-    await Promise.all([wallet.fetchOrders(), loadMarketInfo()])
+  if (wallet.isAuthenticated) {
+    await Promise.all([wallet.fetchOrders(), loadMarketInfo(), loadReserveProof(), loadWithdrawals()])
   }
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'history') {
+    void loadWithdrawals()
+    void wallet.fetchOrders()
+  }
+  if (tab === 'withdraw') void loadReserveProof()
 })
 
 watch(
@@ -161,6 +226,7 @@ watch(
   (phase) => {
     if (phase === 'completed') {
       void loadMarketInfo()
+      void loadReserveProof()
     }
   }
 )
@@ -195,7 +261,7 @@ async function handleSyncHydraBridge() {
       // Xác thực chữ ký CIP-8 qua HydraOne Bridge để mở phiên server (isAuthenticated = true)
       const ok = await wallet.loginWithHydraBridge(addr)
       if (ok) {
-        await Promise.all([wallet.fetchOrders(), loadMarketInfo()])
+        await Promise.all([wallet.fetchOrders(), loadMarketInfo(), loadReserveProof(), loadWithdrawals()])
         try {
           hydraStatus.value = (await $fetch<unknown>('/api/hydra/status' as string)) as typeof hydraStatus.value
         } catch { /* bỏ qua */ }
@@ -385,27 +451,26 @@ function formatTime(ts: number): string {
       <!-- TRẠNG THÁI 2: ĐÃ KẾT NỐI VÍ -->
       <div v-else class="space-y-4">
         <!-- Identity Bar -->
-        <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <img v-if="wallet.walletKey !== 'hydraone'" src="/images/eternl-logo.png" alt="Eternl" class="w-7 h-7 rounded shrink-0 object-contain" />
-            <div v-else class="w-7 h-7 rounded bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0">
+        <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+            <img v-if="wallet.walletKey !== 'hydraone'" src="/images/eternl-logo.png" alt="Eternl" class="w-7 h-7 rounded-[2px] shrink-0 object-contain" />
+            <div v-else class="w-7 h-7 rounded-[2px] bg-[#1a1714] border border-hairline flex items-center justify-center shrink-0">
               <ZenIcon name="wallet" :size="14" class="text-binance-yellow" />
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-primary">{{ wallet.walletName }}</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center flex-wrap gap-1.5">
+                <span class="text-sm font-bold text-primary truncate">{{ wallet.walletName }}</span>
                 <UiBadge variant="success" dot>Đã kết nối</UiBadge>
-                <UiBadge v-if="wallet.isIframeMode" variant="warning">Host Header</UiBadge>
               </div>
               <div class="text-xs text-secondary font-numbers truncate mt-0.5">
                 {{ wallet.address }}
               </div>
             </div>
           </div>
-          <UiButton v-if="!wallet.isIframeMode" variant="ghost" size="sm" @click="handleDisconnect">
+          <UiButton v-if="!wallet.isIframeMode" variant="ghost" size="sm" class="shrink-0" @click="handleDisconnect">
             Ngắt
           </UiButton>
-          <UiButton v-else variant="ghost" size="sm" :loading="isSyncingBridge" @click="handleSyncHydraBridge">
+          <UiButton v-else variant="ghost" size="sm" class="shrink-0" :loading="isSyncingBridge" @click="handleSyncHydraBridge">
             Làm mới
           </UiButton>
         </div>
@@ -603,6 +668,53 @@ function formatTime(ts: number): string {
 
         <!-- TAB 2: RÚT MC VỀ VÍ L1 (CO-SIGN eUTxO) -->
         <div v-if="activeTab === 'withdraw'" class="space-y-4 pt-1">
+          <!-- Bằng chứng dự trữ (Proof of Reserve) đối soát trực tiếp L1 ↔ L2 -->
+          <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-primary">Bằng chứng dự trữ MC (L1 ↔ L2)</span>
+              <UiBadge :variant="!reserve ? 'neutral' : reserve.ok ? 'success' : reserve.configured ? 'danger' : 'warning'">
+                {{ !reserve ? 'Đang kiểm tra' : reserve.ok ? 'Khớp 100%' : reserve.configured ? 'Cần đối soát' : 'Chưa cấu hình' }}
+              </UiBadge>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-xs">
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Tổng cung on-chain</div>
+                <div class="font-bold font-numbers text-primary">{{ Number(reserve?.onChainSupply ?? 0).toLocaleString() }}</div>
+              </div>
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Policy</div>
+                <div
+                  class="font-bold"
+                  :class="reserve?.policyLocked ? 'text-[#0ecb81]' : 'text-secondary'"
+                >
+                  {{ reserve?.policyLocked === true ? 'Đã khóa vĩnh viễn' : reserve?.policyLocked === false ? 'Chưa qua slot khóa' : 'Chưa xác định' }}
+                </div>
+              </div>
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">MC thật ở ví quỹ L1</div>
+                <div class="font-bold font-numbers text-[#0ecb81]">{{ Number(reserve?.l1ReserveMc ?? 0).toLocaleString() }}</div>
+              </div>
+              <div class="bg-[#14110e] border border-[#332d26] rounded-[2px] px-2 py-1">
+                <div class="text-secondary">Tổng MC trên L2</div>
+                <div class="font-bold font-numbers text-primary">{{ Number(reserve?.l2TotalMc ?? 0).toLocaleString() }}</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 text-xs text-secondary">
+              <span>
+                {{ reserve?.coverageOk ? 'Dự trữ L1 đủ bảo chứng toàn bộ MC trên L2' : reserve?.error || 'Chưa đủ dữ liệu đối soát' }}
+              </span>
+              <a
+                v-if="reserve?.explorerTokenUrl"
+                :href="reserve.explorerTokenUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-gold font-semibold hover:underline shrink-0"
+              >
+                Xem token
+              </a>
+            </div>
+          </div>
+
           <div class="p-3 rounded-[2px] bg-surface-elevated border border-hairline space-y-1.5">
             <div class="flex items-center justify-between text-xs">
               <span class="text-secondary">Số dư MC trên Hydra L2:</span>
@@ -668,8 +780,50 @@ function formatTime(ts: number): string {
           </div>
         </div>
 
-        <!-- TAB 3: LỊCH SỬ NẠP -->
+        <!-- TAB 3: LỊCH SỬ NẠP & RÚT -->
         <div v-if="activeTab === 'history'" class="space-y-3 pt-1">
+          <!-- Lịch sử Rút MC (L2 -> L1) -->
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-secondary">Lệnh rút MC về ví (L2 sang L1)</span>
+            <UiButton variant="ghost" size="sm" @click="loadWithdrawals()">Làm mới</UiButton>
+          </div>
+          <div v-if="withdrawals.length === 0" class="text-center py-4 text-xs text-secondary">
+            Chưa có lệnh rút MC nào.
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="wd in withdrawals"
+              :key="wd.withdrawId"
+              class="p-3 rounded-[2px] bg-surface-elevated border border-hairline"
+            >
+              <div class="flex items-center justify-between mb-1.5 gap-2">
+                <span class="text-sm font-bold font-numbers text-primary">
+                  -{{ wd.mcAmount.toLocaleString() }} MC -> ví Eternl
+                </span>
+                <UiBadge :variant="withdrawBadge(wd.status).variant">
+                  {{ withdrawBadge(wd.status).label }}
+                </UiBadge>
+              </div>
+              <div class="flex items-center justify-between text-xs text-secondary font-numbers">
+                <span>{{ formatTime(wd.createdAt) }} · #{{ wd.withdrawId.slice(-8) }}</span>
+                <a
+                  v-if="wd.explorerUrl"
+                  :href="wd.explorerUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-info hover:underline"
+                >
+                  Xem Cardanoscan
+                </a>
+              </div>
+              <div v-if="wd.failureReason && wd.status !== 'completed'" class="text-xs text-secondary mt-1 truncate">
+                {{ wd.failureReason }}
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-hairline pt-3"></div>
+
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-secondary">Đơn nạp gần đây</span>
             <UiButton variant="ghost" size="sm" @click="wallet.fetchOrders()">Làm mới</UiButton>

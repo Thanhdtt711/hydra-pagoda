@@ -7,6 +7,7 @@ import { useEconomyStore } from '~/stores/economy'
 import { useWalletStore } from '~/stores/wallet'
 import { useMeditationStore } from '~/stores/meditation'
 import { useHauDongStore } from '~/stores/hauDong'
+import { useCardsStore } from '~/stores/cards'
 import { useStreakStore } from '~/stores/streak'
 import { useDeedsStore } from '~/stores/deeds'
 import { useOnboardingStore } from '~/stores/onboarding'
@@ -52,6 +53,7 @@ const wallet = useWalletStore()
 const hydra = useHydraStore()
 const meditation = useMeditationStore()
 const hauDong = useHauDongStore()
+const cardsStore = useCardsStore()
 const parkour = useParkourStore()
 const streak = useStreakStore()
 const onboarding = useOnboardingStore()
@@ -479,10 +481,25 @@ onMounted(() => {
       void streak.refreshStatus()
       void useDeedsStore().refreshStatus()
       void koiGarden.refreshAll()
+      void cardsStore.fetchInventory()
       void hauDong.refreshStatus().then(() => {
         syncHauDongToStage()
       })
     }
+
+    // Đồng bộ viền sáng "NFT ON-CHAIN" trong Bảo Tàng 3D với các thẻ ví đang đăng nhập đã đúc thành NFT CIP-68 thật
+    watch(
+      () =>
+        cardsStore.userInventory
+          .filter((i) => i.is_nft_minted && i.nft_asset_id)
+          .map((i) => i.card_id)
+          .sort()
+          .join(','),
+      (joined) => {
+        stage?.heritageMuseumHall?.setMintedExhibits(joined ? joined.split(',') : [])
+      },
+      { immediate: true }
+    )
 
     // Chỉ kết nối WebSocket & gọi API khi đã xác thực ví (Wallet Gate).
     if (wallet.isAuthenticated) {

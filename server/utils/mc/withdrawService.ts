@@ -92,6 +92,48 @@ async function bfGet(bfBase: string, bfKey: string, path: string) {
   return res.json()
 }
 
+/** Lịch sử rút MC của tài khoản; tự chốt `completed` khi giao dịch Co-sign đã vào block trên Cardano L1. */
+export async function listAccountWithdrawals(account: PublicAccount, limit = 20) {
+  const cfg = getWalletConfig()
+  const db = await getDb()
+  const rows = (await db
+    .prepare(
+      `SELECT withdraw_id, mc_amount, status, tx_hash, failure_reason, created_at, settled_at
+         FROM mc_withdrawals WHERE account_id = ? ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(account.id, limit)) as any[]
+
+  const explorerBase = cfg.isTestnet ? 'https://preprod.cardanoscan.io' : 'https://cardanoscan.io'
+  const out: any[] = []
+  for (const r of rows) {
+    let status = String(r.status)
+    // Đang chờ xác nhận: hỏi Blockfrost xem tx đã vào block chưa để cập nhật trạng thái thật
+    if (status === 'submitted' && r.tx_hash && cfg.blockfrostApiKey) {
+      try {
+        const res = await fetch(`${cfg.blockfrostBaseUrl}/txs/${r.tx_hash}`, { headers: { project_id: cfg.blockfrostApiKey } })
+        if (res.ok) {
+          const info = (await res.json()) as { block_height?: number }
+          if (Number(info.block_height) > 0) {
+            status = 'completed'
+            await db.prepare("UPDATE mc_withdrawals SET status = 'completed' WHERE withdraw_id = ? AND status = 'submitted'").run(r.withdraw_id)
+          }
+        }
+      } catch { /* giữ nguyên trạng thái submitted */ }
+    }
+    out.push({
+      withdrawId: r.withdraw_id,
+      mcAmount: Number(r.mc_amount),
+      status,
+      txHash: r.tx_hash || null,
+      failureReason: r.failure_reason || null,
+      createdAt: Number(r.created_at),
+      settledAt: r.settled_at ? Number(r.settled_at) : null,
+      explorerUrl: r.tx_hash ? `${explorerBase}/transaction/${r.tx_hash}` : null
+    })
+  }
+  return out
+}
+
 /** Hoàn trả MC về số dư L2 nếu bước dựng tx thất bại hoặc người dùng hủy ký trên Eternl. */
 export async function cancelAndRefundWithdraw(account: PublicAccount, withdrawId: string, reason = 'user_cancelled') {
   const cleanId = withdrawId.trim()

@@ -104,7 +104,15 @@ sequenceDiagram
 
 ### 3.6. Migration & Cổng thưởng nhiệm vụ duy nhất
 - **Migration 16 (`reset_legacy_mc_balances`):** Tự động sao lưu file SQLite (`.data/backups/`) và bảng backup (`accounts_mc_backup_v16`, `mc_ledger_backup_v16`), ghi bút toán `legacy_reset` đưa toàn bộ số dư cũ về 0 và đối soát tổng ledger bằng 0, chỉ chạy duy nhất một lần.
+- **Migration 18 & 19:** Tạo bảng `mc_withdrawals` phục vụ rút Co-sign `L2 → L1` và bổ sung cột phân bổ chi tiêu 3 rổ (`55% quest_recycled`, `5% burned_mc`, `40% ops_mc`) trong `mc_fund_state`.
 - **Cổng thưởng duy nhất:** [questRewards.ts](file:///d:/Vtechcom/hydra-pagoda/server/utils/mc/questRewards.ts) gom toàn bộ đường `credit()` trong [mcService.ts](file:///d:/Vtechcom/hydra-pagoda/server/utils/wallet/mcService.ts), áp trần **1.000 MC/ví/ngày**, cooldown chống spam, cảnh báo dưới 10% quỹ và trả `"hết thưởng"` khi Quỹ Nhiệm Vụ 150M cạn.
+
+### 3.7. Bằng chứng dự trữ (`reserveService.ts`), Chế độ `HYDRA_L2_STRICT` & Vận hành Ví Quỹ
+- **Đối soát L1 ↔ L2 trực tiếp:** [reserveService.ts](file:///d:/Vtechcom/hydra-pagoda/server/utils/mc/reserveService.ts) (`GET /api/mc/reserve`, cache 30 giây) truy vấn Blockfrost để kiểm chứng đồng thời tổng cung 1 tỷ MC, trạng thái khóa `TimelockExpiry` theo slot hiện tại và tổng MC thật trong các ví quỹ L1 so với `SUM(accounts.mc_balance)` trên L2.
+- **Quy tắc cấu hình biến ví quỹ trong `.env`:** Hai biến `NUXT_MC_SALE_VAULT_ADDRESS` và `NUXT_MC_QUEST_VAULT_ADDRESS` **chỉ được khai báo địa chỉ Ví Quỹ của Chùa** (trên Preprod dùng chung địa chỉ Ví Quỹ Nóng `addr_test1vqz6...ewyg8r`; trên Mainnet dùng 2 ví lạnh độc lập). Tuyệt đối không để địa chỉ ví cá nhân người test ở hai biến này để tránh cộng nhầm số dư cá nhân vào tổng dự trữ L1.
+- **Lịch sử rút `L2 → L1`:** [withdrawService.ts](file:///d:/Vtechcom/hydra-pagoda/server/utils/mc/withdrawService.ts) (`GET /api/mc/withdraw/list`) tự động kiểm tra trạng thái xác nhận block qua Blockfrost cho các lệnh `submitted` và cập nhật thành `completed` ngay khi giao dịch lên chuỗi.
+- **Chế độ `HYDRA_L2_STRICT=true`:** Cho phép bật chế độ nghiêm ngặt đọc trực tiếp từ `.env` (`readLiveDotEnv`), từ chối mọi giao dịch cộng/trừ MC (`503 hydra_l2_disabled` / `hydra_l2_unavailable`) nếu Hydra Head L2 bị tắt hoặc mất kết nối, giúp kiểm chứng độc lập việc MC đang chạy thật trên Hydra L2 thay vì fallback sang CSDL thuần.
+- **Đốt định kỳ trên L1:** Phần `5%` chi tiêu (`burned_mc`) được trừ vĩnh viễn khỏi lưu thông L2 ngay lập tức; khi lên Mainnet, lượng `burned_mc` tích lũy sẽ được gom định kỳ gửi từ Ví Quỹ vào địa chỉ lỗ đen (Burn Address) trên Cardano L1 vì Policy đã khóa cứng không thể burn bằng minting script.
 
 ---
 

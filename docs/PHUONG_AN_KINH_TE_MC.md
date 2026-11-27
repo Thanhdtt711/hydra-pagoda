@@ -90,10 +90,33 @@ flowchart TD
 
 ---
 
-## 6. Bằng chứng dự trữ (Proof of Reserve)
+## 6. Bằng chứng dự trữ (Proof of Reserve), Cấu trúc Ví Quỹ & Cơ chế Đốt
 
-Tại mọi thời điểm, hệ thống đảm bảo bất biến kế toán công khai có thể đối soát trực tiếp giữa PostgreSQL/Hydra L2 và Cardanoscan:
+Tại mọi thời điểm, hệ thống đảm bảo bất biến kế toán công khai có thể đối soát trực tiếp giữa PostgreSQL/Hydra L2 và Cardanoscan thông qua API `GET /api/mc/reserve`:
 
-- `Tổng MC trong Ví Quỹ Nóng (L1) + Ví Quỹ Lạnh (L1) >= Tổng số dư MC L2 của toàn bộ người chơi`
+- `Tổng MC trong các Ví Quỹ (L1) >= Tổng số dư MC L2 của toàn bộ người chơi`
 - `Tổng MC đã bán (sale_sold) <= 850.000.000 MC`
-- `Tổng cung on-chain của Asset Unit MC === 1.000.000.000 MC` (policy đã khóa vĩnh viễn).
+- `Tổng cung on-chain của Asset Unit MC === 1.000.000.000 MC` (policy đã khóa vĩnh viễn theo `TimelockExpiry`).
+
+### 6.1. Cách đọc đúng số liệu đối soát L1 và L2 (không cộng dồn)
+- **MC thật ở Ví Quỹ L1** chỉ tính tổng MC nằm trong các ví quỹ của Chùa (không cộng ví cá nhân người chơi).
+- **Tổng MC trên L2** (`SUM(accounts.mc_balance)`) là phần đang nằm **bên trong** Ví Quỹ L1 được bảo chứng 1:1 cho người chơi, **không phải** cộng thêm vào 1 tỷ. Phần còn lại (`Ví Quỹ L1 - Tổng MC L2`) là quỹ bán và quỹ thưởng chưa phân phối.
+- **Ví Quỹ L1 chỉ giảm** khi người chơi thực hiện lệnh **Rút MC về ví cá nhân (`L2 → L1`)** bằng giao dịch Co-sign (hoặc khi Chùa thực hiện đốt định kỳ lên địa chỉ lỗ đen L1). Lúc đó tổng lưu thông toàn mạng vẫn bảo toàn tuyệt đối: `Ví cá nhân L1 + Đã đốt L1 + Tổng MC L2 + Quỹ dư chưa phân phối === 1.000.000.000 MC`.
+
+### 6.2. Chiến lược tách Ví Quỹ (Preprod vs Mainnet)
+- **Giai đoạn Preprod / Demo Hackathon:** Gom toàn bộ MC quỹ về **1 Ví Quỹ Nóng (Hot Vault)** duy nhất để server ký Co-sign thuận tiện khi người chơi rút về ví; tỷ lệ **85% Quỹ Bán (850M)** và **15% Quỹ Thưởng (150M)** được hạch toán tách bạch trên bảng sổ cái `mc_fund_state`.
+- **Giai đoạn Mainnet (vận hành thật):** Tách thành **3 ví độc lập** để minh bạch on-chain và giới hạn rủi ro khóa nóng:
+  1. **Ví Lạnh Quỹ Bán (Cold / Multisig — 850M MC):** Lưu trữ phần lớn quỹ bán, chỉ nạp từng đợt nhỏ sang Ví Quỹ Nóng.
+  2. **Ví Lạnh Quỹ Thưởng (Cold / Multisig — 150M MC):** Tách riêng minh bạch trên Cardanoscan.
+  3. **Ví Quỹ Nóng (Hot Vault — hạn mức vận hành ngày, ví dụ 5M–10M MC):** Chỉ giữ lượng vừa đủ để ký tự động các lệnh rút Co-sign hằng ngày.
+
+### 6.3. Phân bổ chi tiêu (55% / 5% / 40%) và Cơ chế Đốt (`burned_mc`)
+Mỗi khi người chơi chi tiêu MC trên L2 (công đức, bói quẻ, mua vật phẩm, mở gói thẻ bài), lượng MC thu vào được tự động phân bổ nguyên tử vào 3 rổ:
+- **55% Tái cấp Quỹ Thưởng (`quest_recycled`):** Bơm ngược lại Quỹ Nhiệm Vụ để duy trì phần thưởng dài hạn mà không ảnh hưởng bậc giá Quỹ Bán.
+- **5% Đốt (`burned_mc`):** Trừ vĩnh viễn khỏi lưu thông L2, không cộng lại cho bất kỳ tài khoản hay quỹ nào.
+- **40% Quỹ Vận Hành (`ops_mc`):** Dự phòng chi phí hạ tầng, phát triển và sự kiện cộng đồng.
+
+**Lưu ý về đốt trên L1 khi Policy đã khóa vĩnh viễn:**
+- Trên L2, số `burned_mc` đã biến mất khỏi `Tổng MC trên L2` ngay lập tức mà không tốn phí gas L1 cho từng giao dịch lẻ vài MC.
+- Trên Cardano L1, vì Policy đã qua `TimelockExpiry` nên không ai có thể mint thêm và cũng không thể gọi minting script để giảm `Total Supply` on-chain (`1.000.000.000` luôn cố định).
+- Khi vận hành Mainnet, hệ thống gom định kỳ (theo tuần hoặc tháng khi `burned_mc` đạt ngưỡng đủ lớn) và gửi một giao dịch duy nhất từ Ví Quỹ vào **địa chỉ lỗ đen (Burn Address không có khóa bí mật)** trên Cardano L1 để giảm số dư Ví Quỹ L1 công khai, giúp cộng đồng tự kiểm chứng trên Cardanoscan.
